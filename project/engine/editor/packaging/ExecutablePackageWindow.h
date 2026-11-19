@@ -28,11 +28,13 @@ private:
         std::string packageName;
         std::string configuration;
         bool buildBeforePackage = false;
+        bool analyzeOnly = false; // コピーせず、最終的な選別結果のレポートだけを保存します。
         int textureMode = 0;
         bool createZip = true;
         bool includeProject = true;
         bool includeReadMe = true;
-        bool excludeUnusedResources = false;
+        bool excludeUnusedResources = true;
+        std::string additionalKeep; // 動的に指定する素材・フォルダーを改行で列挙します。
     };
 
     /// パッケージ作成タスクの成功可否と表示メッセージを返す結果情報。
@@ -40,6 +42,7 @@ private:
     struct PackageResult {
         bool success = false;
         std::string message;
+        std::string reportPath;
     };
 
     /// <summary>作成タスクが実行中か確認します。</summary>
@@ -50,7 +53,8 @@ private:
 
     /// <summary>必要ならビルドしてから、配布ファイルの収集を開始します。</summary>
     /// <param name="buildBeforePackage">作成直前に選択した構成をビルドする場合は true。</param>
-    void StartPackageTask(bool buildBeforePackage);
+    /// <param name="analyzeOnly">trueなら素材の依存解析とレポート保存までを実行します。</param>
+    void StartPackageTask(bool buildBeforePackage, bool analyzeOnly = false);
 
     /// <summary>検証、収集、任意の ZIP 化をワーカースレッドで実行します。</summary>
     /// <param name="request">UI で確定した作成条件。</param>
@@ -65,7 +69,9 @@ private:
     bool createZip_ = true;
     bool includeProject_ = true;
     bool includeReadMe_ = true;
-    bool excludeUnusedResources_ = false;
+    bool excludeUnusedResources_ = true;
+    char additionalKeepBuffer_[2048] = {}; // 自動解析に加えて残すResources相対パス。
+    std::string reportPath_; // 最後に成功した解析・配布結果のレポート。
     std::future<PackageResult> task_; // 配布フォルダー作成処理の完了待ち。
     std::string statusText_ = "設定を選んで作成してください。";
 };

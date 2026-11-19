@@ -1,4 +1,5 @@
 #include "ModelManager.h"
+#include "ModelAssetPath.h"
 #include "ModelCommon.h"
 #include <cassert>
 #include <filesystem> 
@@ -184,68 +185,13 @@ bool ModelManager::PrepareModel(const std::string& modelName) {
 }
 
 bool ModelManager::ResolveModelPath(
-    const std::string& modelName,
-    std::string& directoryPath,
-    std::string& fileName) const {
-    // 表示名と拡張子を分離し、既定のモデル配置先から実ファイルを解決する。
-    std::filesystem::path path(modelName);
-    std::string parentPath = path.parent_path().string();
-    std::replace(parentPath.begin(), parentPath.end(), '\\', '/');
-    const std::string stem = path.stem().string();
-    const std::string extension = path.extension().string();
-
-    directoryPath = parentPath.empty()
-        ? kDefaultBaseDirectory + stem + "/"
-        : kDefaultBaseDirectory + parentPath + "/" + stem + "/";
-
-    if (!extension.empty()) {
-        fileName = path.filename().string();
-        // 拡張子指定ではモデル名と同じサブフォルダーを先に探し、無ければ親フォルダー直下を探します。
-        const std::string legacyDirectory = directoryPath;
-        const std::string directDirectory =
-            kDefaultBaseDirectory + (parentPath.empty() ? "" : parentPath + "/");
-        if (std::filesystem::exists(legacyDirectory + fileName)) {
-            directoryPath = legacyDirectory;
-        }
-        else if (std::filesystem::exists(directDirectory + fileName)) {
-            directoryPath = directDirectory;
-        }
-        else {
-            return false;
-        }
-
-        return true;
-    }
-
-    const std::string objName = stem + ".obj";
-    const std::string gltfName = stem + ".gltf";
-    const std::string glbName = stem + ".glb";
-
-    if (std::filesystem::exists(directoryPath + objName)) {
-        fileName = objName;
-    }
-    else if (std::filesystem::exists(directoryPath + gltfName)) {
-        fileName = gltfName;
-    }
-    else if (std::filesystem::exists(directoryPath + glbName)) {
-        fileName = glbName;
-    }
-    else if (std::filesystem::exists(directoryPath)) {
-        for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
-            if (!entry.is_regular_file()) {
-                continue;
-            }
-
-            const std::string candidateExtension = entry.path().extension().string();
-            if (candidateExtension == ".obj" || candidateExtension == ".gltf" ||
-                candidateExtension == ".glb") {
-                fileName = entry.path().filename().string();
-                break;
-            }
-        }
-    }
-
-    return !fileName.empty() && std::filesystem::exists(directoryPath + fileName);
+    const std::string& modelName, std::string& directoryPath, std::string& fileName) const {
+    // 配布時の依存解析でも同じ探索順を使い、同名の別形式を誤って選ばないようにします。
+    std::filesystem::path directory, file;
+    const bool found = engine::ResolveModelAssetPath(kDefaultBaseDirectory, modelName, directory, file);
+    directoryPath = directory.generic_string() + "/";
+    fileName = file.string();
+    return found;
 }
 
 bool ModelManager::ReloadModel(const std::string& modelName) {

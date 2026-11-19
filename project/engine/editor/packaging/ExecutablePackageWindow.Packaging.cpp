@@ -1,6 +1,7 @@
 #define NOMINMAX
 #include "ExecutablePackageWindow.h"
 #include "ExecutablePackageWindow.Internal.h"
+#include "RuntimeResourcePlan.h"
 
 #include "IconsFontAwesome5.h"
 #include "imgui.h"
@@ -561,82 +562,56 @@ std::wstring GetTexturePairKey(const fs::path& relative) {
 }
 
 // Asset Audit の判定結果は候補として読み、動的参照の見落としに注意します。
-bool LoadUnusedResourcePaths(
-    const fs::path& projectRoot,
-    std::unordered_set<std::wstring>& unusedPaths,
-    std::string& errorMessage) {
-    const fs::path reportPath = projectRoot / "Resources" / ".cache" / "asset_audit" / "latest_report.json";
-    std::ifstream file(reportPath, std::ios::binary);
-
-    if (!file) {
-        errorMessage = "Asset Auditの結果が見つかりません: " + PathToUtf8(reportPath);
-        return false;
+// 画像の本体だけでペアを作り、除外済み画像や.metaで相方の有無を誤認しないようにします。
+std::unordered_map<std::wstring, uint8_t> BuildTexturePairs(
+    const std::vector<ResourceFile>& files, const std::unordered_set<std::wstring>& excluded) {
+    std::unordered_map<std::wstring, uint8_t> pairs;
+    for (const auto& file : files) {
+        if (excluded.contains(ToLowerWide(file.relative.generic_wstring()))) continue;
+        const auto extension = ToLowerWide(file.relative.extension().wstring());
+        if (extension == L".dds") pairs[GetTexturePairKey(file.relative)] |= 1;
+        if (extension == L".png") pairs[GetTexturePairKey(file.relative)] |= 2;
     }
-
-    nlohmann::json report;
-    try {
-        file >> report;
-    } catch (const std::exception& e) {
-        errorMessage = std::string("Asset Auditの結果を読み込めません: ") + e.what();
-        return false;
-    }
-
-    const auto unusedIt = report.find("unusedAssets");
-
-    if (unusedIt == report.end() || !unusedIt->is_array()) {
-        errorMessage = "Asset Auditの結果にunusedAssetsがありません。";
-        return false;
-    }
-
-    // 監査レポートのパスを、コピー時に照合するResources相対の小文字表記へ変換します。
-    auto registerPath = [&unusedPaths](const std::string& utf8Path) {
-        fs::path path = PathFromUtf8(utf8Path);
-        std::wstring normalized = ToLowerWide(path.generic_wstring());
-        constexpr std::wstring_view kPrefix = L"resources/";
-
-        if (normalized.rfind(kPrefix, 0) != 0) {
-            return;
-        }
-
-        normalized.erase(0, kPrefix.size());
-
-        if (normalized.empty() || normalized.find(L"..") != std::wstring::npos) {
-            return;
-        }
-
-        unusedPaths.insert(normalized);
-        // 本体を配布対象から外すときは、対応する.metaも除外候補に含めます。
-        unusedPaths.insert(normalized + L".meta");
-    };
-
-    for (const nlohmann::json& item : *unusedIt) {
-        if (!item.is_object()) {
-            continue;
-        }
-
-        const auto pathIt = item.find("path");
-
-        if (pathIt != item.end() && pathIt->is_string()) {
-            registerPath(pathIt->get<std::string>());
-        }
-
-        const auto pairedIt = item.find("pairedFiles");
-
-        if (pairedIt == item.end() || !pairedIt->is_array()) {
-            continue;
-        }
-
-        for (const nlohmann::json& paired : *pairedIt) {
-            if (paired.is_string()) {
-                registerPath(paired.get<std::string>());
-            }
-        }
-    }
-
-    return true;
+    return pairs;
 }
 
-// 実行セットに必要な Resources を選別し、DDS/PNG の同名ペアを指定モードに従って整理します。
+// 実コピーと解析だけのプレビューが、画像とその.metaを同じ条件で省くための判定です。
+bool OmitTexture(const fs::path& relative, TexturePackageMode mode,
+                 const std::unordered_map<std::wstring, uint8_t>& pairs) {
+    fs::path texture = relative;
+    if (texture.extension() == ".meta") texture.replace_extension();
+    const auto found = pairs.find(GetTexturePairKey(texture));
+    if (found == pairs.end() || found->second != 3) return false;
+    const auto extension = ToLowerWide(texture.extension().wstring());
+    return (mode == TexturePackageMode::CompactPng && extension == L".dds") ||
+           (mode == TexturePackageMode::FastDds && extension == L".png");
+}
+
+nlohmann::json BuildCopyReport(const engine::RuntimeResourcePlan& plan, TexturePackageMode mode) {
+    auto report = plan.report;
+    std::vector<ResourceFile> files;
+    for (const auto& entry : report.at("files"))
+        files.push_back({{}, PathFromUtf8(entry.at("path").get<std::string>()), entry.at("bytes").get<uint64_t>()});
+    const auto pairs = BuildTexturePairs(files, plan.excludedPaths);
+    uint64_t included = 0, includedBytes = 0, excludedBytes = 0;
+    for (size_t i = 0; i < files.size(); ++i) {
+        auto& entry = report["files"][i];
+        // 依存に必要でも、代替する画像形式が残る場合は最終コピーから省けます。
+        entry["requiredByDependencies"] = entry.at("included");
+        if (entry.at("included").get<bool>() && OmitTexture(files[i].relative, mode, pairs)) {
+            entry["included"] = false;
+            entry["reason"] = "選択したPNG/DDS構成で相方を使用";
+        }
+        if (entry.at("included").get<bool>()) { ++included; includedBytes += files[i].bytes; }
+        else excludedBytes += files[i].bytes;
+    }
+    report["dependencySummary"] = report.at("summary");
+    report["summary"] = {{"includedFiles", included}, {"excludedFiles", files.size() - included},
+                         {"includedBytes", includedBytes}, {"excludedBytes", excludedBytes}};
+    report["textureMode"] = GetTextureModeId(mode);
+    return report;
+}
+
 bool CopyDirectoryFiltered(
     const fs::path& source,
     const fs::path& destination,
@@ -682,6 +657,12 @@ bool CopyDirectoryFiltered(
             return false;
         }
 
+        // Resources内部のリンクはコピーせず、元フォルダーの外にある素材へ処理を広げません。
+        if (IsReparsePoint(entryPath)) {
+            if (it->is_directory(ec)) it.disable_recursion_pending();
+            continue;
+        }
+
         // Editor生成フォルダを丸ごと除外し、容量集計へも反映します。
         if (it->is_directory(ec)) {
             if (ShouldSkipResourceDirectory(entryPath.filename()) || IsEditorGeneratedDirectory(relative)) {
@@ -710,32 +691,13 @@ bool CopyDirectoryFiltered(
         files.push_back({ entryPath, relative, bytes });
     }
 
-    // 拡張子だけが異なる同名テクスチャを一組として数えます。
-    constexpr uint8_t kHasDds = 1 << 0;
-    constexpr uint8_t kHasPng = 1 << 1;
-    std::unordered_map<std::wstring, uint8_t> texturePairs;
-
-    for (const ResourceFile& file : files) {
-        const std::wstring extension = ToLowerWide(file.relative.extension().wstring());
-        uint8_t flag = 0;
-        if (extension == L".dds")
-            flag = kHasDds;
-        else if (extension == L".png") flag = kHasPng;
-
-        if (flag != 0) {
-            texturePairs[GetTexturePairKey(file.relative)] |= flag;
-        }
-    }
-
+    const auto texturePairs = BuildTexturePairs(files, unusedResourcePaths);
     for (const auto& [key, flags] : texturePairs) {
         (void)key;
-
-        if ((flags & kHasDds) != 0 && (flags & kHasPng) != 0) {
-            ++stats.texturePairs;
-        }
+        if (flags == 3) ++stats.texturePairs;
     }
 
-    // 監査で未使用と判断された素材、次に指定モードで不要なテクスチャ形式を除外します。
+    // 依存解析で除外した素材、次に指定モードで不要なテクスチャ形式を省きます。
     for (const ResourceFile& file : files) {
         const std::wstring normalizedRelative = ToLowerWide(file.relative.generic_wstring());
 
@@ -747,15 +709,7 @@ bool CopyDirectoryFiltered(
             continue;
         }
 
-        const std::wstring extension = ToLowerWide(file.relative.extension().wstring());
-        const auto pairIt = texturePairs.find(GetTexturePairKey(file.relative));
-        const uint8_t pairFlags = pairIt == texturePairs.end() ? 0 : pairIt->second;
-        // 同じ相対フォルダーに両拡張子が揃う場合だけ軽量化します。片方しかない素材は実行時に必要なので保持します。
-        const bool hasPair = (pairFlags & kHasDds) != 0 && (pairFlags & kHasPng) != 0;
-        const bool omitForCompact = textureMode == TexturePackageMode::CompactPng && extension == L".dds" && hasPair;
-        const bool omitForFast = textureMode == TexturePackageMode::FastDds && extension == L".png" && hasPair;
-
-        if (omitForCompact || omitForFast) {
+        if (OmitTexture(file.relative, textureMode, texturePairs)) {
             ++stats.skippedFiles;
             stats.skippedBytes += file.bytes;
             ++stats.omittedTextureFiles;
@@ -807,56 +761,6 @@ fs::path FindMSBuildPath() {
 
 std::wstring Quote(const std::wstring& value) {
     return L"\"" + value + L"\"";
-}
-
-bool RunAssetAudit(const fs::path& projectRoot, std::string& errorMessage) {
-    // 未使用候補の除外を指定した場合だけ、収集前に最新の監査結果を生成します。
-    const fs::path scriptPath = projectRoot / "tools" / "asset_audit" / "asset_audit.ps1";
-    std::error_code ec;
-
-    if (!fs::exists(scriptPath, ec) || !fs::is_regular_file(scriptPath, ec)) {
-        errorMessage = "Asset Auditスクリプトが見つかりません: " + PathToUtf8(scriptPath);
-        return false;
-    }
-
-    const std::wstring command =
-        L"powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File " +
-        Quote(scriptPath.wstring()) + L" -Root Resources -Top 200";
-    std::vector<wchar_t> mutableCommand(command.begin(), command.end());
-    mutableCommand.push_back(L'\0');
-
-    STARTUPINFOW startupInfo{};
-    startupInfo.cb = sizeof(startupInfo);
-    PROCESS_INFORMATION processInfo{};
-    const std::wstring workingDirectory = projectRoot.wstring();
-    const BOOL created = CreateProcessW(
-        nullptr,
-        mutableCommand.data(),
-        nullptr,
-        nullptr,
-        FALSE,
-        CREATE_NO_WINDOW,
-        nullptr,
-        workingDirectory.c_str(),
-        &startupInfo,
-        &processInfo);
-    if (!created) {
-        errorMessage = "Asset Auditを起動できませんでした。";
-        return false;
-    }
-
-    WaitForSingleObject(processInfo.hProcess, INFINITE);
-    DWORD exitCode = 1;
-    GetExitCodeProcess(processInfo.hProcess, &exitCode);
-    CloseHandle(processInfo.hThread);
-    CloseHandle(processInfo.hProcess);
-
-    if (exitCode != 0) {
-        errorMessage = "Asset Auditが失敗しました。ExitCode: " + std::to_string(exitCode);
-        return false;
-    }
-
-    return true;
 }
 
 bool RunMSBuild(const fs::path& projectRoot, const std::string& configuration, std::string& errorMessage) {
@@ -1003,7 +907,7 @@ bool WritePackageManifest(
         "元のResourcesは変更していません。",
         "DDSとPNGは同一フォルダ・同一ファイル名のペアだけを整理しています。",
         "片方しか存在しないテクスチャは保持しています。",
-        "未使用候補の除外を選んだ場合は、作成直前のAsset Audit結果を使用しています。"
+        "実行素材の選別は作成時の依存解析結果を使用し、runtime_resource_report.jsonに根拠を記録しています。"
     };
 
     const fs::path manifestPath = destination / "package_manifest.json";
@@ -1117,10 +1021,11 @@ std::string PreviewPathToUtf8(const fs::path& path) { return PathToUtf8(path); }
 
 ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(const PackageRequest& request) {
     // 検証から一時出力の完成まで実行し、成功した場合だけ既存セットと入れ替えます。
-    auto makeResult = [](bool success, const std::string& message) {
+    auto makeResult = [](bool success, const std::string& message, std::string reportPath = {}) {
         PackageResult result;
         result.success = success;
         result.message = message;
+        result.reportPath = std::move(reportPath);
         return result;
     };
 
@@ -1132,7 +1037,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             return makeResult(false, "プロジェクトルートを検出できませんでした。");
         }
 
-        // 必要なら収集前に指定構成をビルドし、監査による除外指定があれば索引を作り直します。
+        // 必要なら収集前に指定構成をビルドし、その後で現在の素材への依存を調べます。
         if (request.buildBeforePackage) {
             std::string buildError;
 
@@ -1141,18 +1046,30 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             }
         }
 
-        std::unordered_set<std::wstring> unusedResourcePaths;
-
+        engine::RuntimeResourcePlan resourcePlan;
         if (request.excludeUnusedResources) {
-            std::string auditError;
+            std::string analysisError;
+            // GPUやエディターの共有状態を使わず、この配布作成用の依存一覧を組み立てます。
+            if (!engine::BuildRuntimeResourcePlan(projectRoot, request.additionalKeep, resourcePlan, analysisError))
+                return makeResult(false, "実行素材の依存解析に失敗しました: " + analysisError);
+        }
 
-            if (!RunAssetAudit(projectRoot, auditError)) {
-                return makeResult(false, auditError);
-            }
+        const TexturePackageMode textureMode = ToTexturePackageMode(request.textureMode);
+        if (request.excludeUnusedResources) resourcePlan.report = BuildCopyReport(resourcePlan, textureMode);
 
-            if (!LoadUnusedResourcePaths(projectRoot, unusedResourcePaths, auditError)) {
-                return makeResult(false, auditError);
-            }
+        if (request.analyzeOnly) {
+            // EXEや素材のコピー前に、同じ選別結果を確認できます。元Resourcesへは書き込みません。
+            const auto analysisRoot = projectRoot.parent_path() / "ExecutableSets";
+            fs::create_directories(analysisRoot);
+            const auto reportPath = analysisRoot / PathFromUtf8(packageName + ".resource-analysis.json");
+            std::ofstream report(reportPath, std::ios::binary);
+            report << resourcePlan.report.dump(2);
+            if (!report.good()) return makeResult(false, "解析レポートを保存できません。");
+            const auto& summary = resourcePlan.report.at("summary");
+            return makeResult(true, "解析完了: 保持 " + std::to_string(summary.at("includedFiles").get<uint64_t>()) +
+                "件 / 除外 " + std::to_string(summary.at("excludedFiles").get<uint64_t>()) +
+                "件 / 未解決参照 " + std::to_string(resourcePlan.report.at("unresolvedReferences").size()) +
+                "件。レポートで理由を確認できます。", PathToUtf8(reportPath));
         }
 
         // 実行ファイルのある出力構成を確かめてから、提出Setの一時・旧版・ZIPのPathを決めます。
@@ -1164,7 +1081,6 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             return makeResult(false, "実行ファイルが見つかりません: " + PathToUtf8(sourceExe));
         }
 
-        const TexturePackageMode textureMode = ToTexturePackageMode(request.textureMode);
         const fs::path packageRoot = projectRoot.parent_path() /
             (request.includeProject ? fs::path("SubmissionPackages") : fs::path("ExecutableSets"));
         fs::create_directories(packageRoot, ec);
@@ -1272,10 +1188,21 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
                 projectRoot / "Resources",
                 runtimeDestination / "Resources",
                 textureMode,
-                unusedResourcePaths,
+                resourcePlan.excludedPaths,
                 resourceStats,
                 copyError)) {
             return makeResult(false, copyError);
+        }
+
+        if (request.excludeUnusedResources) {
+            // 編集が入った場合は一時Setのまま失敗させ、前回の完成品との置換を行いません。
+            std::string changedInput;
+            if (!engine::ValidateRuntimeResourcePlan(resourcePlan, changedInput))
+                return makeResult(false, changedInput);
+            // 実行用Resourcesと分けて、除外理由と解決できなかった参照を配布結果に残します。
+            std::ofstream report(runtimeDestination / "runtime_resource_report.json", std::ios::binary);
+            report << resourcePlan.report.dump(2);
+            if (!report.good()) return makeResult(false, "素材の依存解析レポートを保存できません。");
         }
 
         std::string batchError;
@@ -1380,7 +1307,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             << " / 除外 " << resourceStats.skippedFiles << "件 (" << FormatMiB(resourceStats.skippedBytes) << ")"
             << " / Texture Pair " << resourceStats.texturePairs << "組";
         if (request.excludeUnusedResources) {
-            message << " / 未使用候補除外 " << resourceStats.omittedUnusedFiles
+            message << " / 依存解析による除外 " << resourceStats.omittedUnusedFiles
                 << "件 (" << FormatMiB(resourceStats.omittedUnusedBytes) << ")";
         }
 
@@ -1394,7 +1321,9 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             message << " / ZIP " << FormatMiB(zipBytes);
         }
 
-        return makeResult(true, message.str());
+        const auto completedRuntime = request.includeProject ? destination / fs::path(L"実行ファイルセット") : destination;
+        return makeResult(true, message.str(), request.excludeUnusedResources
+            ? PathToUtf8(completedRuntime / "runtime_resource_report.json") : "");
     } catch (const std::exception& e) {
         return makeResult(false, std::string("作成中に例外が発生しました: ") + e.what());
     }

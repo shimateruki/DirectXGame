@@ -7,6 +7,7 @@
 #include "json.hpp"
 
 #include <Windows.h>
+#include <shellapi.h>
 
 #include <algorithm>
 #include <array>
@@ -51,10 +52,11 @@ void ExecutablePackageWindow::PollTask() {
 
     // ready を確認してから get し、描画スレッドを待機させません。
     PackageResult result = task_.get();
+    if (result.success) reportPath_ = std::move(result.reportPath);
     statusText_ = result.success ? (ICON_FA_CHECK_CIRCLE " " + result.message) : (ICON_FA_EXCLAMATION_TRIANGLE " " + result.message);
 }
 
-void ExecutablePackageWindow::StartPackageTask(bool buildBeforePackage) {
+void ExecutablePackageWindow::StartPackageTask(bool buildBeforePackage, bool analyzeOnly) {
     // 連打で二つの出力処理が同じパッケージ先を書き換えないよう、実行中は開始しない。
     if (IsTaskRunning()) {
         return;
@@ -66,15 +68,17 @@ void ExecutablePackageWindow::StartPackageTask(bool buildBeforePackage) {
     request.packageName = packageNameBuffer_;
     request.configuration = kConfigurations[safeIndex];
     request.buildBeforePackage = buildBeforePackage;
+    request.analyzeOnly = analyzeOnly;
     request.textureMode = std::clamp(textureModeIndex_, 0, static_cast<int>(kTextureModeLabels.size()) - 1);
     request.createZip = createZip_;
     request.includeProject = includeProject_;
     // ReadMeは提出形式にだけ付属させ、実行ファイルセット単体には混ぜない。
     request.includeReadMe = includeProject_ && includeReadMe_;
     request.excludeUnusedResources = excludeUnusedResources_;
+    request.additionalKeep = additionalKeepBuffer_;
 
     const char* packageKind = includeProject_ ? "提出パッケージ" : "実行ファイルセット";
-    statusText_ = buildBeforePackage
+    statusText_ = analyzeOnly ? "実行素材の依存関係を解析しています..." : buildBeforePackage
         ? std::string("ビルドしてから") + packageKind + "を作成しています..."
         : std::string("既存のビルド出力から") + packageKind + "を作成しています...";
 
@@ -104,12 +108,14 @@ void ExecutablePackageWindow::DrawImGui() {
         ImGui::TextDisabled("DDSとPNGを両方コピーします。容量は最大ですが、素材確認用に安全です。");
     }
 
-    ImGui::Checkbox("Asset Auditの未使用候補を実行ファイルセットから除外", &excludeUnusedResources_);
+    ImGui::Checkbox("実行で参照する素材だけ同梱（依存関係を解析）", &excludeUnusedResources_);
 
     if (excludeUnusedResources_) {
         ImGui::TextColored(
             ImVec4(1.0f, 0.78f, 0.28f, 1.0f),
-            "作成直前に監査します。動的なパスは判定できない場合があるため、完成後に全シーンを確認してください。");
+            "シーン・コード・モデルの依存を調べます。保持・除外の理由はruntime_resource_report.jsonへ出力します。");
+        ImGui::InputTextMultiline("追加で保持する素材・フォルダー", additionalKeepBuffer_, sizeof(additionalKeepBuffer_), ImVec2(-1, 65));
+        ImGui::TextDisabled("Resources相対パスを1行1指定。例: 3DModel/Characters/custom_enemy");
     }
 
     ImGui::Checkbox("project一式も含める（提出形式）", &includeProject_);
@@ -156,6 +162,10 @@ void ExecutablePackageWindow::DrawImGui() {
         StartPackageTask(false);
     }
 
+    if (excludeUnusedResources_ && ImGui::Button("素材の選別結果だけ確認")) {
+        StartPackageTask(false, true);
+    }
+
     ImGui::EndDisabled();
 
     if (running) {
@@ -165,6 +175,11 @@ void ExecutablePackageWindow::DrawImGui() {
 
     ImGui::Separator();
     ImGui::TextWrapped("%s", statusText_.c_str());
+    if (!reportPath_.empty() && ImGui::Button("解析レポートを開く")) {
+        const auto path = ExecutablePackageInternal::PreviewPathFromUtf8(reportPath_);
+        if (reinterpret_cast<INT_PTR>(ShellExecuteW(nullptr, L"open", path.c_str(), nullptr, nullptr, SW_SHOWNORMAL)) <= 32)
+            statusText_ = "レポートを開けません: " + reportPath_;
+    }
 
     if (includeProject_) {
         ImGui::BulletText("提出構成: 実行ファイルセット / project / ReadMe.md");
@@ -175,7 +190,7 @@ void ExecutablePackageWindow::DrawImGui() {
     }
 
     if (excludeUnusedResources_) {
-        ImGui::BulletText("追加除外: Asset Auditが未使用候補と判定したRuntime Resources");
+        ImGui::BulletText("追加除外: 実行の起点から参照されない素材・制作元データ・個人セーブ");
     }
 
     ImGui::BulletText("DDS/PNGは同一フォルダ・同一名のペアだけを安全に整理します。");

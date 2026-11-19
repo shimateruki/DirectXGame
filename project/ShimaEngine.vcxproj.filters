@@ -1248,6 +1248,9 @@
     <ClCompile Include="engine\editor\packaging\ExecutablePackageWindow.Packaging.cpp">
       <Filter>Engine\Editor\packaging</Filter>
     </ClCompile>
+    <ClCompile Include="engine\editor\packaging\RuntimeResourcePlan.cpp">
+      <Filter>Engine\Editor\packaging</Filter>
+    </ClCompile>
     <ClCompile Include="engine\editor\capture\CaptureToolWindow.cpp">
       <Filter>Engine\Editor\capture</Filter>
     </ClCompile>
@@ -2348,6 +2351,9 @@
     <ClInclude Include="engine\graphics\3d\model\ModelManager.h">
       <Filter>Engine\Graphics\3D\model</Filter>
     </ClInclude>
+    <ClInclude Include="engine\graphics\3d\model\ModelAssetPath.h">
+      <Filter>Engine\Graphics\3D\model</Filter>
+    </ClInclude>
     <ClInclude Include="engine\graphics\3d\object\Object3D.h">
       <Filter>Engine\Graphics\3D\object</Filter>
     </ClInclude>
@@ -2715,6 +2721,9 @@
       <Filter>Engine\Editor\packaging</Filter>
     </ClInclude>
     <ClInclude Include="engine\editor\packaging\ExecutablePackageWindow.Internal.h">
+      <Filter>Engine\Editor\packaging</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\editor\packaging\RuntimeResourcePlan.h">
       <Filter>Engine\Editor\packaging</Filter>
     </ClInclude>
     <ClInclude Include="engine\editor\capture\CaptureToolWindow.h">

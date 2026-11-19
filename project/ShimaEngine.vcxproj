@@ -476,6 +476,7 @@
     <ClCompile Include="engine\editor\audio\AudioSettingsWindow.cpp" />
     <ClCompile Include="engine\editor\packaging\ExecutablePackageWindow.cpp" />
     <ClCompile Include="engine\editor\packaging\ExecutablePackageWindow.Packaging.cpp" />
+    <ClCompile Include="engine\editor\packaging\RuntimeResourcePlan.cpp" />
     <ClCompile Include="engine\editor\capture\CaptureToolWindow.cpp" />
     <ClCompile Include="engine\editor\debug\GameDataDebugEditor.cpp" />
     <ClCompile Include="engine\editor\scene\SceneSavePreview.cpp" />
@@ -980,6 +981,7 @@
     <ClInclude Include="engine\graphics\3d\model\Model.h" />
     <ClInclude Include="engine\graphics\3d\model\ModelCommon.h" />
     <ClInclude Include="engine\graphics\3d\model\ModelManager.h" />
+    <ClInclude Include="engine\graphics\3d\model\ModelAssetPath.h" />
     <ClInclude Include="engine\graphics\3d\object\Object3D.h" />
     <ClInclude Include="engine\graphics\3d\object\Object3DCommon.h" />
     <ClInclude Include="engine\graphics\2d\Sprite.h" />
@@ -1103,6 +1105,7 @@
     <ClInclude Include="engine\editor\audio\AudioSettingsWindow.h" />
     <ClInclude Include="engine\editor\packaging\ExecutablePackageWindow.h" />
     <ClInclude Include="engine\editor\packaging\ExecutablePackageWindow.Internal.h" />
+    <ClInclude Include="engine\editor\packaging\RuntimeResourcePlan.h" />
     <ClInclude Include="engine\editor\capture\CaptureToolWindow.h" />
     <ClInclude Include="engine\editor\debug\GameDataDebugEditor.h" />
     <ClInclude Include="engine\editor\scene\SceneSavePreview.h" />
