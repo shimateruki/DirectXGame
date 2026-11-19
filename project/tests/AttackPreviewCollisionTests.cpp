@@ -11,7 +11,7 @@ int main() {
         nlohmann::json source;
         file >> source;
         const auto& saved = source.at("objects").at(0).at("collider");
-        ColliderConfig targetConfig;
+        engine::ColliderConfig targetConfig;
         targetConfig.type = static_cast<ColliderType>(saved.at("type").get<int>());
         const auto& center = saved.at("center");
         const auto& size = saved.at("size");
@@ -19,15 +19,15 @@ int main() {
         targetConfig.size = {size[0], size[1], size[2]};
         Transform targetTransform;
         targetTransform.UpdateMatrix();
-        Collider target(&targetTransform);
+        engine::Collider target(&targetTransform);
         target.SetConfig(targetConfig);
         target.SetScaleOverride({2, 2, 2}); // Playerの初期managedBaseScaleと同じ。
         target.SetMask(0); // 通常の接触応答を隔離しても、形状自体は有効です。
         Transform projectileTransform;
         projectileTransform.translate = {0, 0.35f, -1.60f};
         projectileTransform.UpdateMatrix();
-        Collider projectile(&projectileTransform);
-        ColliderConfig projectileConfig;
+        engine::Collider projectile(&projectileTransform);
+        engine::ColliderConfig projectileConfig;
         projectileConfig.type = ColliderType::Sphere;
         projectileConfig.size = {0.6f, 0.6f, 0.6f};
         projectile.SetConfig(projectileConfig);

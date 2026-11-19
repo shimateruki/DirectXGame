@@ -387,12 +387,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="engine\editor\assets\JsonAssetBrowser.cpp">
-      <Filter>Engine\Editor\assets</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\utility\time\Timer.cpp">
-      <Filter>Engine\Utility</Filter>
-    </ClCompile>
     <ClCompile Include="game\system\cinematic\GateEntryPresentation.cpp">
       <Filter>Game\System\cinematic</Filter>
     </ClCompile>
@@ -519,6 +513,9 @@
     <ClCompile Include="game\actor\gimmick\trigger\GimmickGameplayVolume.cpp">
       <Filter>Game\Actor\Gimmick\trigger</Filter>
     </ClCompile>
+    <ClCompile Include="game\actor\gimmick\trigger\GimmickGuideSign.cpp">
+      <Filter>Game\Actor\Gimmick\trigger</Filter>
+    </ClCompile>
     <ClCompile Include="game\actor\gimmick\trigger\GimmickCopyMemoryStation.cpp">
       <Filter>Game\Actor\Gimmick\trigger</Filter>
     </ClCompile>
@@ -550,6 +547,9 @@
       <Filter>Game\Actor\Gimmick\Combat</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\gimmick\combat\GimmickMagmaHazard.cpp">
+      <Filter>Game\Actor\Gimmick\Combat</Filter>
+    </ClCompile>
+    <ClCompile Include="game\actor\gimmick\combat\GimmickContactHazard.cpp">
       <Filter>Game\Actor\Gimmick\Combat</Filter>
     </ClCompile>
     <ClCompile Include="game\actor\gimmick\combat\GimmickMagmaGeyser.cpp">
@@ -700,6 +700,9 @@
       <Filter>Engine\Editor\Core\playmode</Filter>
     </ClCompile>
     <ClCompile Include="engine\editor\assets\AssetReferenceExplorer.cpp">
+      <Filter>Engine\Editor\assets</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\editor\assets\JsonAssetBrowser.cpp">
       <Filter>Engine\Editor\assets</Filter>
     </ClCompile>
     <ClCompile Include="engine\editor\assets\AssetReferenceExplorer.Ui.cpp">
@@ -1059,6 +1062,9 @@
     <ClCompile Include="engine\editor\cinematic\GhostDirector.Studio.cpp">
       <Filter>Engine\Editor\cinematic</Filter>
     </ClCompile>
+    <ClCompile Include="engine\utility\time\Timer.cpp">
+      <Filter>Engine\Utility</Filter>
+    </ClCompile>
     <ClCompile Include="engine\animation\cinematic\CinematicPlayer.cpp">
       <Filter>Engine\Animation\cinematic</Filter>
     </ClCompile>
@@ -1102,6 +1108,9 @@
       <Filter>Engine\Graphics\3D</Filter>
     </ClCompile>
     <ClCompile Include="engine\graphics\3d\material\MaterialInstance.cpp">
+      <Filter>Engine\Graphics\3D\material</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\graphics\3d\material\SpecialMaterialPipelines.cpp">
       <Filter>Engine\Graphics\3D\material</Filter>
     </ClCompile>
     <ClCompile Include="engine\graphics\3d\MeshRenderer.Shadow.cpp">
@@ -1182,6 +1191,9 @@
     <ClCompile Include="engine\editor\preview\EffectPreviewStage.cpp">
       <Filter>Engine\Editor\preview</Filter>
     </ClCompile>
+    <ClCompile Include="engine\editor\preview\AssetThumbnailRenderer.cpp">
+      <Filter>Engine\Editor\preview</Filter>
+    </ClCompile>
     <ClCompile Include="game\editor\ActorDebugPanel.cpp">
       <Filter>Game\Editor</Filter>
     </ClCompile>
@@ -1192,6 +1204,9 @@
       <Filter>Game\Editor</Filter>
     </ClCompile>
     <ClCompile Include="engine\editor\scene\HierarchyWindow.cpp">
+      <Filter>Engine\Editor\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="engine\editor\scene\SceneAssetPanel.cpp">
       <Filter>Engine\Editor\Scene</Filter>
     </ClCompile>
     <ClCompile Include="engine\editor\scene\inspector\InspectorWindow.cpp">
@@ -1217,9 +1232,6 @@
     </ClCompile>
     <ClCompile Include="engine\editor\scene\inspector\InspectorWindow.Item.cpp">
       <Filter>Engine\Editor\Scene\inspector</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\editor\preview\MaterialPreviewBoard.cpp">
-      <Filter>Engine\Editor\preview</Filter>
     </ClCompile>
     <ClCompile Include="engine\editor\assets\AssetAuditWindow.cpp">
       <Filter>Engine\Editor\assets</Filter>
@@ -1256,9 +1268,6 @@
     </ClCompile>
     <ClCompile Include="engine\editor\assets\ProjectWindow.cpp">
       <Filter>Engine\Editor\assets</Filter>
-    </ClCompile>
-    <ClCompile Include="engine\editor\scene\SceneInventoryWindow.cpp">
-      <Filter>Engine\Editor\Scene</Filter>
     </ClCompile>
     <ClCompile Include="engine\graphics\core\RootSignatureBuilder.cpp">
       <Filter>Engine\Graphics\Core</Filter>
@@ -1382,18 +1391,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="engine\graphics\effect\VfxAssetPath.h">
-      <Filter>Engine\Graphics\effect</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\animation\cinematic\CinematicAssetPath.h">
-      <Filter>Engine\Animation\cinematic</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\editor\assets\JsonAssetBrowser.h">
-      <Filter>Engine\Editor\assets</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\utility\time\Timer.h">
-      <Filter>Engine\Utility</Filter>
-    </ClInclude>
     <ClInclude Include="game\actor\player\copy\WindCopySettings.h">
       <Filter>Game\Actor\Player\copy</Filter>
     </ClInclude>
@@ -1449,6 +1446,9 @@
       <Filter>Engine\Editor\Core\playmode</Filter>
     </ClInclude>
     <ClInclude Include="engine\editor\assets\AssetReferenceExplorer.h">
+      <Filter>Engine\Editor\assets</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\editor\assets\JsonAssetBrowser.h">
       <Filter>Engine\Editor\assets</Filter>
     </ClInclude>
     <ClInclude Include="engine\editor\properties\EditorPropertyRegistry.h">
@@ -1592,6 +1592,9 @@
     <ClInclude Include="game\actor\gimmick\trigger\GimmickGameplayVolume.h">
       <Filter>Game\Actor\Gimmick\trigger</Filter>
     </ClInclude>
+    <ClInclude Include="game\actor\gimmick\trigger\GimmickGuideSign.h">
+      <Filter>Game\Actor\Gimmick\trigger</Filter>
+    </ClInclude>
     <ClInclude Include="game\actor\gimmick\trigger\GimmickCopyMemoryStation.h">
       <Filter>Game\Actor\Gimmick\trigger</Filter>
     </ClInclude>
@@ -1626,6 +1629,9 @@
       <Filter>Game\Actor\Gimmick\Combat</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\gimmick\combat\GimmickMagmaHazard.h">
+      <Filter>Game\Actor\Gimmick\Combat</Filter>
+    </ClInclude>
+    <ClInclude Include="game\actor\gimmick\combat\GimmickContactHazard.h">
       <Filter>Game\Actor\Gimmick\Combat</Filter>
     </ClInclude>
     <ClInclude Include="game\actor\gimmick\combat\GimmickMagmaGeyser.h">
@@ -2351,6 +2357,12 @@
     <ClInclude Include="engine\graphics\2d\Sprite.h">
       <Filter>Engine\Graphics\2D</Filter>
     </ClInclude>
+    <ClInclude Include="engine\graphics\2d\SpriteLayoutAnimation.h">
+      <Filter>Engine\Graphics\2D</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\graphics\2d\SpriteLayoutVideo.h">
+      <Filter>Engine\Graphics\2D</Filter>
+    </ClInclude>
     <ClInclude Include="engine\graphics\2d\VideoSpritePlayer.h">
       <Filter>Engine\Graphics\2D</Filter>
     </ClInclude>
@@ -2528,10 +2540,16 @@
     <ClInclude Include="engine\editor\cinematic\GhostDirector.h">
       <Filter>Engine\Editor\cinematic</Filter>
     </ClInclude>
+    <ClInclude Include="engine\utility\time\Timer.h">
+      <Filter>Engine\Utility</Filter>
+    </ClInclude>
     <ClInclude Include="engine\animation\cinematic\CinematicPlayer.h">
       <Filter>Engine\Animation\cinematic</Filter>
     </ClInclude>
     <ClInclude Include="engine\animation\cinematic\CinematicSequence.h">
+      <Filter>Engine\Animation\cinematic</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\animation\cinematic\CinematicAssetPath.h">
       <Filter>Engine\Animation\cinematic</Filter>
     </ClInclude>
     <ClInclude Include="engine\animation\cinematic\CinematicPresentation.h">
@@ -2559,6 +2577,9 @@
       <Filter>Engine\Graphics\3D</Filter>
     </ClInclude>
     <ClInclude Include="engine\graphics\3d\material\MaterialInstance.h">
+      <Filter>Engine\Graphics\3D\material</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\graphics\3d\material\SpecialMaterialPipelines.h">
       <Filter>Engine\Graphics\3D\material</Filter>
     </ClInclude>
     <ClInclude Include="game\system\scene\ObjectManager.h">
@@ -2645,6 +2666,9 @@
     <ClInclude Include="engine\editor\preview\EffectPreviewStage.h">
       <Filter>Engine\Editor\preview</Filter>
     </ClInclude>
+    <ClInclude Include="engine\editor\preview\AssetThumbnailRenderer.h">
+      <Filter>Engine\Editor\preview</Filter>
+    </ClInclude>
     <ClInclude Include="game\editor\RegisterGameActorDebug.h">
       <Filter>Game\Editor</Filter>
     </ClInclude>
@@ -2669,14 +2693,14 @@
     <ClInclude Include="engine\editor\scene\HierarchyWindow.h">
       <Filter>Engine\Editor\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="engine\editor\scene\SceneAssetPanel.h">
+      <Filter>Engine\Editor\Scene</Filter>
+    </ClInclude>
     <ClInclude Include="engine\editor\scene\inspector\InspectorWindow.h">
       <Filter>Engine\Editor\Scene\inspector</Filter>
     </ClInclude>
     <ClInclude Include="engine\editor\scene\inspector\InspectorTextureCatalog.h">
       <Filter>Engine\Editor\Scene\inspector</Filter>
-    </ClInclude>
-    <ClInclude Include="engine\editor\preview\MaterialPreviewBoard.h">
-      <Filter>Engine\Editor\preview</Filter>
     </ClInclude>
     <ClInclude Include="engine\editor\assets\AssetAuditWindow.h">
       <Filter>Engine\Editor\assets</Filter>
@@ -2711,9 +2735,6 @@
     <ClInclude Include="engine\editor\assets\ProjectWindow.h">
       <Filter>Engine\Editor\assets</Filter>
     </ClInclude>
-    <ClInclude Include="engine\editor\scene\SceneInventoryWindow.h">
-      <Filter>Engine\Editor\Scene</Filter>
-    </ClInclude>
     <ClInclude Include="engine\system\input\KeyConfig.h">
       <Filter>Engine\System\input</Filter>
     </ClInclude>
@@ -2723,7 +2744,13 @@
     <ClInclude Include="engine\graphics\effect\MeshEffectManager.h">
       <Filter>Engine\Graphics\effect</Filter>
     </ClInclude>
+    <ClInclude Include="engine\graphics\effect\MeshEffectTarget.h">
+      <Filter>Engine\Graphics\effect</Filter>
+    </ClInclude>
     <ClInclude Include="engine\graphics\effect\DebrisEffectManager.h">
+      <Filter>Engine\Graphics\effect</Filter>
+    </ClInclude>
+    <ClInclude Include="engine\graphics\effect\VfxAssetPath.h">
       <Filter>Engine\Graphics\effect</Filter>
     </ClInclude>
     <ClInclude Include="engine\graphics\effect\DecalSystem.h">

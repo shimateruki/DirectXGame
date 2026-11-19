@@ -17,21 +17,23 @@ void Text::SetString(const std::string& str) {
     sprites_.resize(text_.length());
 
     for (size_t i = 0; i < text_.length(); ++i) {
+        // 既存のSpriteは再利用し、文字列が延びて新しい枠が増えたときだけ生成します。
         if (!sprites_[i]) {
             sprites_[i] = std::make_unique<engine::Sprite>();
             sprites_[i]->Initialize(common_, fontTextureHandle_);
         }
 
-        // ASCIIコード（文字）から、フォントテクスチャのUV座標を計算
+        // 1バイトを1文字として、フォント画像上の切り出し位置をピクセル単位で算出します。
         unsigned char charCode = static_cast<unsigned char>(text_[i]);
 
-        // (例：フォントが横16文字で並んでいる場合)
+        // fontCharsPerRow_ はフォント画像1行あたりの文字セル数です。
+        // 余りが列、商が行です。各セルのピクセル寸法を掛けて、切り出し矩形の左上を決めます。
         int tx = (charCode % fontCharsPerRow_) * fontWidth_;
         int ty = (charCode / fontCharsPerRow_) * fontHeight_;
 
         // SpriteのUV切り出しを設定 (SetTextureRect)
         sprites_[i]->SetTextureRect(
-            { (float)tx, (float)ty },             // 左上のUV座標
+            { (float)tx, (float)ty },             // ピクセル座標で指定する切り出し矩形の左上。
             { (float)fontWidth_, (float)fontHeight_ } // 1文字分のサイズ
         );
 

@@ -97,6 +97,7 @@ void GimmickStageGate::Update(float deltaTime) {
         activationBurst_ = 1.0f;
     }
 
+    // 解放や進入直後の一時的な光を減衰させ、通常のゲート状態色へ戻します。
     activationBurst_ = activationBurst_ > deltaTime * 1.15f ? activationBurst_ - deltaTime * 1.15f : 0.0f;
     const float visibleActivation = isUnlocked_ ? activation_ : 0.06f;
 
@@ -113,6 +114,7 @@ void GimmickStageGate::Update(float deltaTime) {
     }
 
     SetColor(gateColor);
+    // 選択やクリアには別の発光を与え、解放中は専用の明滅を優先します。
     float emissive = isUnlocked_ ? Lerp(0.62f, 1.65f, visibleActivation) : 0.34f;
     if (isSelected_ && isUnlocked_)
         emissive = Lerp(emissive, 2.7f, visibleActivation);
@@ -128,6 +130,7 @@ void GimmickStageGate::Update(float deltaTime) {
     UpdatePortalMaterial();
 
     BaseGimmick::Update(deltaTime);
+    // 進入演出がゲートを通り切った後、シーン切り替えを一度だけ要求します。
     if (entryPresentation_.IsActive()) {
         entryPresentation_.Update(deltaTime);
         if (entryPresentation_.IsFinished() && !transitionQueued_)
@@ -145,6 +148,7 @@ bool GimmickStageGate::OnCollision(engine::Object3D* other) {
         return false;
     }
 
+    // 転移先が有効でシーン遷移の競合がないことを確認し、操作を引き取る進入演出を始めます。
     auto* player = dynamic_cast<Player*>(other);
     auto* manager = SceneManager::GetInstance();
     const std::string destination = GetGateMode() == kGateModeStageTransition ? "GAMEPLAY" : GetTargetSceneName();
@@ -218,6 +222,7 @@ void GimmickStageGate::SetTransitionEnabled(bool enabled) {
     }
 
     SetParameter(&engine::EntityParameter::startActive, enabled);
+    // 進入中に無効化されたら演出をリセットし、もう一度有効にした時だけ要求済みフラグを戻します。
     if (!enabled && entryPresentation_.IsActive())
         entryPresentation_.Reset();
 
@@ -292,6 +297,7 @@ void GimmickStageGate::TriggerTransition() {
     hasTriggeredTransition_ = true;
     transitionQueued_ = true;
 
+    // ステージ入場ではステージの番号を先に反映し、シーン転移は選択された行き先だけを使います。
     if (GetGateMode() == kGateModeStageTransition) {
         StageManager::GetInstance()->SetCurrentStage(GetStageIndex());
         SceneManager::GetInstance()->ChangeScene("GAMEPLAY");
@@ -346,12 +352,14 @@ bool GimmickStageGate::UpdateSceneEntry(BaseScene& scene, float deltaTime) {
     for (const auto& object : scene.GetObjects()) {
         auto* gate = dynamic_cast<GimmickStageGate*>(object.get());
         if (!gate || !gate->entryPresentation_.IsActive()) continue;
+        // 編集中へ戻った場合は操作・遷移の一時状態を解除して、他に有効なゲートがないか調べ続けます。
         if (!SceneManager::GetInstance()->IsPlaying()) {
             gate->entryPresentation_.Reset();
             gate->hasTriggeredTransition_ = false;
             gate->transitionQueued_ = false;
             continue;
         }
+        // この経路では進入演出とポストエフェクトだけを進め、通常のゲーム進行は止めます。
         PostEffect::GetInstance()->Update(deltaTime);
         gate->Update(deltaTime);
         // ワールドを停止していても、カメラ移動後の地形・背景の描画行列は更新します。

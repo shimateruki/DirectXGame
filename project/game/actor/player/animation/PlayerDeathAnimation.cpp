@@ -55,6 +55,7 @@ void PlayerDeathAnimation::Start(Player* player, bool finalDeath) {
         return;
     }
 
+    // スケールと回転・表示・衝突を復活用に退避し、演出中の物理接触を無効にします。
     baseScale_ = MakeSafeScale(player->GetScale());
     baseRotation_ = player->GetRotation();
     baseVisible_ = player->GetIsVisible();
@@ -64,6 +65,7 @@ void PlayerDeathAnimation::Start(Player* player, bool finalDeath) {
     player->SetCollisionAttribute(0);
     player->SetCollisionMask(0);
 
+    // 装飾の元の表示を記録し、破裂までは親と子を一緒に見せます。
     childVisible_.reserve(player->GetChildren().size());
 
     for (engine::Object3D* child : player->GetChildren()) {
@@ -91,17 +93,20 @@ void PlayerDeathAnimation::Update(Player* player, float deltaTime) {
     timer_ += safeDeltaTime;
     player->SetVelocity({0.0f, 0.0f, 0.0f});
 
+    // 閾値までは身体を膨らませる準備段階だけを更新します。
     if (timer_ < kBurstTime) {
         ApplyPreBurstPose(player);
         return;
     }
 
+    // タイマーが破裂時刻を越えた最初の更新だけ破裂を発生させ、身体を隠します。
     if (!burstEmitted_) {
         burstEmitted_ = true;
         EmitBurst(player);
         HidePlayerBody(player);
     }
 
+    // 身体を隠した後は画面暗転を許可する時刻まで、足元の余韻だけを間欠的に出します。
     puddleEmitTimer_ -= safeDeltaTime;
 
     if (timer_ < kFadeReadyTime && puddleEmitTimer_ <= 0.0f) {
@@ -118,6 +123,7 @@ void PlayerDeathAnimation::RestoreVisual(Player* player) {
         return;
     }
 
+    // 子は演出開始時と同じ順で表示を戻し、新しく増えた子は表示を既定とします。
     player->SetIsVisible(baseVisible_);
     const auto& children = player->GetChildren();
 
@@ -133,6 +139,7 @@ void PlayerDeathAnimation::RestoreVisual(Player* player) {
         child->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
     }
 
+    // 演出の変形を消し、記録できていた場合だけ衝突設定も復元します。
     player->SetScale(baseScale_);
     player->SetRotation(baseRotation_);
 
@@ -170,6 +177,7 @@ void PlayerDeathAnimation::ApplyPreBurstPose(Player* player) {
 
     engine::Vector3 scale = baseScale_;
 
+    // 衝撃直後は短い明滅に合わせて潰し、その後は破裂に向けてスケールを増やします。
     if (timer_ < kHitStopTime) {
         const float flashPulse = std::sin(hitT * kPi);
         scale.x *= 1.0f + flashPulse * 0.10f;
@@ -185,6 +193,7 @@ void PlayerDeathAnimation::ApplyPreBurstPose(Player* player) {
     rotation.z += tinyShake;
     rotation.x += std::sin(timer_ * 50.0f) * (1.0f - chargeT) * 0.025f;
 
+    // 時間とともに弱くなる閃光を親と子へ同じ色で適用します。
     const float flash = std::max(0.0f, 1.0f - timer_ / 0.20f);
     const engine::Vector4 color = {0.42f + flash * 0.58f, 0.92f + flash * 0.08f, 1.00f, 1.0f};
 
@@ -213,6 +222,7 @@ void PlayerDeathAnimation::EmitBurst(Player* player) {
     const engine::Vector3 center = origin + engine::Vector3{0.0f, baseScale_.y * 0.45f, 0.0f};
     const engine::Vector3 foot = origin + engine::Vector3{0.0f, 0.08f, 0.0f};
 
+    // 身体の中心から上向き、足元から低い角度へ粒子を出し、飛散と水しぶきを分けます。
     if (particle) {
         engine::Vector3 up = {0.0f, 1.0f, 0.0f};
         particle->SpawnParticles(center, finalDeath_ ? 24 : 18, finalDeath_ ? 5.6f : 4.8f, &up, 124.0f,
@@ -226,6 +236,7 @@ void PlayerDeathAnimation::EmitBurst(Player* player) {
                                  engine::Vector4{0.04f, 0.22f, 0.34f, 0.0f}, 0.38f, 0.92f, 0.20f, 0.055f);
     }
 
+    // 閃光と地表の輪を配置し、弧のメッシュを中心の周囲に散らします。
     if (MeshEffectManager::GetInstance()) {
         MeshEffectManager* meshEffects = MeshEffectManager::GetInstance();
         meshEffects->SpawnEffectAt(kDeathCoreFlashEffect, center, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f});
@@ -236,6 +247,7 @@ void PlayerDeathAnimation::EmitBurst(Player* player) {
 
         for (int i = 0; i < arcCount; ++i) {
             const float ratio = static_cast<float>(i) / static_cast<float>(arcCount);
+            // 粒子を一周に等間隔で置き、最後の残機での破裂だけ角度の始点をずらします。
             const float angle = ratio * kTwoPi + (finalDeath_ ? 0.23f : 0.0f);
             engine::Vector3 arcPos = center;
             arcPos.x += std::cos(angle) * 0.20f;
@@ -248,6 +260,7 @@ void PlayerDeathAnimation::EmitBurst(Player* player) {
         }
     }
 
+    // GPU粒子を使える場合は筋と霧を既存の破裂演出に重ねます。
     GpuParticleManager* gpuParticles = GpuParticleManager::GetInstance();
 
     if (gpuParticles && gpuParticles->IsInitialized()) {

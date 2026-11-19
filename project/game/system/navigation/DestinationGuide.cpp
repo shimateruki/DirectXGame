@@ -41,6 +41,7 @@ void DestinationGuide::SetSettings(const Settings& settings) {
 }
 
 void DestinationGuide::Reset() {
+    // 到着判定と追従姿勢の両方を消し、次の案内を現在位置から始めます。
     position_ = {};
     yaw_ = animationTime_ = 0.0f;
     poseInitialized_ = arrived_ = false;
@@ -53,6 +54,7 @@ void DestinationGuide::Hide(engine::Object3D& arrow) {
 
 void DestinationGuide::Update(engine::Object3D& arrow, const engine::Vector3& followerPosition,
                               const engine::Vector3& targetPosition, float deltaTime) {
+    // 到着済みまたは座標が無効なら表示を消し、案内が再び有効になるまで追従を止めます。
     if (!settings_.enabled || arrived_ || !Finite(followerPosition) || !Finite(targetPosition)) {
         Hide(arrow);
         return;
@@ -62,7 +64,9 @@ void DestinationGuide::Update(engine::Object3D& arrow, const engine::Vector3& fo
         return;
     engine::Vector3 direction = targetPosition - followerPosition;
     direction.y = 0.0f;
+    // 到着と方角に使う距離は水平面で求め、高低差は到着条件だけに加える。
     const float distance = std::hypot(direction.x, direction.z);
+    // 水平距離だけで到着とせず、階層の違いを高さでも判定します。
     if (distance <= settings_.arrivalDistance &&
         std::abs(targetPosition.y - followerPosition.y) <= settings_.arrivalHeight) {
         arrived_ = true;
@@ -79,6 +83,7 @@ void DestinationGuide::Update(engine::Object3D& arrow, const engine::Vector3& fo
     auto desired = followerPosition + direction * (std::min)(settings_.distance, distance * 0.5f);
     desired.y = followerPosition.y + settings_.height;
     const auto delta = desired - position_;
+    // 初回と大きく離れた場合は補間を飛ばし、古い地点から矢印が横切るのを避けます。
     if (!poseInitialized_ || std::hypot(delta.x, delta.z) > 20.0f) {
         position_ = desired;
         yaw_ = std::atan2(direction.x, direction.z);
@@ -86,9 +91,11 @@ void DestinationGuide::Update(engine::Object3D& arrow, const engine::Vector3& fo
     } else {
         position_ = AnimationInterpolation::Damp(position_, desired, settings_.followResponse, deltaTime);
     }
+    // 実際の表示基準位置から目的地へ向き直し、上下の揺れは表示用座標だけに足します。
     const auto toTarget = targetPosition - position_;
     if (std::hypot(toTarget.x, toTarget.z) > 0.001f)
         yaw_ = AnimationInterpolation::DampAngle(yaw_, std::atan2(toTarget.x, toTarget.z), settings_.turnResponse, deltaTime);
+    // 上下の揺れは経過秒に角速度を掛けて求める。時計は一時間で折り返して値の増大を防ぐ。
     animationTime_ = std::fmod(animationTime_ + deltaTime, 3600.0f);
     auto displayPosition = position_;
     displayPosition.y += std::sin(animationTime_ * settings_.bobSpeed) * settings_.bobAmplitude;
@@ -160,6 +167,7 @@ bool DestinationGuide::SaveSettings(const std::string& path) const {
 
 #ifdef USE_IMGUI
 void DestinationGuide::DrawImGui(const std::string& settingsPath) {
+    // 描画中は値を一時コピーへ集め、入力があったフレームだけ案内側へ反映する。
     Settings edited = settings_;
     bool changed = ImGui::Checkbox("矢印を有効にする", &edited.enabled);
     changed |= ImGui::DragFloat("追従距離", &edited.distance, 0.05f, 0.0f, 15.0f);
@@ -169,16 +177,19 @@ void DestinationGuide::DrawImGui(const std::string& settingsPath) {
     changed |= ImGui::DragFloat("旋回速度", &edited.turnResponse, 0.2f, 0.1f, 80.0f);
     changed |= ImGui::DragFloat("浮遊の振幅", &edited.bobAmplitude, 0.01f, 0.0f, 1.0f);
     changed |= ImGui::DragFloat("浮遊の速さ", &edited.bobSpeed, 0.05f, 0.0f, 15.0f);
+    // 到着の判定では水平距離と高低差を別々に調整できる。
     changed |= ImGui::DragFloat("到着とみなす距離", &edited.arrivalDistance, 0.05f, 0.1f, 20.0f);
     changed |= ImGui::DragFloat("到着時の許容高低差", &edited.arrivalHeight, 0.05f, 0.1f, 20.0f);
     if (changed)
         SetSettings(edited);
     ImGui::Text("到着状態: %s", arrived_ ? "到着済み・非表示" : "案内待機／案内中");
+    // その場で試す変更と保存操作を分け、結果は現在の設定を表示したまま知らせる。
     if (ImGui::Button("矢印設定を保存"))
         settingsMessage_ = SaveSettings(settingsPath) ? "矢印設定を保存しました。" : "保存に失敗しました。現在値は保持します。";
     ImGui::SameLine();
     if (ImGui::Button("矢印設定を再読込"))
         settingsMessage_ = LoadSettings(settingsPath) ? "矢印設定を読み込みました。" : "読込に失敗しました。現在値は保持します。";
+    // 到着で消えた矢印を同じ場面でもう一度確認できるよう、進行状態を初期化する。
     if (ImGui::Button("到着状態をリセット"))
         Reset();
     ImGui::TextWrapped("%s", settingsMessage_.c_str());

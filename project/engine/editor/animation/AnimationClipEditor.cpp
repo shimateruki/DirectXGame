@@ -63,7 +63,7 @@ void CopyToBuffer(char* buffer, size_t size, const std::string& text) {
 }
 }
 
-void AnimationClipEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon) {
+void AnimationClipEditor::Initialize(SceneManager* sceneManager, engine::DirectXCommon* dxCommon) {
     // プレビューのシーンと描画基盤は借用し、ワークベンチ側で所有しない。
     sceneManager_ = sceneManager;
     dxCommon_ = dxCommon;
@@ -71,6 +71,7 @@ void AnimationClipEditor::Initialize(SceneManager* sceneManager, DirectXCommon* 
 }
 
 void AnimationClipEditor::Finalize() {
+// 元オブジェクトの表示とプレビューの所有資源を片付けてから、シーンへの借用参照を外す。
 StopPreview(); sceneManager_ = nullptr; previewModel_ = nullptr;
 }
 
@@ -80,11 +81,13 @@ enabled_ = FindSourceObject() != nullptr && previewObject_ != nullptr;
 
 void AnimationClipEditor::Update(float deltaTime) {
 if (!enabled_) return;
+    // シーン切り替えやゲーム再生中は編集用の姿勢を流さず、表示を元へ戻す。
     if (!sceneManager_ || sceneManager_->IsPlaying() || sceneManager_->IsTransitioning() || !FindSourceObject()) {
         StopPreview(); return;
     }
     previewObject_ = FindPreviewObject();
     if (!previewObject_) { StopPreview(); return; }
+    // イベント判定用に前回の秒数を控えてから再生時刻を進める。停止中も一時編集の姿勢は表示できる。
     const float previous = currentTime_;
     if (play_ && duration_ > 0) {
         currentTime_ += std::clamp(deltaTime, 0.0f, 0.25f) * playbackSpeed_;
@@ -92,11 +95,13 @@ if (!enabled_) return;
         else if (currentTime_ >= duration_) { currentTime_ = duration_; play_ = false; }
         if (previewEvents_) UpdateEventPreview(previous, currentTime_);
     }
+    // 発火表示の残り秒は、クリップ倍率と別に実時間で減らす。
     eventPreviewTimer_ = (std::max)(0.0f, eventPreviewTimer_ - deltaTime);
     if (autoApply_) ApplyTimelinePose();
 }
 
 void AnimationClipEditor::StopPreview() {
+// 元の表示状態を丸ごと上書きせず、このプレビューが追加した非表示理由だけを外す。
 if (auto* source = FindSourceObject()) source->SetEditorHiddenReason(1u << 9, false);
     RemovePreviewObject();
     enabled_ = wasEnabled_ = play_ = false;
@@ -183,6 +188,7 @@ void AnimationClipEditor::DrawPreviewControls() {
         ImGui::TextWrapped("別モデルのボーンキーを編集中の場合は、先に保存するか新規クリップを作成してください。");
         return;
     }
+    // 元モデルに含まれるアニメーションを、キーを重ねる前の姿勢として選ぶ。
     const auto& data = previewModel_->GetModelData();
     ImGui::Text("メッシュ %u / ボーン %zu", previewModel_->GetMeshCount(), data.skeleton.joints.size());
     if (ImGui::BeginCombo("ベースアニメーション", animationNameBuffer_[0] ? animationNameBuffer_ : "なし")) {
@@ -603,8 +609,9 @@ auto* source = FindSourceObject();
         mesh.vertexResource.Reset(); mesh.indexResource.Reset(); mesh.computeSkinnedVertexResource.Reset();
     }
     for (auto& material : data.materials) { material.materialResource.Reset(); material.materialData = nullptr; }
-    previewModelOwner_ = std::make_unique<Model>();
+    previewModelOwner_ = std::make_unique<engine::Model>();
     previewModelOwner_->InitializeFromCpuData(ModelManager::GetInstance()->GetModelCommon(), std::move(data), source->GetModelName());
+    // 複製モデルを仮オブジェクトに渡し、素材の登録モデルやオリジナルには差分を反映しない。
     object->SetModel(previewModelOwner_.get());
     object->SetMaterialType(source->GetMaterialType()); object->SetColor(source->GetColor()); object->SetEmissive(source->GetEmissive());
     previewObject_ = object.get(); previewModel_ = object->GetModel();
@@ -672,6 +679,7 @@ void AnimationClipEditor::ApplyTimelinePose() {
     previewObject_->UpdateLocalMatrix();
     previewObject_->UpdateWorldMatrix();
 
+    // せん断は描画側だけに適用し、キーが無い時刻では前のせん断を残さない。
     if (auto* renderer = previewObject_->GetMeshRenderer()) {
         renderer->SetVisualShear(hasBodyPose ? bodyPose.shear : engine::Vector3{}, hasBodyPose ? bodyPose.shearPivotY : 0.0f);
     }
@@ -680,7 +688,7 @@ void AnimationClipEditor::ApplyTimelinePose() {
     previewModel_->ResetSkeletonPose();
 
     if (useBaseAnimation_ && animationNameBuffer_[0] != '\0') {
-        if (const Model::Animation* anim = previewModel_->GetAnimation(animationNameBuffer_)) {
+        if (const engine::Model::Animation* anim = previewModel_->GetAnimation(animationNameBuffer_)) {
             float time = currentTime_;
 
             if (anim->duration > 0.0f) {
@@ -801,18 +809,15 @@ bool AnimationClipEditor::TryGetInterpolatedBodyKey(float time, BodyAnimationCli
             continue;
         }
 
-        const float segmentDuration = (std::max)(kKeyEpsilon, to.time - from.time);
-        const float rawRate = (time - from.time) / segmentDuration;
-        const float rate = AnimationInterpolation::ApplyEasing(
-            rawRate,
-            static_cast<AnimationInterpolation::EasingType>(std::clamp(from.easingToNext, 0, 4)));
+        // キー編集用の時刻・イージングを保持し、見た目の姿勢だけを実行時と同じ式で求める。
+        const auto pose = BodyAnimationClip::InterpolatePose(from, to, time, kKeyEpsilon);
         keyOut = from;
         keyOut.time = time;
-        keyOut.translate = AnimationInterpolation::Lerp(from.translate, to.translate, rate);
-        keyOut.rotate = AnimationInterpolation::SlerpEuler(from.rotate, to.rotate, rate);
-        keyOut.scale = AnimationInterpolation::Lerp(from.scale, to.scale, rate);
-        keyOut.shear = AnimationInterpolation::Lerp(from.shear, to.shear, rate);
-        keyOut.shearPivotY = engine::Math::Lerp(from.shearPivotY, to.shearPivotY, rate);
+        keyOut.translate = pose.translate;
+        keyOut.rotate = pose.rotate;
+        keyOut.scale = pose.scale;
+        keyOut.shear = pose.shear;
+        keyOut.shearPivotY = pose.shearPivotY;
         return true;
     }
 
@@ -946,6 +951,7 @@ bool AnimationClipEditor::TryGetInterpolatedKey(int jointIndex, float time, Pose
         const PoseKey& b = jointKeys[i + 1];
 
         if (time >= a.time && time <= b.time) {
+            // 位置と倍率は区間内の進行割合で補間し、回転だけは Quaternion で球面補間する。
             float t = (time - a.time) / (b.time - a.time);
             keyOut = a;
             keyOut.time = time;
@@ -965,7 +971,7 @@ void AnimationClipEditor::SyncUiFromJoint(int jointIndex) {
     // プレビュー骨格の現在姿勢を編集欄へ戻す際は角度を度へ変換する。
     if (!previewModel_)
         return;
-    Model::QuaternionTransform transform = previewModel_->GetJointTransform(jointIndex);
+    engine::Model::QuaternionTransform transform = previewModel_->GetJointTransform(jointIndex);
     jointTranslateUi_ = transform.translate;
     jointRotateDegUi_ = ToDegrees(engine::Math::MatrixToEuler(engine::Math::MakeRotateQuaternionMatrix(transform.rotate)));
     jointScaleUi_ = transform.scale;
@@ -1067,6 +1073,7 @@ void AnimationClipEditor::SaveAuthoringJson() {
         });
     }
 
+    // イベントは姿勢補間の入力にならないため、発火時刻・名称・位置を別の配列で保存する。
     data["events"] = nlohmann::json::array();
 
     for (const EventMarker& marker : events_) {
@@ -1111,6 +1118,7 @@ void AnimationClipEditor::LoadAuthoringJson() {
     }
 
     const std::string savedModel = data.value("model", "");
+    // 骨格キーを含むクリップは対応するモデルに限って読み込み、別の骨格へ誤適用しない。
     if (const auto* target = FindSourceObject(); target && !data.value("keys", nlohmann::json::array()).empty() &&
         !savedModel.empty() && savedModel != target->GetModelName()) {
         DebugConsole::GetInstance()->AddLog("骨格用クリップのモデルと選択対象が異なります。対応するモデルを選択してください。");
@@ -1125,7 +1133,7 @@ void AnimationClipEditor::LoadAuthoringJson() {
     float loadedDuration = data.value("duration", 2.0f);
     CopyToBuffer(modelNameBuffer_, sizeof(modelNameBuffer_), modelName);
 
-    // モデル読込が編集状態を初期化するため、保存されたキーと再生設定の復元より先に行う。
+    // 保存されたモデル名をプレビュー対象と照合してから、再生設定とキーを復元する。
     if (modelNameBuffer_[0] != '\0') {
         LoadPreviewModel(modelNameBuffer_);
     }
@@ -1136,22 +1144,24 @@ void AnimationClipEditor::LoadAuthoringJson() {
     playbackSpeed_ = data.value("previewPlaybackSpeed", 1.0f);
     useBaseAnimation_ = animationNameBuffer_[0] != '\0';
 
+    // 旧ファイルで値が欠けたり配列が短い場合は、それぞれのキーの初期値を使う。
+    const auto readVector = [](const nlohmann::json& item, const char* name, engine::Vector3 fallback) {
+        const auto values = item.value(name, std::vector<float>{fallback.x, fallback.y, fallback.z});
+        return values.size() >= 3 ? engine::Vector3{values[0], values[1], values[2]} : fallback;
+    };
+    const auto readTransform = [&](const nlohmann::json& item, auto& key) {
+        key.translate = readVector(item, "translate", key.translate);
+        key.rotate = readVector(item, "rotate", key.rotate);
+        key.scale = readVector(item, "scale", key.scale);
+    };
+
     // 旧ファイルにBodyキーがなくても読み進め、せん断などの追加項目は既定値で補う。
     bodyKeys_.clear();
 
     for (const auto& item : data.value("bodyKeys", nlohmann::json::array())) {
         BodyAnimationClip::Key key;
         key.time = item.value("time", 0.0f);
-        auto translate = item.value("translate", std::vector<float>{0.0f, 0.0f, 0.0f});
-        auto rotate = item.value("rotate", std::vector<float>{0.0f, 0.0f, 0.0f});
-        auto scale = item.value("scale", std::vector<float>{1.0f, 1.0f, 1.0f});
-
-        if (translate.size() >= 3)
-            key.translate = { translate[0], translate[1], translate[2] };
-        if (rotate.size() >= 3)
-            key.rotate = { rotate[0], rotate[1], rotate[2] };
-        if (scale.size() >= 3)
-            key.scale = { scale[0], scale[1], scale[2] };
+        readTransform(item, key);
         const auto shear = item.value("shear", std::vector<float>{0.0f, 0.0f, 0.0f});
 
         if (shear.size() >= 3)
@@ -1176,16 +1186,7 @@ void AnimationClipEditor::LoadAuthoringJson() {
                 key.jointIndex = index;
         }
 
-        auto translate = item.value("translate", std::vector<float>{0.0f, 0.0f, 0.0f});
-        auto rotate = item.value("rotate", std::vector<float>{0.0f, 0.0f, 0.0f});
-        auto scale = item.value("scale", std::vector<float>{1.0f, 1.0f, 1.0f});
-
-        if (translate.size() >= 3)
-            key.translate = { translate[0], translate[1], translate[2] };
-        if (rotate.size() >= 3)
-            key.rotate = { rotate[0], rotate[1], rotate[2] };
-        if (scale.size() >= 3)
-            key.scale = { scale[0], scale[1], scale[2] };
+        readTransform(item, key);
         keys_.push_back(key);
     }
 
@@ -1196,10 +1197,7 @@ void AnimationClipEditor::LoadAuthoringJson() {
         marker.time = item.value("time", 0.0f);
         marker.type = item.value("type", 0);
         marker.name = item.value("name", "");
-        auto offset = item.value("offset", std::vector<float>{0.0f, 0.0f, 0.0f});
-
-        if (offset.size() >= 3)
-            marker.offset = { offset[0], offset[1], offset[2] };
+        marker.offset = readVector(item, "offset", marker.offset);
         events_.push_back(marker);
     }
 
@@ -1332,7 +1330,7 @@ void AnimationClipEditor::DrawBodyGizmo() {
     if (gameViewSize_.x <= 1.0f || gameViewSize_.y <= 1.0f)
         return;
 
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera)
         return;
 
@@ -1427,6 +1425,7 @@ void AnimationClipEditor::DrawBoneOverlayAndGizmo() {
             return std::sqrt(dx * dx + dy * dy);
         }
 
+        // マウス位置を線の方向へ射影し、端より外側では始点か終点への距離になるよう制限する。
         const float projection = std::clamp(
             ((point.x - start.x) * segmentX + (point.y - start.y) * segmentY) / lengthSquared,
             0.0f,
@@ -1532,6 +1531,7 @@ void AnimationClipEditor::DrawBoneOverlayAndGizmo() {
         engine::Vector2 originScreen{};
 
         if (ProjectWorldToGameView(originWorld, originScreen)) {
+            // 親とのワールド距離に合わせて XYZ ガイドの長さを決め、極端に長短が出ないよう制限する。
             float axisLength = 0.5f;
 
             if (joints[selectedJointIndex_].parent) {
@@ -1568,6 +1568,7 @@ void AnimationClipEditor::DrawBoneOverlayAndGizmo() {
     // Game View用の描画クリップを閉じてから、選択操作とギズモ操作の判定へ移る。
     drawList->PopClipRect();
 
+    // ギズモ操作のクリックを骨の選び直しに流さない。
     if (hoveredJoint >= 0 && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !ImGuizmo::IsUsing()) {
         selectedJointIndex_ = hoveredJoint;
         SyncUiFromJoint(selectedJointIndex_);
@@ -1579,7 +1580,7 @@ void AnimationClipEditor::DrawBoneOverlayAndGizmo() {
         selectedJointIndex_ >= static_cast<int>(joints.size()))
         return;
 
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera)
         return;
 
@@ -1631,7 +1632,7 @@ void AnimationClipEditor::DrawBoneOverlayAndGizmo() {
 
 bool AnimationClipEditor::ProjectWorldToGameView(const engine::Vector3& world, engine::Vector2& screenOut) const {
     // 骨格のワールド位置を Game View 内のピクセル座標へ変換する。
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera)
         return false;
 
@@ -1642,6 +1643,7 @@ bool AnimationClipEditor::ProjectWorldToGameView(const engine::Vector3& world, e
 
     screenOut.x = gameViewOffset_.x + (ndc.x + 1.0f) * 0.5f * gameViewSize_.x;
     screenOut.y = gameViewOffset_.y + (1.0f - ndc.y) * 0.5f * gameViewSize_.y;
+    // ぴったりの画面端ではボーン線が急に消えやすいため、周囲 64 ピクセルを判定に含める。
     return screenOut.x >= gameViewOffset_.x - 64.0f &&
            screenOut.x <= gameViewOffset_.x + gameViewSize_.x + 64.0f &&
            screenOut.y >= gameViewOffset_.y - 64.0f &&
@@ -1671,6 +1673,7 @@ engine::Vector3 AnimationClipEditor::GetMatrixTranslation(const engine::Matrix4x
 
 
 engine::Object3D* AnimationClipEditor::FindSourceObject() const {
+    // 同じIDが別シーンで使われても、世代が変わっていれば元オブジェクトに見立てない。
     if (!targetId_ || !sceneManager_ || sceneManager_->GetSceneGeneration() != sceneGeneration_) return nullptr;
     auto* scene = sceneManager_->GetCurrentScene();
     if (!scene) return nullptr;
@@ -1684,6 +1687,7 @@ void AnimationClipEditor::SetTarget(engine::Object3D* target) {
     if (!keys_.empty() && modelNameBuffer_[0] && target->GetModelName() != modelNameBuffer_) {
         StopPreview(); return;
     }
+    // 対象 ID とシーン世代が同じなら、生成済みのプレビューモデルを作り直さない。
     const auto id = target->EnsureReplayId();
     if (enabled_ && targetId_ == id && sceneGeneration_ == sceneManager_->GetSceneGeneration()) return;
     StopPreview(); targetId_ = id; sceneGeneration_ = sceneManager_->GetSceneGeneration();

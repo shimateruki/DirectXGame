@@ -4,7 +4,7 @@
 #include "GraphicsPipelineBuilder.h"
 #include <cassert>
 
-void engine::ParticleCommon::Initialize(DirectXCommon* dxCommon) {
+void engine::ParticleCommon::Initialize(engine::DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
     CreateRootSignature();
@@ -59,6 +59,7 @@ void engine::ParticleCommon::CreatePipeline() {
     // =================================================================
     // 1. 入力レイアウト (インスタンシング対応の特殊レイアウト)
     // =================================================================
+    // 頂点ごとに位置・UVを読み、粒子が一個進むたびに色とワールド行列を次の要素へ進めます。
     D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
         { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
         { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },

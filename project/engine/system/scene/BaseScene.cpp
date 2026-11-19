@@ -84,7 +84,7 @@ float BaseScene::GetLoadingInitializeProgress() const {
 
 void BaseScene::OnActivated() {
     // 非同期準備中ではなく、現在シーンへ切り替わった時点で描画背景を確定します。
-    LightManager::GetInstance()->ApplySceneClearColor();
+    engine::LightManager::GetInstance()->ApplySceneClearColor();
 }
 
 void BaseScene::FixedUpdate(float fixedDeltaTime) {
@@ -108,6 +108,7 @@ std::string BaseScene::ResolvePrimaryObjectLayoutPath(const std::string& default
     }
 
     sceneAssetObjectLayoutConsumed_ = true;
+    // Scene Assetのパスを使う機会は一回。空欄でも消費し、追加レイアウトは次回から呼出元の指定を使う。
     const std::string& assetPath = sceneLoadContext_.objectLayoutPath;
     return assetPath.empty() ? defaultPath : assetPath;
 }
@@ -119,6 +120,7 @@ std::string BaseScene::ResolvePrimarySpriteLayoutPath(const std::string& default
     }
 
     sceneAssetSpriteLayoutConsumed_ = true;
+    // 3D配置の消費状態と独立させ、Spriteの主レイアウトだけを一回差し替える。
     const std::string& assetPath = sceneLoadContext_.spriteLayoutPath;
     return assetPath.empty() ? defaultPath : assetPath;
 }
@@ -192,21 +194,22 @@ void BaseScene::RefreshRenderCameraData() {
 
 }
 
-void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
+void BaseScene::DrawCameraPreview(engine::Camera* camera, int previewBufferIndex) {
     // 指定カメラへ描く際は通常パスと特殊材質パスを同じプレビュー先へ出します。
     if (!camera) {
         return;
     }
 
-    ID3D12Resource* pointLight = LightManager::GetInstance()->GetPointLightResource();
-    ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
+    ID3D12Resource* pointLight = engine::LightManager::GetInstance()->GetPointLightResource();
+    ID3D12Resource* spotLight = engine::LightManager::GetInstance()->GetSpotLightResource();
     auto& objects = GetObjects();
 
-    if (Skybox* skybox = GetSkybox(); skybox && LightManager::GetInstance()->IsSkyboxEnabled()) {
-        skybox->SetTextureHandle(LightManager::GetInstance()->GetSkyboxTextureHandle());
+    if (Skybox* skybox = GetSkybox(); skybox && engine::LightManager::GetInstance()->IsSkyboxEnabled()) {
+        skybox->SetTextureHandle(engine::LightManager::GetInstance()->GetSkyboxTextureHandle());
         skybox->Draw(camera->GetConstantBuffer());
     }
 
+    // 不透明・半透明だけをこのラムダへ通し、深度や背景色が必要な材質は後段へ残す。
     auto drawObject = [&](engine::Object3D* object, bool transparentPass) {
         if (!object || !object->GetIsRenderVisible()) {
             return;
@@ -260,8 +263,9 @@ void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
 
     // プレビュー先ごとの画面色・深度を準備し、本編のGrabTextureと混線させません。
     PostEffect* postEffect = PostEffect::GetInstance();
-    DirectXCommon* dxCommon = DirectXCommon::GetInstance();
+    engine::DirectXCommon* dxCommon = engine::DirectXCommon::GetInstance();
     ID3D12GraphicsCommandList* commandList = dxCommon ? dxCommon->GetCommandList() : nullptr;
+    // プレビュー用の番号を後処理のテクスチャ番号へ写し、参照する深度と色を同じ描画先に合わせる。
     const int targetTextureIndex = previewBufferIndex == 0
         ? PostEffect::kCameraPreviewTextureIndex
         : PostEffect::kCinematicCameraPreviewTextureIndex;
@@ -296,6 +300,7 @@ void BaseScene::DrawCameraPreview(Camera* camera, int previewBufferIndex) {
         }
     }
 
+    // 専用の深度・背景色参照を閉じ、呼び出し側がプレビューを表示用SRVに戻せるようにする。
     postEffect->EndCameraPreviewSpecialPass(commandList, targetTextureIndex);
 }
 
@@ -323,6 +328,7 @@ bool BaseScene::DestroySprite(engine::Sprite* sprite) {
         return false;
     }
 
+    // 再生で後から同じSpriteを参照できるよう、親子の接続を先に外し、実体はシーンに保管する。
     if (sprite->IsReplayRetained()) {
         std::vector<engine::Sprite*> children = sprite->GetChildren();
 
@@ -348,6 +354,7 @@ bool BaseScene::DestroySprite(engine::Sprite* sprite) {
 
     sprite->SetParent(nullptr);
     sprite->SetVisible(false);
+    // Replay保持が不要なSpriteは、同じ親子解除の手順を終えてから所有リストから破棄する。
     sprites->erase(it);
     return true;
 }
@@ -458,6 +465,7 @@ bool BaseScene::DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<eng
         }
     }
 
+    // Objectの描画パスがなくても、弾だけで背景色を参照する場合を取りこぼさない。
     const bool hasSpecialBullets = bulletManager && bulletManager->HasSpecialMaterialBullets();
 
     auto* cameraManager = CameraManager::GetInstance();
@@ -477,6 +485,7 @@ bool BaseScene::DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<eng
         return false;
     }
 
+    // 背景色を参照する材質や弾がある場合だけコピーする。輪郭の表示だけなら既存の色を使う。
     const bool grabUpdated = hasSpecialObjects || hasSpecialBullets;
     if (grabUpdated) commands->CopySceneColor();
 
@@ -506,10 +515,11 @@ bool BaseScene::DrawSpecialMaterialObjects(const std::vector<std::unique_ptr<eng
             commands->GetDepthSrvHandle(), commands->GetSceneColorSrvHandle());
     }
     commands->EndDepthRead();
+    // 背景色をコピーしたかだけを返し、この後に描くGPU粒子との二重コピーを避ける。
     return grabUpdated;
 }
 
-bool BaseScene::DrawGpuParticles(Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated) {
+bool BaseScene::DrawGpuParticles(engine::Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated) {
     // 背景色が必要な粒子だけコピーを追加し、既済みなら再利用します。
     GpuParticleManager* particleManager = GpuParticleManager::GetInstance();
     auto* commands = GetRenderCommands();
@@ -668,13 +678,14 @@ void BaseScene::BeginSpriteDrawing() {
     if (!commands || !sprites) {
         throw std::logic_error("Scene sprite drawing requires prepared render resources");
     }
+    // 描画先のコマンドと共通Sprite設定を結び付け、個別Spriteは描画に必要な設定だけを渡す。
     commands->BindSprites(*sprites);
 }
 
 void BaseScene::PrepareGpuParticles(GpuParticlePresetScope scope) {
     // GPU基盤の取得・受け渡しは共通層に置き、シーンは準備範囲だけを選ぶ。
     auto* particles = GpuParticleManager::GetInstance();
-    auto* dxCommon = DirectXCommon::GetInstance();
+    auto* dxCommon = engine::DirectXCommon::GetInstance();
 #ifndef USE_IMGUI
     // 配布版の軽量起動では、先読み結果が空でも「指定対象なし」として維持する。
     // 先読み自体が無い場合だけ従来のInitializeへ戻す。

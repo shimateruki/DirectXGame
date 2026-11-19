@@ -8,6 +8,7 @@ void EditorCommon::DecomposeWorldPose(const engine::Matrix4x4& world, engine::Ve
     engine::Vector3& rotation, engine::Vector3& scale) {
     float degrees[3]{};
     ImGuizmo::DecomposeMatrixToComponents(&world.m[0][0], &position.x, degrees, &scale.x);
+    // ImGuizmo の分解結果は度数法。エンジンの Transform に渡せるよう回転だけラジアンへ変換する。
     constexpr float kDegreesToRadians = std::numbers::pi_v<float> / 180.0f;
     rotation = {degrees[0] * kDegreesToRadians, degrees[1] * kDegreesToRadians, degrees[2] * kDegreesToRadians};
 }

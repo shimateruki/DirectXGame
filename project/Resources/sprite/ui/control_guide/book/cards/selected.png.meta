@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "007c949ae8cddab73c342a3e77fe9e07",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/cards/selected.png",
+  "version": 1
+}

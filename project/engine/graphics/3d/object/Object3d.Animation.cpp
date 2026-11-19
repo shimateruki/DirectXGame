@@ -46,6 +46,7 @@ bool Object3D::SetAnimatorController(const std::string& assetPath) {
 
     std::unordered_map<std::string, BodyAnimationClip> loadedBodyClips;
 
+    // 同じ身体クリップを複数の状態で使う場合も、名前ごとに一度だけ読み込みます。
     for (const auto& state : loadedAsset.states) {
         if (state.bodyClipName.empty() || loadedBodyClips.contains(state.bodyClipName))
             continue;
@@ -59,6 +60,7 @@ bool Object3D::SetAnimatorController(const std::string& assetPath) {
     animatorControllerAsset_ = std::move(loadedAsset);
     animatorBodyClips_ = std::move(loadedBodyClips);
     animatorControllerLoaded_ = true;
+    // 実行側がアセットを借用するので、一時変数からメンバーへ移したあと、そのアドレスを渡して再生状態を初期化します。
     animatorControllerRuntime_.SetController(&animatorControllerAsset_, true);
     return true;
 }
@@ -92,14 +94,14 @@ bool Object3D::EvaluateAnimatorState(
     int easing,
     bool exactPreview) {
     // 編集プレビューは時刻を直接指定し、実戦では Controller の補間経路を使う。
-    Model* model = GetModel();
+    engine::Model* model = GetModel();
 
     if (!model) {
         return false;
     }
 
     if (!animatorControllerLoaded_) {
-        const Model::Animation* animation = model->GetAnimation(stateName);
+        const engine::Model::Animation* animation = model->GetAnimation(stateName);
 
         if (!animation) {
             return false;
@@ -159,13 +161,13 @@ void Object3D::RestoreAnimationPlayback(const std::string& animationName, float 
     animName_ = animationName;
     animationTime_ = std::max(0.0f, timeSeconds);
     isAnimLoop_ = loop;
-    Model* model = GetModel();
+    engine::Model* model = GetModel();
 
     if (!model || animationName.empty()) {
         return;
     }
 
-    if (const Model::Animation* animation = model->GetAnimation(animationName)) {
+    if (const engine::Model::Animation* animation = model->GetAnimation(animationName)) {
         float sampleTime = animationTime_;
 
         if (loop && animation->duration > 0.0f) {
@@ -181,7 +183,7 @@ void Object3D::RestoreAnimationPlayback(const std::string& animationName, float 
 
 bool Object3D::TryGetJointWorldMatrix(const std::string& jointName, engine::Matrix4x4& outMatrix) const {
     // ボーンの局所姿勢と Object3D のワールド行列を合成して装着位置を得る。
-    Model* model = GetModel();
+    engine::Model* model = GetModel();
 
     if (!model || jointName.empty()) {
         return false;
@@ -194,6 +196,7 @@ bool Object3D::TryGetJointWorldMatrix(const std::string& jointName, engine::Matr
         return false;
     }
 
+    // 関節の親子姿勢を反映済みのモデル空間行列に、Object3Dの配置を掛けて装着先のワールド姿勢を得ます。
     outMatrix = engine::Math::Multiply(joints[jointIndex].skeletonSpaceMatrix, GetWorldMatrix());
     return true;
 }
@@ -210,15 +213,16 @@ bool Object3D::TryGetJointWorldPosition(const std::string& jointName, engine::Ve
     return true;
 }
 
-bool Object3D::UpdateAnimatorController(float deltaTime, Model* model) {
+bool Object3D::UpdateAnimatorController(float deltaTime, engine::Model* model) {
     if (!animatorControllerLoaded_ || !model) {
         return false;
     }
 
+    // 状態の終了判定には、身体クリップがあればその秒数を使い、なければモデルの骨格クリップの秒数を使います。
     animatorControllerRuntime_.Update(deltaTime, [this, model](const AnimatorStateDefinition& state) {
         if (const auto body = animatorBodyClips_.find(state.bodyClipName); body != animatorBodyClips_.end())
             return body->second.GetDuration();
-        const Model::Animation* animation = model->GetAnimation(state.clipName);
+        const engine::Model::Animation* animation = model->GetAnimation(state.clipName);
         return animation ? animation->duration : 0.0f;
     });
 
@@ -236,7 +240,7 @@ bool Object3D::UpdateAnimatorController(float deltaTime, Model* model) {
     return ApplyAnimatorControllerPose(model, false);
 }
 
-bool Object3D::ApplyAnimatorControllerPose(Model* model, bool forceModelUpdate) {
+bool Object3D::ApplyAnimatorControllerPose(engine::Model* model, bool forceModelUpdate) {
     // 前後状態を同じ時刻基準で標本化し、骨格と身体変形を一つの補間率で合成する。
     if (!animatorControllerLoaded_ || !model) {
         return false;
@@ -269,6 +273,7 @@ bool Object3D::ApplyAnimatorControllerPose(Model* model, bool forceModelUpdate) 
         const auto previous = transitioning
             ? sampleBody(previousState, animatorControllerRuntime_.GetPreviousTime()) : current;
         const float weight = transitioning ? animatorControllerRuntime_.GetTransitionWeight() : 1.0f;
+        // ラジアンの回転は近い方向へ補間し、±πの境界を跨ぐときの不要な一周を抑えます。
         const auto blendAngle = [weight](float from, float to) {
             return engine::Math::LerpShortAngle(from, to, weight);
         };
@@ -285,9 +290,10 @@ bool Object3D::ApplyAnimatorControllerPose(Model* model, bool forceModelUpdate) 
         animatorBodyPoseApplied_ = false;
     }
 
-    const Model::Animation* currentAnimation = currentState->clipName.empty()
+    // 描画用の身体変形を確定した後、骨格クリップの有無に応じて骨格の補間または単独再生を適用します。
+    const engine::Model::Animation* currentAnimation = currentState->clipName.empty()
         ? nullptr : model->GetAnimation(currentState->clipName);
-    const Model::Animation* previousAnimation = transitioning && !previousState->clipName.empty()
+    const engine::Model::Animation* previousAnimation = transitioning && !previousState->clipName.empty()
         ? model->GetAnimation(previousState->clipName) : nullptr;
     if (currentAnimation && previousAnimation) {
         model->ApplyBlendedAnimation(
@@ -300,6 +306,7 @@ bool Object3D::ApplyAnimatorControllerPose(Model* model, bool forceModelUpdate) 
         model->ApplyAnimation(*currentAnimation, animatorControllerRuntime_.GetStateTime());
     }
 
+    // この状態が身体変形も骨格アニメーションも指定していなければ、呼出元の代替再生に任せます。
     if (!hasBody && !currentAnimation)
         return false;
     animName_ = currentState->clipName;

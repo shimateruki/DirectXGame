@@ -37,6 +37,7 @@ void Player::ActivateCheckpoint(const engine::Vector3& position, const std::stri
 }
 
 bool Player::ApplyStoredCopy(const std::string& enemyType, bool unlimitedDuration) {
+    // 記憶台や復帰処理は登録済みの能力だけを指定でき、演出中の取得は王冠だけ許可します。
     const PlayerCopyTypeDescriptor* descriptor = PlayerCopyTypeCatalog::Find(enemyType);
     const EnemyMorphType resolvedType = ResolveEnemyMorphType(enemyType);
     if (!descriptor || resolvedType == EnemyMorphType::None || IsDead() ||
@@ -45,6 +46,7 @@ bool Player::ApplyStoredCopy(const std::string& enemyType, bool unlimitedDuratio
         return false;
     }
 
+    // 通常攻撃と既存のコピーを先に止め、新しい能力に前回の判定や姿勢を残しません。
     if (baseCombatController_) {
         baseCombatController_->Cancel(*this, true);
     }
@@ -62,6 +64,7 @@ bool Player::ApplyStoredCopy(const std::string& enemyType, bool unlimitedDuratio
         hookMarker_->SetIsVisible(false);
     }
 
+    // 現在の向きと通常形態の表示を控えてから、新しい能力の制限時間と動作を確定します。
     const float currentMoveYaw = GetMoveYaw();
     SaveEnemyMorphBaseAppearance(true);
 
@@ -82,7 +85,7 @@ bool Player::ApplyStoredCopy(const std::string& enemyType, bool unlimitedDuratio
     CompleteEnemyMorphStart(currentMoveYaw);
 
     // 王冠とマントの装飾で被弾範囲が広がらないよう、体の判定を維持する。
-    const ColliderConfig bodyCollider = GetColliderConfig();
+    const engine::ColliderConfig bodyCollider = GetColliderConfig();
     SetModel(std::string(descriptor->modelName));
     if (resolvedType == EnemyMorphType::Crown)
         SetColliderConfig(bodyCollider);
@@ -161,6 +164,7 @@ void Player::BeginEnemyMorphRelease(bool expired) {
     isEvasionInvincible_ = false;
     UpdateColor();
 
+    // 任意解除と期限切れで異なる長さを設定し、粒子の発火時刻を同じ時計へ登録します。
     enemyMorphReleaseActive_ = true;
     ClearHurtFace();
     enemyMorphReleaseBurstStarted_ = false;
@@ -172,6 +176,7 @@ void Player::BeginEnemyMorphRelease(bool expired) {
     enemyMorphReleasePlayerScale_ = GetScale();
     enemyMorphReleaseTint_ = GetEnemyMorphTint(enemyMorphType_);
 
+    // 開始時に背後の方向を固定し、外へ出す残像は通常形態の大きさを基準にします。
     const float yaw = GetMoveYaw();
     enemyMorphReleaseDirection_ = {-std::sin(yaw), 0.0f, -std::cos(yaw)};
     const float playerScale =
@@ -185,6 +190,7 @@ void Player::BeginEnemyMorphRelease(bool expired) {
         enemyMorphReleaseVisual_->SetScale({0.0f, 0.0f, 0.0f});
     }
 
+    // 解除中に前形態の攻撃を実行しないよう保留入力を破棄します。
     pendingAttack2_ = false;
     attackInputBuffer_.ClearPendingInput();
     DebugConsole::GetInstance()->AddLog(expired ? "Enemy morph release: expired." : "Enemy morph release: manual.");
@@ -269,6 +275,7 @@ void Player::UpdateEnemyMorphRelease(float deltaTime) {
         enemyMorphReleaseParticleTimer_ -= deltaTime;
     }
 
+    // 分離前はコピー形態の身体を縮める予備動作だけを見せます。
     if (!enemyMorphReleaseBurstStarted_ && enemyMorphReleaseTimer_ < enemyMorphReleaseBurstTime_) {
         const float t =
             std::clamp(enemyMorphReleaseTimer_ / (std::max)(enemyMorphReleaseBurstTime_, 0.001f), 0.0f, 1.0f);
@@ -286,6 +293,7 @@ void Player::UpdateEnemyMorphRelease(float deltaTime) {
         EmitEnemyMorphReleaseBurst();
     }
 
+    // 分離を境に時計を読み替え、通常形態の揺れを戻しながら残像を外へ飛ばします。
     const float flightDuration = (std::max)(enemyMorphReleaseDuration_ - enemyMorphReleaseBurstTime_, 0.001f);
     const float flightTime = (std::max)(0.0f, enemyMorphReleaseTimer_ - enemyMorphReleaseBurstTime_);
     const float t = std::clamp(flightTime / flightDuration, 0.0f, 1.0f);
@@ -297,6 +305,7 @@ void Player::UpdateEnemyMorphRelease(float deltaTime) {
     UpdateLocalMatrix();
     UpdateWorldMatrix();
 
+    // 残像は弧を描いて背後へ進め、終盤の縮小と透明化で消します。
     if (enemyMorphReleaseVisual_) {
         engine::Vector3 position = enemyMorphReleaseStartPosition_;
         position.x += enemyMorphReleaseDirection_.x * 2.25f * eased;
@@ -324,6 +333,7 @@ void Player::UpdateEnemyMorphRelease(float deltaTime) {
         enemyMorphReleaseVisual_->UpdateWorldMatrix();
     }
 
+    // 期限切れではすぐ、任意解除では残像が離れてから尾の粒子を発生させます。
     if (enemyMorphReleaseParticleTimer_ <= 0.0f && t < 0.82f) {
         if (enemyMorphReleaseExpired_ || t > 0.18f) {
             if (particleSystem_) {
@@ -340,6 +350,7 @@ void Player::UpdateEnemyMorphRelease(float deltaTime) {
         }
     }
 
+    // 解除演出が終わったら状態を片付け、通常形態の最後の反動だけを発生させます。
     if (enemyMorphReleaseTimer_ >= enemyMorphReleaseDuration_) {
         const engine::Vector3 reboundScale = {savedMorphScale_.x * 1.08f, savedMorphScale_.y * 0.92f,
                                       savedMorphScale_.z * 1.08f};
@@ -379,6 +390,7 @@ void Player::RestoreEnemyMorphAppearance() {
     SetAnimationLoop(savedMorphAnimLoop_);
     ResetAnimationTime();
 
+    // コピー前に控えた可視性を子ごとに戻し、後から加わった子は表示します。
     const auto& children = GetChildren();
 
     for (size_t i = 0; i < children.size(); ++i) {
@@ -395,6 +407,7 @@ void Player::RestoreEnemyMorphAppearance() {
         }
     }
 
+    // コピー元がまだ生きている時だけ表示を戻し、運搬参照が同じ実体なら離します。
     if (morphSource && !morphSource->IsDead() && !morphSource->IsDefeatEffectPlaying()) {
         morphSource->SetIsVisible(savedMorphSourceVisible_);
     }
@@ -403,6 +416,7 @@ void Player::RestoreEnemyMorphAppearance() {
         SetCarriedEnemy(nullptr);
     }
 
+    // 能力の型と時間を消し、カメラの照準制限を外しても移動方向は保ちます。
     isEnemyMorphed_ = false;
     enemyMorphType_ = EnemyMorphType::None;
     enemyMorphSource_ = nullptr;
@@ -413,10 +427,11 @@ void Player::RestoreEnemyMorphAppearance() {
     savedMorphChildVisible_.clear();
     savedMorphSourceVisible_ = true;
 
-    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera(); camera && !IsEditorInternal()) {
+    if (engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera(); camera && !IsEditorInternal()) {
         camera->SetAimCameraSuppressed(false);
     }
 
+    // 通常形態へ戻した後で移動角を適用し、通常モデルの正面補正で見た目の角度を再計算します。
     SetMoveYaw(currentMoveYaw);
     DebugConsole::GetInstance()->AddLog("Enemy morph end.");
 }

@@ -24,19 +24,26 @@ void ParticleManager::Initialize(engine::ParticleSystem* particleSystem) {
 // ---------------------------------------------------------
 // JSON変換ヘルパー関数
 // ---------------------------------------------------------
-namespace engine {
-
-// Vector3
-void to_json(json& j, const engine::Vector3& v) { j = json{ {"x", v.x}, {"y", v.y}, {"z", v.z} }; }
-void from_json(const json& j, engine::Vector3& v) { j.at("x").get_to(v.x); j.at("y").get_to(v.y); j.at("z").get_to(v.z); }
-
-// Vector4
-void to_json(json& j, const engine::Vector4& v) { j = json{ {"x", v.x}, {"y", v.y}, {"z", v.z}, {"w", v.w} }; }
-void from_json(const json& j, engine::Vector4& v) { j.at("x").get_to(v.x); j.at("y").get_to(v.y); j.at("z").get_to(v.z); j.at("w").get_to(v.w); }
-
-} // namespace engine
-
 namespace {
+
+// 粒子のベクトルと色は成分名を持つJSONオブジェクトとして保存する。
+json WriteParticleVector(const engine::Vector3& v) {
+    return {{"x", v.x}, {"y", v.y}, {"z", v.z}};
+}
+
+engine::Vector3 ReadParticleVector(const json& data) {
+    return {data.at("x").get<float>(), data.at("y").get<float>(), data.at("z").get<float>()};
+}
+
+json WriteParticleColor(const engine::Vector4& color) {
+    return {{"x", color.x}, {"y", color.y}, {"z", color.z}, {"w", color.w}};
+}
+
+engine::Vector4 ReadParticleColor(const json& data) {
+    return {data.at("x").get<float>(), data.at("y").get<float>(),
+            data.at("z").get<float>(), data.at("w").get<float>()};
+}
+
 // 時刻と値のキー列をParticle保存JSONへ変換します。
 json WriteFloatCurve(const VfxFloatCurve& curve) {
     json result = json::array();
@@ -59,7 +66,7 @@ json WriteColorGradient(const VfxColorGradient& gradient) {
     for (const VfxColorGradientKey& key : gradient.keys) {
         result.push_back({
             { "time", key.time },
-            { "color", key.color },
+            { "color", WriteParticleColor(key.color) },
             { "easing", static_cast<int>(key.easing) },
         });
     }
@@ -102,7 +109,7 @@ void ReadColorGradient(const json& source, VfxColorGradient& gradient) {
         key.time = item.value("time", 0.0f);
 
         if (item.contains("color")) {
-            item.at("color").get_to(key.color);
+            key.color = ReadParticleColor(item.at("color"));
         }
 
         key.easing = static_cast<VfxCurveEasing>(
@@ -142,14 +149,14 @@ namespace engine {
 
 void to_json(json& j, const engine::ParticleSystem::EmitterParams& p) {
     j = json{
-        {"spawnArea", p.spawnArea},
-        {"initialVelocity", p.initialVelocity},
-        {"velocityRandomness", p.velocityRandomness},
+        {"spawnArea", WriteParticleVector(p.spawnArea)},
+        {"initialVelocity", WriteParticleVector(p.initialVelocity)},
+        {"velocityRandomness", WriteParticleVector(p.velocityRandomness)},
         {"emitCount", p.emitCount},
         {"particlesPerSecond", p.particlesPerSecond},
         {"particleLifetime", p.particleLifetime},
-        {"startColor", p.startColor},
-        {"endColor", p.endColor},
+        {"startColor", WriteParticleColor(p.startColor)},
+        {"endColor", WriteParticleColor(p.endColor)},
         {"startSize", p.startSize},
         {"endSize", p.endSize},
         {"initialRotationSpeed", p.initialRotationSpeed},
@@ -158,7 +165,7 @@ void to_json(json& j, const engine::ParticleSystem::EmitterParams& p) {
     {"emitterType", (int)p.emitterType}, 
     {"spawnRadius", p.spawnRadius},      
     {"coneAngle", p.coneAngle},
-    {"acceleration", p.acceleration},
+    {"acceleration", WriteParticleVector(p.acceleration)},
     {"textureName", p.textureName},
         {"blendMode", (int)p.blendMode}
 
@@ -171,6 +178,7 @@ void to_json(json& j, const engine::ParticleSystem::EmitterParams& p) {
         legacyCurve.push_back(value);
     }
 
+    // 新しい編集カーブを無効にした場合も従来の十点カーブへ戻せるよう、両方の形式を保存します。
     j["legacySizeCurve"] = std::move(legacyCurve);
     j["authoring"] = {
         { "enabled", p.useAuthoringCurves },
@@ -188,20 +196,20 @@ void from_json(const json& j, engine::ParticleSystem::EmitterParams& p) {
     }
 
     if (j.contains("spawnArea"))
-        j.at("spawnArea").get_to(p.spawnArea);
+        p.spawnArea = ReadParticleVector(j.at("spawnArea"));
     if (j.contains("initialVelocity"))
-        j.at("initialVelocity").get_to(p.initialVelocity);
+        p.initialVelocity = ReadParticleVector(j.at("initialVelocity"));
     if (j.contains("velocityRandomness"))
-        j.at("velocityRandomness").get_to(p.velocityRandomness);
+        p.velocityRandomness = ReadParticleVector(j.at("velocityRandomness"));
     p.emitCount = std::clamp(j.value("emitCount", 1), 1, engine::ParticleSystem::GetMaxParticles());
     if (j.contains("particlesPerSecond"))
         j.at("particlesPerSecond").get_to(p.particlesPerSecond);
     if (j.contains("particleLifetime"))
         j.at("particleLifetime").get_to(p.particleLifetime);
     if (j.contains("startColor"))
-        j.at("startColor").get_to(p.startColor);
+        p.startColor = ReadParticleColor(j.at("startColor"));
     if (j.contains("endColor"))
-        j.at("endColor").get_to(p.endColor);
+        p.endColor = ReadParticleColor(j.at("endColor"));
     if (j.contains("startSize"))
         j.at("startSize").get_to(p.startSize);
     if (j.contains("endSize"))
@@ -216,7 +224,7 @@ void from_json(const json& j, engine::ParticleSystem::EmitterParams& p) {
     p.spawnRadius = j.value("spawnRadius", 1.0f); 
     p.coneAngle = j.value("coneAngle", 30.0f);
     if (j.contains("acceleration"))
-        j.at("acceleration").get_to(p.acceleration);
+        p.acceleration = ReadParticleVector(j.at("acceleration"));
     p.blendMode = (ParticleBlendMode)j.value("blendMode", (int)ParticleBlendMode::Alpha);
 
     if (j.contains("legacySizeCurve") && j["legacySizeCurve"].is_array()) {
@@ -287,6 +295,7 @@ void ParticleManager::LoadAllParams() {
     for (const auto& entry : std::filesystem::recursive_directory_iterator(root)) {
         if (!entry.is_regular_file() || entry.path().extension() != ".json") continue;
         auto relative = entry.path().lexically_relative(root);
+        // プリセットの識別名にルート以下のフォルダーも含め、別フォルダーにある同名ファイルを区別します。
         const auto key = relative.replace_extension().generic_u8string();
         engine::ParticleSystem::EmitterParams param;
         if (ReadParamFile(entry.path(), param)) paramsMap_[std::string(key.begin(), key.end())] = std::move(param);
@@ -306,6 +315,7 @@ bool ParticleManager::ReadParamFile(const std::filesystem::path& path, engine::P
     if (!file) return false;
     json j;
     file >> j;
+    // 読み込み中は一時構造体を使い、変換が完了した設定だけ呼び出し元へ移します。JSON解析・変換の例外は呼び出し元へ伝わります。
     engine::ParticleSystem::EmitterParams loaded;
     from_json(j, loaded);
     out = std::move(loaded);
@@ -337,6 +347,7 @@ void ParticleManager::Emit(const std::string& name, const engine::Vector3& posit
     singleParticleParams.emitCount = 1;
 
     // 生成タイミングになったらループで放出
+    // 一回の更新で複数の発生間隔を跨いだ場合はその回数分だけ生成し、端数秒を次の更新へ残します。
     while (timer >= rate) {
         timer -= rate;
         particleSystem_->EmitOneShot(singleParticleParams, position);

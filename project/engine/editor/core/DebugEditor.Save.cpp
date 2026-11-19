@@ -127,6 +127,7 @@ bool DebugEditor::RenameSceneAsset(
     }
 
     if (wasCurrentScene) {
+        // 現在開いているファイルの改名に限り、次回保存のファイル名と再読込先を両方更新する。
         SetSceneFilename(renamedFilename);
 
         if (sceneManager_) {
@@ -261,6 +262,7 @@ bool DebugEditor::OpenSceneAsset(
 
     const SceneSerializer::SceneAssetValidationResult validation = ValidateSceneAsset(filename);
 
+    // 致命的な検証エラーはまとめて画面へ返す。警告だけならログを残して読込要求へ進む。
     if (!validation.IsValid()) {
         errorMessage = validation.errors.front();
 
@@ -395,6 +397,7 @@ void DebugEditor::SaveSingleObject() {
 
     sceneSavePreview_.Build(targets, "単体保存: " + selectedObject_->GetName());
     pendingSaveMode_ = selectedObject_->IsCameraObject() ? SaveMode::Camera : SaveMode::Object;
+    // 単体保存で同じカテゴリ内の別 Object も保存済み扱いにならないよう、確定時にカテゴリの Dirty を消す対象から外す。
     pendingSaveIsSingleObject_ = true;
     sceneSavePreview_.Open();
 #else
@@ -428,6 +431,7 @@ void DebugEditor::DrawSavePreview() {
         TriggerSaveNotification(notificationName);
 
         if (!pendingSceneAssetOpenAfterSave_.empty() && !HasAnyDirty()) {
+            // 開く処理が失敗しても次回の保存で勝手に再試行しないよう、遷移先の予約を消費してから要求を出す。
             const std::string filenameToOpen = pendingSceneAssetOpenAfterSave_;
             pendingSceneAssetOpenAfterSave_.clear();
             std::string openError;

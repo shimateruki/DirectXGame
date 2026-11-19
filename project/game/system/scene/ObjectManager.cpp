@@ -71,6 +71,7 @@ void ObjectManager::Update(float deltaTime) {
         obj->Update(deltaTime);
     }
 
+
     // 全ロジック更新後に Transform と描画定数を確定します。
     // 親を持つObjectは親側の再帰更新に含め、同じMeshRenderer::Updateが
     // 1フレームに複数回走らないようにする。
@@ -95,6 +96,7 @@ void ObjectManager::Update(float deltaTime) {
         }
     }
 
+    // 走査と行列更新が完了した時点で、フレーム中の追加・削除要求をまとめて反映します。
     ApplyPendingChanges();
 }
 
@@ -183,6 +185,7 @@ std::unique_ptr<engine::Object3D> ObjectManager::TakeObjectImmediate(engine::Obj
         return result;
     };
 
+    // 通常の管理リストにない場合は、同じフレームに生成された追加待ちリストも探します。
     std::unique_ptr<engine::Object3D> result = takeFrom(objects_);
     if (!result)
         result = takeFrom(pendingObjects_);
@@ -202,6 +205,7 @@ void ObjectManager::RequestRemove(engine::Object3D* object) {
         return candidate && candidate.get() == object;
     };
 
+    // 借用したポインターをそのまま削除せず、自分が所有していることを先に確かめます。
     const bool exists = std::any_of(objects_.begin(), objects_.end(), matches) ||
                         std::any_of(pendingObjects_.begin(), pendingObjects_.end(), matches);
     if (!exists)
@@ -265,10 +269,10 @@ void ObjectManager::DrawShadow() {
     if (objects_.empty())
         return;
 
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera)
         return;
-    const engine::Matrix4x4& lightViewProjection = LightManager::GetInstance()->GetDirectionalShadowViewProjection(camera);
+    const engine::Matrix4x4& lightViewProjection = engine::LightManager::GetInstance()->GetDirectionalShadowViewProjection(camera);
     const engine::Frustum shadowFrustum = engine::Math::ExtractFrustumPlanes(lightViewProjection);
 
     // 軽量化: 共通の状態設定はループの外で1回だけ行う
@@ -292,6 +296,7 @@ void ObjectManager::DrawShadow() {
             continue;
         }
 
+        // 視錐台を通過した最初の物体で影パスの共通状態を設定し、後続はその状態を使います。
         if (isFirst) {
             obj->SetShadowCommonState();
             isFirst = false;

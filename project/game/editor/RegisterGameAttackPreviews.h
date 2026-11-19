@@ -52,12 +52,14 @@ void ConnectSpawns(BaseEnemy& enemy, PreviewEnemySpawn spawn) {
 
 // 既存の敵ID・Profile・攻撃IDをそのまま使用します。登録自体は保存や敵生成を行いません。
 inline void RegisterGameAttackPreviews() {
+    // ゲーム側の敵型と攻撃選択を、エディターが再利用する一覧へ起動時に一度だけ登録する。
     static const bool registered = [] {
         using namespace GameAttackPreviewDetail;
         std::vector<EnemyAttackPreviewDescriptor> entries;
         entries.push_back(Make<EnemySlime>("Slime", "通常スライム（溜めジャンプ急降下）",
             nullptr, &EnemySlime::GetDebugMoveStateName));
 
+        // 炎は本番AIとコピー能力の両方で再生できるため、シーケンスと本体制御の編集を許可する。
         auto fire = Make<EnemyFireSlime>("FireSlime", "炎スライム");
         fire.damageType = DamageType::Fire;
         fire.targetDistance = 3.2f;
@@ -69,6 +71,7 @@ inline void RegisterGameAttackPreviews() {
         fire.canEditSequence = [](const EnemyAttackDefinition*, bool) { return true; };
         entries.push_back(std::move(fire));
 
+        // 雷は型に登録された攻撃IDと現在の段階をプレビューの選択・表示に使う。
         auto thunder = Make<EnemyThunderSlime>("ThunderSlime", "雷スライム（近距離放電／連続落雷）",
             &EnemyThunderSlime::SetDebugPreviewAttackId, &EnemyThunderSlime::GetDebugAttackPhaseName);
         thunder.damageType = DamageType::Electric;
@@ -84,6 +87,7 @@ inline void RegisterGameAttackPreviews() {
             return concrete && (concrete->IsHookSplitPulled() || concrete->HasSplit())
                 ? concrete->GetDebugHookSplitPhaseName() : nullptr;
         };
+        // 巨大スライムは通常攻撃に加え、接地時と空中で拘束された時のフック分裂を個別に確認できる。
         giant.options = {
             {"hook_split_ground", "フック分裂（接地から抵抗）", 8.0f, [] { return 3.5f; }},
             {"hook_split_air", "フック分裂（空中拘束から着地）", 8.0f, [] { return 4.2f; }}
@@ -92,6 +96,7 @@ inline void RegisterGameAttackPreviews() {
             auto* concrete = dynamic_cast<EnemyGiantSlime*>(&enemy);
             if (!concrete || !context.target ||
                 (context.optionId != "hook_split_ground" && context.optionId != "hook_split_air")) return;
+            // 空中版だけ標的との引き合いを始める前に高度と下降速度を設定する。
             if (context.optionId == "hook_split_air") {
                 enemy.SetTranslate(context.ground + engine::Vector3{0.0f, 5.5f, 0.0f});
                 enemy.SetVelocity({0.0f, -1.5f, 0.0f});
@@ -99,6 +104,7 @@ inline void RegisterGameAttackPreviews() {
             }
             concrete->BeginHookSplitPull(context.target->GetWorldPosition());
         };
+        // 指定した分裂オプションに限り、本番と同じ引っ張りの更新を固定刻みごとに呼ぶ。
         giant.updateInteraction = [](BaseEnemy& enemy, float deltaTime, const EnemyAttackPreviewContext& context) {
             auto* concrete = dynamic_cast<EnemyGiantSlime*>(&enemy);
             return concrete && context.target &&
@@ -114,10 +120,12 @@ inline void RegisterGameAttackPreviews() {
         prism.duration = 4.2f;
         prism.canAuthor = true;
         prism.sequenceHelp = "この敵では炎属性の攻撃枠で実行します。命令の時刻0は詠唱完了時です。複製した攻撃も同じ詠唱とAIを使用します。";
+        // プリズムは炎攻撃の既定IDか、既にシーケンスを持つ技だけ編集対象にする。
         prism.canEditSequence = [](const EnemyAttackDefinition* attack, bool playerCopy) {
             return !playerCopy && attack && (attack->id == "fire_fan" ||
                 !attack->sequence.events.empty() || !attack->sequence.tracks.empty());
         };
+        // 発動まで進めず詠唱だけを見る設定を、敵のプレビュー用状態に渡す。
         prism.prepare = [](BaseEnemy& enemy, const EnemyAttackPreviewContext& context) {
             if (auto* concrete = dynamic_cast<EnemyPrismSlime*>(&enemy))
                 concrete->SetDebugPreviewChantOnly(context.preparationOnly);
@@ -128,6 +136,7 @@ inline void RegisterGameAttackPreviews() {
         entries.push_back(Make<EnemyMagmaSlime>("MagmaSlime", "マグマスライム（三連砲／突進／火山プレス）",
             &EnemyMagmaSlime::SetDebugPreviewAttackId, &EnemyMagmaSlime::GetDebugAttackPhaseName));
         auto bomber = Make<EnemyBomber>("Bomber", "ボマースライム（爆弾投げ）");
+        // 投げたボムも隔離プレビューと終了時の片付けに含める。
         bomber.connectSpawns = ConnectSpawns<EnemyBomber>;
         entries.push_back(std::move(bomber));
         entries.push_back(Make<EnemyWindSlime>("WindSlime", "風スライム（暴風ブレス／空中三連風弾）",
@@ -136,11 +145,13 @@ inline void RegisterGameAttackPreviews() {
         auto king = Make<EnemyFalseKingSlime>("FalseKingSlime", "偽王スライム（最終ボス・3形態）",
             &EnemyFalseKingSlime::SetDebugPreviewAttackId, &EnemyFalseKingSlime::GetDebugAttackPhaseName);
         king.damageType = DamageType::Explosion;
+        // 封印失敗の演出は通常攻撃とは別の確認項目にし、尺は現在の調整値から求める。
         king.options = {{"seal_barrage_preview", "第2形態：封印失敗の黒晶墜槍", 15.0f, [] {
             const auto& tuning = CrownFinaleTuning::Get();
             return 1.25f + tuning.sealCastTime + tuning.sealBarrageMovieDuration + tuning.sealBarrageRecovery;
         }, true}};
         entries.push_back(std::move(king));
+        // 全種類の用意が済んだら一括で登録し、重複などの失敗を呼び出し側へ返す。
         return EnemyAttackPreviewRegistry::Register(std::move(entries));
     }();
     assert(registered && "attack preview registration failed");

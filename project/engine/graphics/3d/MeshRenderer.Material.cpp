@@ -12,6 +12,8 @@
 #include <algorithm>
 #include <cmath>
 
+namespace engine {
+
 namespace {
 
 // 非有限値と極端な繰り返し数を材質定数へ渡さないよう制限します。
@@ -62,6 +64,7 @@ MeshRenderer::MaterialState MeshRenderer::CaptureMaterialState() const {
 void MeshRenderer::RestoreMaterialState(const MaterialState& state) {
     if (!materialData_ || !state.valid_) return;
     *materialData_ = state.parameters_;
+    // 保持している入力色も先に戻し、現在の色空間設定でGPU用の色を計算し直します。
     SetColor(state.authoringColor_);
     SetBlendMode(state.blendMode_);
 }
@@ -71,6 +74,7 @@ void MeshRenderer::SetPortalClip(const PortalClipSettings& settings) {
     const auto finite = [](float value, float fallback) { return std::isfinite(value) ? value : fallback; };
     auto normal = settings.normal;
     const float length = engine::Math::Length(normal);
+    // クリップ面までの距離が法線の長さに左右されないよう単位長へ揃えます。無効な法線は正面向きへ戻します。
     normal = std::isfinite(length) && length > 0.0001f ? normal * (1.0f / length) : engine::Vector3{0, 0, 1};
     materialData_->portalClipEnabled = settings.enabled ? 1.0f : 0.0f;
     materialData_->portalClipProgress = std::clamp(finite(settings.progress, 0.0f), 0.0f, 1.0f);
@@ -105,6 +109,7 @@ void MeshRenderer::SetSelectedLighting(int32_t type) {
 }
 
 void MeshRenderer::SetColor(const engine::Vector4& color) {
+    // 保存と編集用には入力色を保持する。GPUには現在の作業色空間へ変換した値を書く。
     materialColor_ = color;
     if (materialData_)
         materialData_->color = engine::ColorSpace::AuthoringToWorking(materialColor_);
@@ -221,6 +226,7 @@ void MeshRenderer::UpdateUvTransform() {
         effectiveTiling.y *= scaleTiling.y;
     }
 
+    // 画像を横・縦に何回繰り返すかをUV座標へ掛けます。元メッシュのUVそのものは変更しません。
     materialData_->uvTransform = engine::Math::MakeScaleMatrix({ effectiveTiling.x, effectiveTiling.y, 1.0f });
 }
 
@@ -250,3 +256,5 @@ void MeshRenderer::SetEmissive(float emissive) {
 float MeshRenderer::GetEmissive() const {
     return materialData_ ? materialData_->emissive : 1.0f;
 }
+
+} // namespace engine

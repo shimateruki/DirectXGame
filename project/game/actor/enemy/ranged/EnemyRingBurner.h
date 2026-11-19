@@ -18,7 +18,7 @@ class EnemyRingBurner : public BaseEnemy {
     /// 配置用の熱輪砲台複製を作る。
     std::unique_ptr<engine::Object3D> Clone() const override;
 
-    /// 持ち上げ状態を基底側へ通知する。
+    /// 捕獲できない固定砲台なので、運搬状態への要求を受け流します。
     void SetCarried(bool isCarried) override;
 
     bool IsPullImmune() const override { return true; }

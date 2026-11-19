@@ -6,7 +6,7 @@ ImGuiManager* ImGuiManager::GetInstance() {
     return &instance;
 }
 
-void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
+void ImGuiManager::Initialize(WinApp* winApp, engine::DirectXCommon* dxCommon) {
     (void)winApp;
 #ifdef USE_IMGUI
     dxCommon_ = dxCommon;
@@ -101,12 +101,14 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
     // 2. DX12レンダラーの初期化 (マルチテクスチャ対応版)
     ID3D12DescriptorHeap* srvDescriptorHeap = SrvManager::GetInstance()->GetDescriptorHeap();
 
+    // CPU書き込み用とGPU参照用に、共有ヒープの同じインデックスから両方のハンドルを取得します。
     auto allocSrv = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE* outCpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE* outGpuHandle) {
         uint32_t index = SrvManager::GetInstance()->Allocate();
         *outCpuHandle = SrvManager::GetInstance()->GetCpuDescriptorHandle(index);
         *outGpuHandle = SrvManager::GetInstance()->GetGpuDescriptorHandle(index);
     };
 
+    // 現在のコールバックは割り当て番号をヒープへ返却しません。ここでハンドルを受け取っても空き枠は増えません。
     auto freeSrv = [](ImGui_ImplDX12_InitInfo* info, D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle, D3D12_GPU_DESCRIPTOR_HANDLE gpuHandle) {
     
     };
@@ -132,6 +134,7 @@ void ImGuiManager::Initialize(WinApp* winApp, DirectXCommon* dxCommon) {
 void ImGuiManager::Finalize() {
 #ifdef USE_IMGUI
     // バックエンドをシャットダウン
+    // 描画・入力バックエンドが参照するImGuiコンテキストを残したまま、バックエンドを先に終了します。
     ImGui_ImplDX12_Shutdown();
     ImGui_ImplWin32_Shutdown();
 

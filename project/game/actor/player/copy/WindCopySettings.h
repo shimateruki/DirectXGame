@@ -58,13 +58,16 @@ struct WindCopySettings {
             std::ifstream in(kConfigPath);
             if (!in) return;
             nlohmann::json j; in >> j;
+            // 読み込み途中の値は別の設定に置き、成功時だけ現在値を差し替える。
             WindCopySettings next;
             next.liftJumpScale = j.value("liftJumpScale", next.liftJumpScale);
             next.glideDuration = j.value("glideDuration", next.glideDuration);
             next.liftCooldown = j.value("liftCooldown", next.liftCooldown);
+            // 旧ファイルに新しい再使用間隔がなければ、以前のダッシュ名のキーから引き継ぐ。
             if (!j.contains("liftCooldown")) next.liftCooldown = j.value("dashCooldown", next.liftCooldown);
             next.glideFallSpeed = j.value("glideFallSpeed", next.glideFallSpeed);
             next.invincibleTime = j.value("invincibleTime", next.invincibleTime);
+            // E技の竜巻を、動きや命中の設定と描画用の寸法に分けて読み込む。
             next.vortexSpeed = j.value("vortexSpeed", next.vortexSpeed);
             next.vortexLifetime = j.value("vortexLifetime", next.vortexLifetime);
             next.vortexHoldDuration = j.value("vortexHoldDuration", next.vortexHoldDuration);
@@ -77,10 +80,12 @@ struct WindCopySettings {
             next.vortexVisualHeight = j.value("vortexVisualHeight", next.vortexVisualHeight);
             next.vortexVisualWidth = j.value("vortexVisualWidth", next.vortexVisualWidth);
             next.vortexSpinRate = j.value("vortexSpinRate", next.vortexSpinRate);
+            // すべて読み込んでから補正し、次に能力を使うときの設定にする。
             next.Sanitize(); *this = next;
         } catch (...) {}
     }
     bool Save() const {
+        // 補正済みのコピーを保存し、書き出し中に編集中の値は書き換えない。
         auto safe = *this; safe.Sanitize();
         nlohmann::json j;
         j["liftJumpScale"] = safe.liftJumpScale;
@@ -88,6 +93,7 @@ struct WindCopySettings {
         j["liftCooldown"] = safe.liftCooldown;
         j["glideFallSpeed"] = safe.glideFallSpeed;
         j["invincibleTime"] = safe.invincibleTime;
+        // 風跳びの設定に続き、竜巻の移動・作用・見た目を同じファイルへ出力する。
         j["vortexSpeed"] = safe.vortexSpeed;
         j["vortexLifetime"] = safe.vortexLifetime;
         j["vortexHoldDuration"] = safe.vortexHoldDuration;
@@ -100,6 +106,7 @@ struct WindCopySettings {
         j["vortexVisualHeight"] = safe.vortexVisualHeight;
         j["vortexVisualWidth"] = safe.vortexVisualWidth;
         j["vortexSpinRate"] = safe.vortexSpinRate;
+        // 保存先を作れない場合は書き込まず、UIへ失敗を返す。
         std::error_code ec;
         std::filesystem::create_directories(std::filesystem::path(kConfigPath).parent_path(), ec);
         if (ec) return false;
@@ -132,8 +139,10 @@ struct WindCopySettings {
         ImGui::DragFloat("小型竜巻の表示幅倍率", &vortexVisualWidth, 0.02f, 0.55f, 1.15f);
         ImGui::DragFloat("小型竜巻の回転速度（rad/秒）", &vortexSpinRate, 0.02f, 4.0f, 28.0f);
         Sanitize();
+        // 速度と寿命の積を表示し、設定した二つの値から到達距離を見積もれるようにする。
         ImGui::Text("竜巻中心の最大移動距離 %.1f", vortexSpeed * vortexLifetime);
         static int result = 0;
+        // その場の調整値を次回起動でも使う場合に、設定ファイルへ保存する。
         if (ImGui::Button("風コピー設定を保存")) result = Save() ? 1 : -1;
         if (result) ImGui::TextUnformatted(result > 0 ? "保存しました" : "保存に失敗しました");
     }

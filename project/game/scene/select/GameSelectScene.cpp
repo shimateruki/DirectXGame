@@ -118,6 +118,7 @@ bool GameSelectScene::InitializeLoadingStep() {
         inputManager_ = engine::InputManager::GetInstance();
         LOG("Game Select Initialized!");
         StageManager::GetInstance()->Initialize();
+        // 進行中のステージを起点に、クリア直後は解放済みの次のゲートを初期選択する。
         selectedStageIndex_ = StageManager::GetInstance()->GetCurrentStageIndex();
         if (selectedStageIndex_ < 0 ||
             selectedStageIndex_ >= static_cast<int>(StageManager::GetInstance()->GetStages().size())) {
@@ -129,6 +130,7 @@ bool GameSelectScene::InitializeLoadingStep() {
             ++selectedStageIndex_;
         }
 
+        // 再入場時に前回のゲート操作や演出の参照を持ち越さないよう、選択以外の進行状態を戻す。
         previousSelectedStageIndex_ = -1;
         stageDecisionCooldown_ = 0.0f;
         isChangingStage_ = false;
@@ -159,6 +161,7 @@ bool GameSelectScene::InitializeLoadingStep() {
         return false;
 
     case 1:
+        // 配置を読む前に、カメラ入力とパーティクル、ステージ選択のルールを準備する。
         CameraManager::GetInstance()->Initialize();
         CameraManager::GetInstance()->SetInputManager(inputManager_);
         particleSystem_ = std::make_unique<engine::ParticleSystem>();
@@ -172,6 +175,7 @@ bool GameSelectScene::InitializeLoadingStep() {
         return false;
 
     case 2: {
+        // 配置とゲート判定に使う管理クラスを作り、ロックオンと案内の描画部品も確保する。
         objectManager_ = std::make_unique<ObjectManager>();
         lockOnSystem_ = std::make_unique<LockOnSystem>();
         lockOnSystem_->Initialize(inputManager_);
@@ -192,6 +196,7 @@ bool GameSelectScene::InitializeLoadingStep() {
     }
 
     case 3:
+        // GPU 側を初期化してから、鍵とゲートで使用するプリセットを先読みする。
         PrepareGpuParticles();
         GpuParticleManager::GetInstance()->PreloadPresetSystems(
             {kCrownUnlockParticlePreset, kCrownUnlockAfterglowParticlePreset, kGateUnlockCoreParticlePreset,
@@ -202,6 +207,7 @@ bool GameSelectScene::InitializeLoadingStep() {
         return false;
 
     case 4:
+        // このシーンの空の設定を優先し、個別指定がなければ既定の DDS を使う。
         skyboxTextureHandle_ =
             TextureManager::GetInstance()->Load(ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
         skybox_ = std::make_unique<Skybox>();
@@ -230,6 +236,7 @@ bool GameSelectScene::InitializeLoadingStep() {
         return false;
 
     case 6:
+        // HUD の元になる Sprite 配置を読み込み、実行時に使用する部品を紐づける。
         levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/stageSelect_sprite.json");
         // 旧レイアウトに保存された固定案内の部品も実行時の一覧から除く。
         std::erase_if(sprites_, [](const auto& sprite) {
@@ -238,6 +245,7 @@ bool GameSelectScene::InitializeLoadingStep() {
         InitializeStageSelectHUD();
         InitializeStageGateNameLabels();
         LoadStageGateNameSettings();
+        // ステージ選択用ポーズ画面と、そこから開く共通設定画面を準備する。
         pauseMenuOverlay_ = std::make_unique<PauseMenuOverlay>();
         pauseMenuOverlay_->Initialize(GetSpriteCommon(), "Resources/json/sprite/selectPauseMenu.json",
                                       PauseMenuOverlay::Mode::StageSelect);
@@ -248,6 +256,7 @@ bool GameSelectScene::InitializeLoadingStep() {
         return false;
 
     case 7:
+        // カメラ編集データを初期化し、配置に対応する保存済みカメラを適用する。
         CameraEditor::GetInstance()->Initialize();
         CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("game_camera.json"));
         ++loadingInitializePhase_;
@@ -257,6 +266,7 @@ bool GameSelectScene::InitializeLoadingStep() {
     case 8: {
         auto* gameData = GameDataManager::GetInstance();
         gameData->MarkStageUnlockSeen(0);
+        // クリア報酬を受け取り、帰還演出がなければ続けて報酬演出を始める。
         pendingStageClearRewardPresentation_ = gameData->ConsumeStageClearRewardPresentation();
         const bool startedReturnPresentation =
             StartStageReturnPresentation(gameData->ConsumeStageSelectReturnPresentation());
@@ -265,6 +275,7 @@ bool GameSelectScene::InitializeLoadingStep() {
             pendingStageClearRewardPresentation_ = {};
         }
 
+        // 帰還・報酬のいずれも動いていない場合に限り、新しいゲートの解放演出を予約する。
         unlockingStageIndex_ =
             (gateReturnPresentationActive_ || crownCountPresentationActive_) ? -1 : FindPendingUnlockStage();
         if (unlockingStageIndex_ >= 0) {
@@ -294,11 +305,12 @@ float GameSelectScene::GetLoadingInitializeProgress() const {
 
 void GameSelectScene::OnActivated() {
     // 共有ライト状態は先読み中ではなく、ステージセレクトが有効になった時点で適用する。
-    LightManager::GetInstance()->LoadState(ResolveSceneLightPath("Resources/json/light/stageSelect.json"));
+    engine::LightManager::GetInstance()->LoadState(ResolveSceneLightPath("Resources/json/light/stageSelect.json"));
     BaseScene::OnActivated();
 }
 
 void GameSelectScene::Finalize() {
+    // シーンをまたいで入場演出や画面の帯が残らないよう解除する。
     gateEntryPresentation_.Reset();
     ResetGateCinematicBars();
     GimmickStageGate::ResetSceneEntries(*this);
@@ -315,6 +327,7 @@ void GameSelectScene::Finalize() {
     stageGateNameLabels_.clear();
     stageGateStarIcons_.clear();
 
+    // 両オーバーレイに終了処理を通してから、シーンのオブジェクト管理を破棄する。
     if (settingsOverlay_) {
         settingsOverlay_->Finalize();
         settingsOverlay_.reset();
@@ -330,6 +343,7 @@ void GameSelectScene::Finalize() {
 }
 
 void GameSelectScene::Update(float deltaTime) {
+    // 編集モードへ戻ったらゲート演出の対象と遷移予約を破棄し、帯表示を片付ける。
     if (gateEntryCinematicActive_ && !SceneManager::GetInstance()->IsPlaying()) {
         gateEntryPresentation_.Reset();
         gateEntryCinematicActive_ = false;
@@ -337,6 +351,7 @@ void GameSelectScene::Update(float deltaTime) {
         isChangingStage_ = false;
         ResetGateCinematicBars();
     }
+    // ゲート側が入場を進めるフレームは、ステージ選択の操作を重ねない。
     if (GimmickStageGate::UpdateSceneEntry(*this, deltaTime)) return;
     // ポーズ中はゲーム側の時計と衝突処理を進めず、オーバーレイだけ更新する。
     if (HandlePauseOverlay(deltaTime)) {
@@ -347,7 +362,7 @@ void GameSelectScene::Update(float deltaTime) {
 
     // --- ポストエフェクト更新 ---
     PostEffect::GetInstance()->Update(deltaTime);
-    Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
 
     if (activeCamera) {
         PostEffect::GetInstance()->GetParams()->projectionInverse = engine::Math::Inverse(activeCamera->GetProjectionMatrix());
@@ -356,11 +371,12 @@ void GameSelectScene::Update(float deltaTime) {
     static engine::Math math;
     LightEditor::GetInstance()->Update();
 
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
     // --- ロックオン & カメラ制御 ---
     lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_, deltaTime);
 
+    // 解錠演出が視点を決めている間は、通常の追従カメラへ更新を渡さない。
     if (unlockingStageIndex_ < 0) {
         CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
     }
@@ -376,6 +392,7 @@ void GameSelectScene::Update(float deltaTime) {
         float w = targetCenter.x * viewProj.m[0][3] + targetCenter.y * viewProj.m[1][3] +
                   targetCenter.z * viewProj.m[2][3] + viewProj.m[3][3];
 
+        // カメラの手前にある対象だけ透視除算し、背面や除算できない位置ではアイコンを隠す。
         if (w > 0.001f) {
             engine::Vector3 ndc;
             ndc.x = (targetCenter.x * viewProj.m[0][0] + targetCenter.y * viewProj.m[1][0] +
@@ -392,6 +409,7 @@ void GameSelectScene::Update(float deltaTime) {
 
             lockOnSprite_->SetPosition({screenX, screenY});
 
+            // 対象の大きさと奥行きからアイコンを拡縮し、近すぎても遠すぎても視認できる範囲に収める。
             float objSizeX = aabb.max.x - aabb.min.x;
             float objSizeY = aabb.max.y - aabb.min.y;
             float objSizeZ = aabb.max.z - aabb.min.z;
@@ -413,9 +431,9 @@ void GameSelectScene::Update(float deltaTime) {
 
     // カメラ操作
     if (!CameraEditor::GetInstance()->IsEditorMode()) {
-        Camera::FollowMode currentMode = camera->GetFollowMode();
+        engine::Camera::FollowMode currentMode = camera->GetFollowMode();
 
-        if (currentMode == Camera::FollowMode::Aimable || currentMode == Camera::FollowMode::FirstPerson) {
+        if (currentMode == engine::Camera::FollowMode::Aimable || currentMode == engine::Camera::FollowMode::FirstPerson) {
             camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
             engine::Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
             if (mouseDelta.x != 0.0f || mouseDelta.y != 0.0f)
@@ -444,6 +462,7 @@ void GameSelectScene::Update(float deltaTime) {
         CameraManager::GetInstance()->Update(0.0f);
     }
 
+    // ワールド更新後の戻り位置をカメラへ反映する。時刻は0秒更新で据え置き、演出を二度進めない。
     if (gateReturnPresentationActive_) {
         UpdateStageReturnPresentation(0.0f);
         CameraManager::GetInstance()->Update(0.0f);
@@ -519,7 +538,7 @@ void GameSelectScene::Draw() {
     // ゲートとプレイヤーを通常の3Dパスに描き、半透明・霧・特殊材質を後段へ回します。
     // 各パスで近距離のプレイヤーと子パーツを同じ条件で除外します。
     bool isFirstPerson = false;
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
     // FollowModeとは別に、壁際でカメラが胸元に寄った場合も身体を隠します。
     if (player_ && camera) {
@@ -532,11 +551,11 @@ void GameSelectScene::Draw() {
             isFirstPerson = true;
     }
 
-    ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
-    ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
+    ID3D12Resource* pointLightRes = engine::LightManager::GetInstance()->GetPointLightResource();
+    ID3D12Resource* spotLightRes = engine::LightManager::GetInstance()->GetSpotLightResource();
 
-    if (skybox_ && camera && LightManager::GetInstance()->IsSkyboxEnabled()) {
-        skybox_->SetTextureHandle(LightManager::GetInstance()->GetSkyboxTextureHandle());
+    if (skybox_ && camera && engine::LightManager::GetInstance()->IsSkyboxEnabled()) {
+        skybox_->SetTextureHandle(engine::LightManager::GetInstance()->GetSkyboxTextureHandle());
         skybox_->Draw(camera->GetConstantBuffer());
     }
 
@@ -620,6 +639,7 @@ void GameSelectScene::DrawImGui() {
     ImGui::Text("ステージセレクト設定");
     ImGui::Separator();
 
+    // 名札はその場で調整し、保存ボタンを押したときだけ設定ファイルへ書き出します。
     if (ImGui::CollapsingHeader("ゲート名札")) {
         ImGui::DragFloat("完全表示する距離 (m)", &gateNameShowDistance_, 0.5f, 5.0f, 150.0f);
         ImGui::DragFloat("フェード幅 (m)", &gateNameFadeDistance_, 0.5f, 1.0f, 40.0f);
@@ -632,6 +652,7 @@ void GameSelectScene::DrawImGui() {
     }
 
     if (ImGui::CollapsingHeader("ゲート演出デバッグ", ImGuiTreeNodeFlags_DefaultOpen)) {
+        // 現在のプレイヤー位置から突入先を選び、他の演出と競合しないか確認します。
         float nearestDistance = std::numeric_limits<float>::max();
         engine::Object3D* nearestGate = FindNearestStageGate(&nearestDistance);
         const int nearestGateStageIndex = GetStageGateIndex(nearestGate);
@@ -660,6 +681,7 @@ void GameSelectScene::DrawImGui() {
             StartGateEntryCinematic(selectedStageIndex_);
         };
 
+        // テキスト入力中の G キーを、突入ショートカットとして拾わないようにします。
         const bool shortcutPressed =
             canPlayDebug && !ImGui::GetIO().WantTextInput && ImGui::IsKeyPressed(ImGuiKey_G, false);
 
@@ -686,6 +708,7 @@ void GameSelectScene::DrawImGui() {
 
     if (ImGui::CollapsingHeader("王冠鍵 解放ムービーデバッグ", ImGuiTreeNodeFlags_DefaultOpen)) {
         const auto& stages = StageManager::GetInstance()->GetStages();
+        // 最初から入れるステージを候補から外し、選択をステージ一覧の範囲に収めます。
         static int debugUnlockStageIndex = 1;
         const int maxUnlockStageIndex = static_cast<int>(stages.size()) - 1;
         debugUnlockStageIndex = std::clamp(debugUnlockStageIndex, 1, std::max(maxUnlockStageIndex, 1));
@@ -711,6 +734,7 @@ void GameSelectScene::DrawImGui() {
             }
         }
 
+        // 解放プレビューにはゲート本体、鍵、南京錠の三つが必要です。
         engine::Object3D* previewGate = maxUnlockStageIndex >= 1 ? FindStageGateByIndex(debugUnlockStageIndex) : nullptr;
         engine::Object3D* previewKey =
             maxUnlockStageIndex >= 1
@@ -736,6 +760,7 @@ void GameSelectScene::DrawImGui() {
             ImGui::BeginDisabled();
         }
 
+        // 専用の再生入口を使い、進行データを更新せずに解放演出を確認します。
         if (ImGui::Button("王冠鍵の解放ムービーを再生", ImVec2(-1.0f, 38.0f))) {
             StartDebugUnlockPresentation(debugUnlockStageIndex);
         }
@@ -761,9 +786,11 @@ void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
             stageDecisionCooldown_ = 0.0f;
     }
 
+    // 接触を調べる前に、報酬・解放演出の終了や次の開始を処理する。
     UpdateStageClearRewardPresentation(deltaTime);
     UpdateUnlockPresentation(deltaTime);
 
+    // 突入演出中もゲートと装飾の表示は更新し、別の入口候補を選び直さない。
     if (gateEntryCinematicActive_) {
         ApplyStageGateStates();
         UpdateStageSelectDecorations(deltaTime);
@@ -771,6 +798,7 @@ void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
         return;
     }
 
+    // 帰還時はプレイヤーを出口に移動中のため、途中でゲートに触れても入り直さない。
     if (gateReturnPresentationActive_) {
         ApplyStageGateStates();
         UpdateStageSelectDecorations(deltaTime);
@@ -778,6 +806,7 @@ void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
         return;
     }
 
+    // 王冠報酬と解放の間も通常の自動入場を保留する。
     if (crownCountPresentationActive_ || unlockingStageIndex_ >= 0) {
         ApplyStageGateStates();
         UpdateStageSelectDecorations(deltaTime);
@@ -785,6 +814,7 @@ void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
         return;
     }
 
+    // 最寄りのゲートは選択半径で絞り、進行条件による入場可否は別に求める。
     float nearestDistance = std::numeric_limits<float>::max();
     engine::Object3D* nearestGate = FindNearestStageGate(&nearestDistance);
     bool canEnterGate = false;
@@ -802,6 +832,7 @@ void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
     UpdateStageSelectDecorations(deltaTime);
     UpdateGatePrompt(nullptr, false, deltaTime);
 
+    // 同じゲートに近付いたままのフレームで、選択ログを繰り返さない。
     if (selectedStageIndex_ != previousSelectedStageIndex_) {
         const auto& stages = StageManager::GetInstance()->GetStages();
 
@@ -813,6 +844,7 @@ void GameSelectScene::UpdateStageGateSelection(float deltaTime) {
         previousSelectedStageIndex_ = selectedStageIndex_;
     }
 
+    // 候補に選ばれただけでは入場せず、実際に門の薄い判定面へ触れたときだけ決定する。
     const bool decide = canEnterGate && IsPlayerTouchingStageGate(nearestGate);
 
     if (decide) {
@@ -832,7 +864,7 @@ void GameSelectScene::UpdateGatePrompt(engine::Object3D* nearestGate, bool canEn
         return;
     }
 
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
     if (!camera) {
         gatePromptSprite_->SetVisible(false);
@@ -840,6 +872,7 @@ void GameSelectScene::UpdateGatePrompt(engine::Object3D* nearestGate, bool canEn
         return;
     }
 
+    // ワールド上のプレイヤー頭上を基準に投影し、カメラ前後の範囲外なら案内を消す。
     engine::Vector3 promptWorld = player_->GetWorldPosition();
     promptWorld.y += 1.35f;
 
@@ -853,6 +886,7 @@ void GameSelectScene::UpdateGatePrompt(engine::Object3D* nearestGate, bool canEn
         return;
     }
 
+    // 投影結果をクライアント座標へ直し、案内をプレイヤーの右側へ寄せる。
     const float screenWidth = static_cast<float>(WinApp::GetClientWidth());
     const float screenHeight = static_cast<float>(WinApp::GetClientHeight());
     const float playerScreenX = (ndc.x + 1.0f) * 0.5f * screenWidth;
@@ -865,6 +899,7 @@ void GameSelectScene::UpdateGatePrompt(engine::Object3D* nearestGate, bool canEn
     gatePromptTimer_ += deltaTime;
     screenY += std::sin(gatePromptTimer_ * 4.0f) * 3.0f;
 
+    // 右側の余白が足りなければ左へ反転し、最後に案内の半幅と半高ぶんを画面内に収める。
     if (screenX > screenWidth - baseWidth * 0.5f - 16.0f) {
         screenX = playerScreenX - 104.0f;
     }
@@ -1244,6 +1279,7 @@ bool GameSelectScene::IsPlayerTouchingStageGate(engine::Object3D* gate) const {
     const engine::Vector3 rel = {playerPos.x - gatePos.x, 0.0f, playerPos.z - gatePos.z};
     const float distanceSq = rel.x * rel.x + rel.z * rel.z;
 
+    // 門の横幅と厚みをスケールから求め、極端に小さい・大きい配置も上下限で抑える。
     const engine::Vector3 gateScale = gate->GetScale();
     const float gateSize = std::max(1.0f, std::max(std::fabs(gateScale.x), std::fabs(gateScale.z)));
     const float halfWidth = std::clamp(gateSize * 0.36f, kGateEntryMinHalfWidth, kGateEntryMaxHalfWidth);
@@ -1257,12 +1293,14 @@ bool GameSelectScene::IsPlayerTouchingStageGate(engine::Object3D* gate) const {
         yaw = transform->rotate.y;
     }
 
+    // 相対位置を門の正面と横へ射影し、それぞれ厚みと半幅の範囲に入るか判定する。
     const engine::Vector3 forward = {std::sin(yaw), 0.0f, std::cos(yaw)};
     const engine::Vector3 right = {std::cos(yaw), 0.0f, -std::sin(yaw)};
     const float planeDistance = rel.x * forward.x + rel.z * forward.z;
     const float sideDistance = rel.x * right.x + rel.z * right.z;
     const bool yawPlaneTouch = std::fabs(planeDistance) <= planeThickness && std::fabs(sideDistance) <= halfWidth;
 
+    // 軸の向きを異なる規約で保存していた旧配置も、X/Z の両方を試して受け付ける。
     const bool xPlaneTouch = std::fabs(rel.x) <= planeThickness && std::fabs(rel.z) <= halfWidth;
     const bool zPlaneTouch = std::fabs(rel.z) <= planeThickness && std::fabs(rel.x) <= halfWidth;
     return yawPlaneTouch || xPlaneTouch || zPlaneTouch;

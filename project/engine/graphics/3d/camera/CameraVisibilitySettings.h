@@ -46,6 +46,7 @@ struct CameraVisibilitySettings {
         if (!j.is_object()) return;
         if (j.contains("enabled") && j["enabled"].is_boolean()) enabled = j["enabled"].get<bool>();
         if (j.contains("silhouetteColor") && j["silhouetteColor"].is_array() && j["silhouetteColor"].size() == 4) {
+            // RGBAのいずれかが数値以外なら、一部だけを書き換えず既定の色を保持します。
             bool numeric = true;
             for (const auto& component : j["silhouetteColor"]) numeric = numeric && component.is_number();
             if (numeric) silhouetteColor = j["silhouetteColor"].get<std::array<float, 4>>();
@@ -56,6 +57,7 @@ struct CameraVisibilitySettings {
         read("radius", radius); read("minimumOpacity", minimumOpacity); read("feather", feather);
         read("fadeIn", fadeIn); read("fadeOut", fadeOut); read("collisionRadius", collisionRadius);
         read("recoveryTime", recoveryTime); read("manualReturnDelay", manualReturnDelay);
+        // 欠落した値は既定値を、読み込めた値は制限内の値を使えるよう最後に検証します。
         Validate();
     }
 };

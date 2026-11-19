@@ -18,10 +18,10 @@ public:
     static GpuParticleManager* GetInstance();
 
     /// <summary>描画と Compute に必要な DirectX リソースを準備します。</summary>
-    void Initialize(DirectXCommon* dxCommon);
+    void Initialize(engine::DirectXCommon* dxCommon);
 
     /// <summary>指定されたプリセットだけを読み込み、描画基盤を初期化します。</summary>
-    void InitializeWithPresets(DirectXCommon* dxCommon, const std::vector<std::string>& presetNames);
+    void InitializeWithPresets(engine::DirectXCommon* dxCommon, const std::vector<std::string>& presetNames);
 
     /// <summary>フレーム内の更新済み状態を初期化します。</summary>
     void BeginFrame();
@@ -133,14 +133,13 @@ private:
     // 対象プリセットのJSONを指定ディレクトリから読み込む。
     void LoadPresetFiles(const std::string& directoryPath, const std::vector<std::string>& presetNames);
 
-    DirectXCommon* dxCommon_ = nullptr;
+    engine::DirectXCommon* dxCommon_ = nullptr;
 
     // プリセット名から設定を引き、必要な GPU システムを共有します。
     std::map<std::string, GpuParticleConfig> presets_;
     std::string loadedPresetDirectory_;
 
-    // 同じテクスチャとブレンドモードの粒子は 1 つの GPU システムでまとめます。
-    // キーは "TexturePath_BlendModeIndex" です。
+    // テクスチャ、合成方式、シート、向き、照明、容量などの組み合わせごとにGPUシステムを共有します。
     std::unordered_map<std::string, std::unique_ptr<GpuParticleSystem>> systems_;
 
     // 設定に対応する共有システムを取得し、なければ作成します。
@@ -177,6 +176,7 @@ private:
     // メッシュデータ保持用
     ID3D12Resource* meshVb_ = nullptr;
     uint32_t meshVCount_ = 0;
+    // 発生元バッファの頂点間隔（バイト）。モデルを持たない発生元は0を渡します。
     uint32_t meshVStride_ = 0;
     uint32_t meshBoneSrv_ = 0;
 };

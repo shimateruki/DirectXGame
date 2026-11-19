@@ -26,6 +26,7 @@ public:
         float rotSpeed;
         uint32_t configIndex; // 発生時に割り当てた設定スロット番号。
 
+        // 発生時にコピーした色・大きさ・力場の設定。同じSystemで別プリセットが発生しても、先に生まれた粒子の値を保持します。
         engine::Vector4 memBaseColor;
         engine::Vector4 memMidColor;
         engine::Vector4 memEndColor;
@@ -112,6 +113,7 @@ public:
         float colorIntensity;
         uint32_t currentConfigIndex;
         uint32_t maxParticles;
+        // シーク後の初回描画で、発生時刻から現在まで先に経過したものとして扱う秒数です。
         float initialAge;
 
         uint32_t fieldType;
@@ -171,7 +173,7 @@ public:
     /// <summary>粒子バッファとCompute/描画パイプラインを初期化する。</summary>
     /// <param name="dxCommon">有効期間中に保持するDirectXの管理インスタンス。</param>
     /// <param name="maxParticles">このシステムが確保する粒子数。</param>
-    void Initialize(DirectXCommon* dxCommon, uint32_t maxParticles = kMaxParticles);
+    void Initialize(engine::DirectXCommon* dxCommon, uint32_t maxParticles = kMaxParticles);
 
     /// <summary>時間倍率を掛けた経過秒を蓄積する。Compute命令はまだ発行しない。</summary>
     /// <param name="deltaTime">倍率適用前の経過秒。通常は0以上。</param>
@@ -230,6 +232,7 @@ public:
     // 既定値と下限。実際の確保数はプリセット設定から決められる。
     static constexpr uint32_t kMaxParticles = 10000;
     static constexpr uint32_t kMinParticles = 256;
+    // 発生要求一件につき定数バッファを一枠使用するため、この数を一描画あたりの予約数にします。
     static const uint32_t kMaxEmitRequests = 256;
 
 private:
@@ -243,7 +246,7 @@ private:
     void CreateGraphicsPipeline();
 
     // コマンド発行とリソース確保に使用するDirectX基盤への非所有参照。
-    DirectXCommon* dxCommon_ = nullptr;
+    engine::DirectXCommon* dxCommon_ = nullptr;
 
     // 全粒子の構造化バッファと、Compute書込・描画読込用のDescriptor番号。
     Microsoft::WRL::ComPtr<ID3D12Resource> particleBuffer_;

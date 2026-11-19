@@ -94,6 +94,7 @@ void Object3D::RestoreReplayState(const ReplayState& state) {
         ApplyAnimatorControllerPose(GetModel(), true);
     }
 
+    // パラメータなしのフレームへ戻す場合は、現在の実行時ステータスを残さないようにします。
     if (state.hasParameter) {
         param_ = state.parameter;
     } else {
@@ -103,6 +104,7 @@ void Object3D::RestoreReplayState(const ReplayState& state) {
     SetCollisionAttribute(state.collisionAttribute);
     SetCollisionMask(state.collisionMask);
 
+    // 保存モデル名がある場合はモデルを先に揃え、その初期化で上書きされる材質値を後で復元します。
     if (GetModelName() != state.modelName && !state.modelName.empty()) {
         SetModel(state.modelName);
     }
@@ -115,6 +117,7 @@ void Object3D::RestoreReplayState(const ReplayState& state) {
     SetColor(state.color);
     SetEmissive(state.emissive);
 
+    // コンポーネントを上書きする前に、実行中のインスタンスが依存するアセットの変更を判定します。
     const bool particleAssetChanged =
         particleEmitterComponent_.has_value() != state.particleEmitterComponent.has_value() ||
         (particleEmitterComponent_ && state.particleEmitterComponent &&
@@ -133,7 +136,7 @@ void Object3D::RestoreReplayState(const ReplayState& state) {
     navAgentComponent_ = state.navAgentComponent;
 
     // Assetが変わった場合だけ実行用Instanceを破棄します。
-    // 同じフレームを復元するたびにEffectやGhost Pathを再生成しないようにします。
+    // 同じ素材へ巻き戻すときは既存の粒子放出器と付随MeshEffectを再利用します。
     if (particleAssetChanged) {
         gpuEmitter_.reset();
     }
@@ -149,6 +152,7 @@ void Object3D::RestoreReplayState(const ReplayState& state) {
     // 派生状態を戻してから行列を更新し、復元直後の描画位置へ反映する。
     if (state.custom.is_object() && state.custom.contains("__classProperties"))
         EditorPropertyRegistry::GetInstance()->ReadClassProperties(*this, state.custom["__classProperties"]);
+    // クラスの調整値を先に読み、その値を使う派生クラスの実行状態を後から復元します。
     RestoreReplayCustomState(state.custom);
     UpdateLocalMatrix();
     UpdateWorldMatrix();

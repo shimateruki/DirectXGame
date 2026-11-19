@@ -85,10 +85,10 @@ class EnemyThunderSlime : public BaseEnemy {
     void UpdateFacing(const engine::Vector3& direction);
 
     // 放電攻撃前のチャージ状態へ移行します。
-    void StartCharge();
+    void StartCloseRangeShock();
 
     // 残り時間で円形予兆と電弧を強め、終了時に一度だけ放電する。
-    void UpdateCharge(float deltaTime, const engine::Vector3& direction);
+    void UpdateCloseRangeShock(float deltaTime, const engine::Vector3& direction);
 
     // チャージ完了後に雷範囲攻撃を発生させます。
     void ReleaseShock(const engine::Vector3& direction);

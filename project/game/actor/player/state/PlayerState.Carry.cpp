@@ -18,6 +18,7 @@
 // 拘束した敵を持ち運ぶ状態をまとめています。
 
 void PlayerStateCarry::Enter(Player* player) {
+    // 運搬中も移動できるよう操作を有効にし、抵抗演出の時刻は持ち上げるたびに初期化します。
     if (player) {
         player->SetIsControlActive(true); // 持ち運び中もプレイヤーは動ける！
         player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Carry);
@@ -33,6 +34,7 @@ void PlayerStateCarry::Enter(Player* player) {
 }
 
 void PlayerStateCarry::Update(Player* player, float deltaTime) {
+    // 運搬者がいなければ位置基準がないため、姿勢を更新しません。
     if (!player)
         return;
 
@@ -40,6 +42,7 @@ void PlayerStateCarry::Update(Player* player, float deltaTime) {
 
     engine::Object3D* enemy = player->GetCarriedEnemy();
 
+    // 保持中の敵がいるときだけ、プレイヤーの頭上に揺れを重ねます。
     if (enemy) {
         engine::Vector3 playerPos = player->GetWorldPosition();
 
@@ -89,6 +92,7 @@ void PlayerStateCarry::Exit(Player* player) {
             enemy->UpdateWorldMatrix();
         }
 
+        // 参照を解放する前に敵の姿勢を復元できるよう、解除は最後に行います。
         player->ReleaseCarriedEnemy(true);
     }
 }

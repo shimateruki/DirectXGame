@@ -17,6 +17,8 @@
 #include <DebugConsole.h>
 #include <LightManager.h>
 
+namespace engine {
+
 
 
 // ==========================================
@@ -35,19 +37,22 @@ void Model::Update() {
     Update(false);
 }
 
-// 再生状態や強制更新フラグに応じて、アニメーション時間・スケルトン・GPUバッファを更新する。
+// 適用済みの関節姿勢からスケルトン行列とGPUボーンバッファを再計算する。
 void Model::Update(bool force) {
     uint32_t currentFrame = DirectXCommon::GetInstance()->GetFrameCount();
 
+    // 同じModelが一フレームの複数の描画経路から参照されても、通常は行列とボーンバッファを一度だけ更新します。
     if (!force && lastUpdateFrame_ == currentFrame) {
         return; // すでにこのフレームで更新済み
     }
 
     lastUpdateFrame_ = currentFrame;
 
+    // 呼び出し元が選んだ関節姿勢を反映する。クリップの選択や時刻の進行はここでは行わない。
     UpdateSkeleton(modelData_.skeleton);
 
     //  ボーン情報の更新
+    // 関節の親子変換が最新になってから、GPUスキニングに使う行列を更新します。
     UpdateBoneBuffer();
 }
 
@@ -128,7 +133,7 @@ Model::Node* Model::FindNode(Node& node, const std::string& name) {
     return nullptr;
 }
 
-// 指定アニメーション名に対応するアニメーションをスケルトンへ適用する。
+// 受け取ったクリップの指定秒を評価し、スケルトンの関節姿勢へ適用する。
 void Model::ApplyAnimation(const Animation& animation, float time) {
     ApplyAnimationToSkeleton(modelData_.skeleton, animation, time);
 }
@@ -144,3 +149,5 @@ const Model::Animation* Model::GetAnimation(const std::string& name) const {
     // 見つからなければ nullptr
     return nullptr;
 }
+
+} // namespace engine

@@ -27,6 +27,7 @@ namespace engine {
 // 歪み系エフェクトは描画順が重要なので、通常Drawとは分けて管理する。
 // ========================================================================
 void Object3D::UpdateAttachedEffects(float deltaTime) {
+    // エフェクトの位置は本体のワールド位置に追従させ、本体や親の拡縮はエフェクトへ渡しません。
     effectAnchor_.translate = GetWorldPosition();
     effectAnchor_.scale = { 1.0f, 1.0f, 1.0f };
 
@@ -45,144 +46,81 @@ void Object3D::UpdateAttachedEffects(float deltaTime) {
     effectAnchor_.rotate = { 0.0f, rootRotY, 0.0f };
     effectAnchor_.UpdateMatrix();
 
-    // ========================================================
-    // --- スロット1 ---
-    // ========================================================
-    const std::string& primaryEffect = GetMeshEffect1Name();
-    const std::string& secondaryEffect = GetMeshEffect2Name();
-
-    if (!primaryEffect.empty()) {
-        if (attachedEffects1_.empty() || currentMeshEffect1_ != primaryEffect) {
-            attachedEffects1_.clear();
-            currentMeshEffect1_ = "";
-
-            std::ifstream file(primaryEffect);
-
-            if (file.is_open()) {
-                json j;
-                file >> j;
-                file.close();
-
-                int volumeMode = j.contains("VolumeMode") ? (int)j["VolumeMode"] : 0;
-                int numSpawns = (volumeMode == 2) ? 3 : (volumeMode == 1 ? 2 : 1);
-
-                for (int i = 0; i < numSpawns; ++i) {
-                    auto effect = std::make_unique<EffectObject3D>();
-                    effect->Initialize(common_);
-                    effect->SetName(primaryEffect + "_" + std::to_string(i));
-
-                    if (effect->LoadFromJson(primaryEffect)) {
-                        engine::Vector3 localRot = effect->GetRotation();
-                        engine::Vector3 localPos = effect->GetTranslate();
-
-                        if (volumeMode == 1 && i == 1) {
-                            localRot.x += (std::numbers::pi_v<float> * 0.5f); // 90度クロス
-                        }
-                        else if (volumeMode == 2) {
-                            float gap = 0.02f;
-                            engine::Vector3 localZ;
-                            localZ.x = sinf(localRot.y) * cosf(localRot.x);
-                            localZ.y = -sinf(localRot.x);
-                            localZ.z = cosf(localRot.y) * cosf(localRot.x);
-
-                            if (i == 1) {
-                                localPos.x += localZ.x * gap;
-                                localPos.y += localZ.y * gap;
-                                localPos.z += localZ.z * gap;
-                            }
-                            if (i == 2) {
-                                localPos.x -= localZ.x * gap;
-                                localPos.y -= localZ.y * gap;
-                                localPos.z -= localZ.z * gap;
-                            }
-                        }
-
-                        effect->SetTranslate(localPos);
-                        effect->SetRotation(localRot);
-
-                        // ★修正: 親の階層には繋がず、専用のアンカーを親にする！
-                        effect->SetTransformAnchor(&effectAnchor_);
-
-                        attachedEffects1_.push_back(std::move(effect));
-                    }
-                }
-
-                currentMeshEffect1_ = primaryEffect;
-            }
+    // 変更された枠だけを作り直し、二つの枠の状態を独立して保持する。
+    const auto refreshSlot = [this](const std::string& path, std::string& loadedPath,
+                                    std::vector<std::unique_ptr<Object3D>>& effects) {
+        if (!path.empty() && !effects.empty() && loadedPath == path) {
+            return;
         }
-    }
-    else {
-        attachedEffects1_.clear();
-        currentMeshEffect1_ = "";
-    }
 
-    // ========================================================
-    // --- スロット2 ---
-    // ========================================================
-    if (!secondaryEffect.empty()) {
-        if (attachedEffects2_.empty() || currentMeshEffect2_ != secondaryEffect) {
-            attachedEffects2_.clear();
-            currentMeshEffect2_ = "";
-
-            std::ifstream file(secondaryEffect);
-
-            if (file.is_open()) {
-                json j;
-                file >> j;
-                file.close();
-
-                int volumeMode = j.contains("VolumeMode") ? (int)j["VolumeMode"] : 0;
-                int numSpawns = (volumeMode == 2) ? 3 : (volumeMode == 1 ? 2 : 1);
-
-                for (int i = 0; i < numSpawns; ++i) {
-                    auto effect = std::make_unique<EffectObject3D>();
-                    effect->Initialize(common_);
-                    effect->SetName(secondaryEffect + "_" + std::to_string(i));
-
-                    if (effect->LoadFromJson(secondaryEffect)) {
-                        engine::Vector3 localRot = effect->GetRotation();
-                        engine::Vector3 localPos = effect->GetTranslate();
-
-                        if (volumeMode == 1 && i == 1) {
-                            localRot.x += (std::numbers::pi_v<float> * 0.5f);
-                        }
-                        else if (volumeMode == 2) {
-                            float gap = 0.02f;
-                            engine::Vector3 localZ;
-                            localZ.x = sinf(localRot.y) * cosf(localRot.x);
-                            localZ.y = -sinf(localRot.x);
-                            localZ.z = cosf(localRot.y) * cosf(localRot.x);
-
-                            if (i == 1) {
-                                localPos.x += localZ.x * gap;
-                                localPos.y += localZ.y * gap;
-                                localPos.z += localZ.z * gap;
-                            }
-                            if (i == 2) {
-                                localPos.x -= localZ.x * gap;
-                                localPos.y -= localZ.y * gap;
-                                localPos.z -= localZ.z * gap;
-                            }
-                        }
-
-                        effect->SetTranslate(localPos);
-                        effect->SetRotation(localRot);
-
-                        // ★修正: 親の階層には繋がず、専用のアンカーを親にする！
-                        effect->SetTransformAnchor(&effectAnchor_);
-
-                        attachedEffects2_.push_back(std::move(effect));
-                    }
-                }
-
-                currentMeshEffect2_ = secondaryEffect;
-            }
+        effects.clear();
+        loadedPath.clear();
+        if (path.empty()) {
+            return;
         }
-    }
-    else {
-        attachedEffects2_.clear();
-        currentMeshEffect2_ = "";
-    }
+
+        // ファイルを開けない場合は枠を空に保ち、次の更新で再試行する。
+        std::ifstream file(path);
+
+        if (file.is_open()) {
+            json j;
+            file >> j;
+            file.close();
+
+            // 立体化の設定から面数を決め、各面をアンカー基準で配置する。
+            int volumeMode = j.contains("VolumeMode") ? (int)j["VolumeMode"] : 0;
+            int numSpawns = (volumeMode == 2) ? 3 : (volumeMode == 1 ? 2 : 1);
+
+            for (int i = 0; i < numSpawns; ++i) {
+                auto effect = std::make_unique<EffectObject3D>();
+                effect->Initialize(common_);
+                effect->SetName(path + "_" + std::to_string(i));
+
+                if (effect->LoadFromJson(path)) {
+                    engine::Vector3 localRot = effect->GetRotation();
+                    engine::Vector3 localPos = effect->GetTranslate();
+
+                    if (volumeMode == 1 && i == 1) {
+                        localRot.x += (std::numbers::pi_v<float> * 0.5f); // 90度クロス
+                    }
+                    else if (volumeMode == 2) {
+                        float gap = 0.02f;
+                        engine::Vector3 localZ;
+                        // プリセットのピッチとヨーからローカル正面を求め、中央の面の前後に一枚ずつ離して重ねます。
+                        localZ.x = sinf(localRot.y) * cosf(localRot.x);
+                        localZ.y = -sinf(localRot.x);
+                        localZ.z = cosf(localRot.y) * cosf(localRot.x);
+
+                        if (i == 1) {
+                            localPos.x += localZ.x * gap;
+                            localPos.y += localZ.y * gap;
+                            localPos.z += localZ.z * gap;
+                        }
+                        if (i == 2) {
+                            localPos.x -= localZ.x * gap;
+                            localPos.y -= localZ.y * gap;
+                            localPos.z -= localZ.z * gap;
+                        }
+                    }
+
+                    effect->SetTranslate(localPos);
+                    effect->SetRotation(localRot);
+
+                    // 本体のボーン階層から独立したアンカーに追従させる。
+                    effect->SetTransformAnchor(&effectAnchor_);
+
+                    // 読み込みとアンカー設定が済んだエフェクトだけを枠へ登録し、下の毎フレーム更新に引き渡します。
+                    effects.push_back(std::move(effect));
+                }
+            }
+
+            loadedPath = path;
+        }
+    };
+
+    // 先に両方の枠を更新し、新しく読み込んだエフェクトもこのフレームから進めます。
+    refreshSlot(GetMeshEffect1Name(), currentMeshEffect1_, attachedEffects1_);
+    refreshSlot(GetMeshEffect2Name(), currentMeshEffect2_, attachedEffects2_);
 
     // 配列内のすべてのエフェクトを更新
     for (auto& effect : attachedEffects1_) {

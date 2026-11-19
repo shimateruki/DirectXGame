@@ -26,11 +26,13 @@ struct PlayerAttackMovement {
     engine::Vector3 Apply(const engine::Vector3& current, const engine::Vector3& desired, bool grounded, float deltaTime) const {
         // 空中では瞬時に速度を奪わず入力へ近づけます。鉛直速度は常に呼び出し元の値を保ちます。
         auto result = current;
+        // 攻撃が水平速度を指定する間は入力や接地状態による補間を適用しません。
         if (enabled && overrideHorizontalVelocity) {
             result.x = horizontalVelocity.x;
             result.z = horizontalVelocity.z;
             return result;
         }
+        // 上書きがなければ入力速度に接地・空中別の倍率を掛け、空中だけ時間に応じて追従させます。
         const float scale = enabled ? (grounded ? groundSpeedScale : airSpeedScale) : 1.0f;
         const float blend = enabled && !grounded ? 1.0f - std::exp(-airResponse * (std::max)(0.0f, deltaTime)) : 1.0f;
         result.x += (desired.x * scale - result.x) * blend;

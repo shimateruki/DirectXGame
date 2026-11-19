@@ -57,6 +57,7 @@ void GimmickMagmaHazard::Update(float deltaTime) {
 
     const bool isPlaying = SceneManager::GetInstance() && SceneManager::GetInstance()->IsPlaying();
 
+    // 編集中は発光を元に戻し、次のプレイで実行時の時計を持ち越さないようにします。
     if (!isPlaying) {
         initializedForPlay_ = false;
         damageCooldownTimer_ = 0.0f;
@@ -65,6 +66,7 @@ void GimmickMagmaHazard::Update(float deltaTime) {
         return;
     }
 
+    // プレイ開始時のみ現在の発光を記録し、明滅の基準にします。
     if (!initializedForPlay_) {
         baseEmissive_ = (std::max)(0.1f, GetEmissive());
         visualTimer_ = 0.0f;
@@ -72,6 +74,7 @@ void GimmickMagmaHazard::Update(float deltaTime) {
         initializedForPlay_ = true;
     }
 
+    // 待ち時間を進めながら、描画は基準の発光に緩い周期を掛けます。
     damageCooldownTimer_ = (std::max)(0.0f, damageCooldownTimer_ - deltaTime);
     visualTimer_ += deltaTime;
     const float pulse = 0.92f + std::sin(visualTimer_ * 2.6f) * 0.08f;

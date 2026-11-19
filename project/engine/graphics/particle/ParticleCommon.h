@@ -2,7 +2,7 @@
 #include <wrl.h>
 #include <d3d12.h>
 #include <array>
-class DirectXCommon;
+namespace engine { class DirectXCommon; }
 
 /// <summary>CPUパーティクル描画で使う色合成方式。</summary>
 enum class ParticleBlendMode {
@@ -24,10 +24,10 @@ class ParticleCommon {
 public:
 
     /// <summary>DirectX基盤を受け取り、CPUパーティクル描画パイプラインを作る。</summary>
-    void Initialize(DirectXCommon* dxCommon);
+    void Initialize(engine::DirectXCommon* dxCommon);
 
     /// <summary>所有しないDirectX基盤への参照を返す。</summary>
-    DirectXCommon* GetDxCommon() const { return dxCommon_; }
+    engine::DirectXCommon* GetDxCommon() const { return dxCommon_; }
 
     /// <summary>指定した合成方式のパイプラインをコマンドリストに設定する。</summary>
     void SetPipeline(ID3D12GraphicsCommandList* commandList, ParticleBlendMode mode = ParticleBlendMode::Alpha);
@@ -41,7 +41,7 @@ private:
 
 private:
     // 初期化時に受け取る描画基盤への非所有参照。
-    DirectXCommon* dxCommon_ = nullptr;
+    engine::DirectXCommon* dxCommon_ = nullptr;
 
     // 全ブレンド方式で共有するリソース結合定義。
     Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_;

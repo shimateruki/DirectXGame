@@ -59,6 +59,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     PlayerAttackMovement GetAttackMovement() const override {
+        // 風跳びの緩降下に限り、落下速度の上限を共通の移動処理に渡す。
         PlayerAttackMovement movement;
         if (liftPhase_ == LiftPhase::Gliding) {
             movement.maxFallSpeedOverride = liftSettings_.glideFallSpeed;
@@ -81,6 +82,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
         effectTimer_ -= deltaTime;
         pushTimer_ -= deltaTime;
         actionMotionTimer_ = std::max(0.0f, actionMotionTimer_ - deltaTime);
+        // 風跳びと前へ進む竜巻は先に更新する。左クリックの竜巻だけ発動後のモーション待ちの影響を受ける。
         UpdateWindLift(player, deltaTime);
         UpdateVortex(player, deltaTime);
         if (actionMotionTimer_ > 0.0f) return;
@@ -112,6 +114,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
             effectTimer_ = 0.045f;
         }
 
+        // 外周と内周はそれぞれの高さと向きで再生し、風が互いに逆方向へ回るようにする。
         auto* effects = MeshEffectManager::GetInstance();
         for (size_t i = 0; i < tornadoScopes_.size(); ++i) {
             const bool inner = i >= 5;
@@ -133,6 +136,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
         }
         tornadoVisualsReady_ = true;
 
+        // 持続中は終了時より弱い判定で、対象を竜巻の中心へ引き戻す。
         if (pushTimer_ <= 0.0f) {
             DamageSphere(player, center, 3.0f, 3.0f, DamageType::Physical, -2.0f, 1.0f);
             if (!tornadoActive_) return;
@@ -178,6 +182,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
 
     void EndWindLift(Player& player) {
         if (liftPhase_ == LiftPhase::Idle) return;
+        // 能力が確保した姿勢と風だけを解除し、下降速度は通常の移動処理へ戻す。
         liftPhase_ = LiftPhase::Idle;
         liftCooldown_ = liftSettings_.liftCooldown;
         StopWindLaunch();
@@ -217,6 +222,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
             }
         }
 
+        // 緩降下の開始と終了で姿勢を滑らかに切り替え、左右の風筋を別の時計で発生させる。
         liftAge_ += frameDeltaTime;
         const float poseStrength = std::min(SmoothStep(liftAge_ / 0.16f), SmoothStep(liftGlideRemaining_ / 0.22f));
         player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::SlowFall, poseStrength);
@@ -255,6 +261,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
 
     // 根元を踏み切り位置に残し、上側の風帯を実際に上がった高さへ追従させる。
     void UpdateWindLaunch(const Player& player, float frameDeltaTime) {
+        // 立ち上りの演出が終わっていれば更新せず、終点を跨いだフレームは全レイヤーを停止する。
         if (liftLaunchAge_ >= kLiftLaunchDuration) return;
         if (liftLaunchAge_ + frameDeltaTime >= kLiftLaunchDuration) {
             StopWindLaunch();
@@ -264,6 +271,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
 
         auto* effects = MeshEffectManager::GetInstance();
         if (!effects) return;
+        // 開始時の床からどこまで上がったかを使い、上昇風の高さと消え方を調整する。
         const float climb = std::clamp(player.GetTranslate().y - liftLaunchStartY_, 0.0f, 5.4f);
         const float burst = SmoothStep(liftLaunchAge_ / 0.070f);
         const float dissipate = SmoothStep((kLiftLaunchDuration - liftLaunchAge_) / 0.12f);
@@ -271,6 +279,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
         constexpr std::array<float, 4> kHeightFollow{0.0f, 0.29f, 0.66f, 0.54f};
         constexpr std::array<float, 4> kRadius{2.10f, 1.80f, 1.48f, 1.12f};
         constexpr std::array<float, 4> kHeight{1.08f, 1.72f, 1.70f, 1.42f};
+        // 各風の層を別々に上昇・回転させ、内側だけ逆回転にする。
         for (std::size_t i = 0; i < liftLaunchScopes_.size(); ++i) {
             const bool inner = i == liftLaunchScopes_.size() - 1;
             const float layer = static_cast<float>(i);
@@ -292,6 +301,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void BeginVortex(Player& player) {
+        // この発動だけの設定と発射点を確定し、以前の竜巻で命中した敵を引き継がない。
         vortexSettings_ = WindCopySettings::Get(); vortexSettings_.Sanitize();
         vortexDirection_ = NormalizePlanar(player.GetLockOnAttackDirection());
         vortexPosition_ = player.GetWorldPosition() + engine::Vector3{0,1.0f,0};
@@ -303,6 +313,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
         // 本体の縮みと足元の風を、離れて進む竜巻の起点にする。
         player.TriggerSlimeImpulse({1.22f, 0.72f, 1.22f}, 0.13f);
         auto* effects = MeshEffectManager::GetInstance();
+        // 外側の帯、逆回転する内側、専用の芯を別素材として開始する。
         for (std::size_t layer = 0; layer < vortexScopes_.size(); ++layer) {
             const char* path = "Resources/json/effect/player/copy/wind/effect_player_wind_vortex_core.json";
             if (layer < kVortexOuterLayers)
@@ -342,14 +353,17 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
     // 判定中心にクリスタル由来の風帯とE専用の芯を重ねる。releaseは消散の進行率（0～1）。
     void DrawVortexLayers(float release) {
         auto* effects = MeshEffectManager::GetInstance();
+        // 消える間も回転を止めず、消失の進捗に合わせて帯の半径と高さを落とす。
         const float spinTime = vortexAge_ + release * kVortexDissipationDuration;
         const float dissolve = SmoothStep(release);
         const float height = vortexSettings_.vortexVisualHeight;
         const float width = vortexSettings_.vortexRadius * vortexSettings_.vortexVisualWidth;
+        // 移動時間が終わってから中心へ少し絞り、消失の収縮と合わせて見せる。
         const float sinceArrival = std::max(0.0f, vortexAge_ - vortexSettings_.vortexLifetime);
         const float tighten = 1.0f - 0.16f * SmoothStep(sinceArrival / 0.10f);
         const float shrink = (1.0f + 0.28f * dissolve) * (1.0f - dissolve);
 
+        // 外周・内側・芯を別々に成長させ、半径と出現時刻に差を付ける。
         for (std::size_t layer = 0; layer < vortexScopes_.size(); ++layer) {
             const bool core = layer == kVortexOuterLayers + 1;
             const bool inner = layer == kVortexOuterLayers;
@@ -360,6 +374,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
             const float lift = height * (0.15f + level * 0.67f) * grow +
                                dissolve * (0.12f + level * 0.32f);
             const auto position = vortexPosition_ + engine::Vector3{0.0f, lift - 1.0f, 0.0f};
+            // 帯ごとの向きにずれを付け、内側だけ反対に速く回す。
             const float yaw = spinTime * vortexSettings_.vortexSpinRate * (inner ? -1.35f : 1.0f) +
                               static_cast<float>(layer) * 1.65f;
             const float heightScale = core ? 0.66f : inner ? 0.69f : 0.53f;
@@ -387,6 +402,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
         if (collisions->SphereCast(vortexPosition_, 0.4f, vortexDirection_, distance, wall).isHit)
             return false;
 
+        // 進める場合は移動先の床を調べ、坂や段差で竜巻が床に沿うよう中心の高さを合わせる。
         vortexPosition_ += vortexDirection_ * distance;
         const auto floor = collisions->Raycast(
             vortexPosition_ + engine::Vector3{0,0.5f,0}, {0,-1,0}, 2.0f, wall);
@@ -430,8 +446,8 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
         Transform transform;
         transform.translate = center;
         transform.UpdateMatrix();
-        Collider cylinder(&transform);
-        ColliderConfig config;
+        engine::Collider cylinder(&transform);
+        engine::ColliderConfig config;
         config.type = ColliderType::Cylinder;
         config.size = extent;
         cylinder.SetConfig(config);
@@ -441,6 +457,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
         PhysicsQueryFilter enemies;
         enemies.mask = CollisionCategories::Get("enemy");
         enemies.ignoredObject = &player;
+        // まず外接箱で候補を絞り、円柱の当たり形状と壁の遮蔽を通った敵だけ処理する。
         std::unordered_set<BaseEnemy*> processed;
         for (const auto& hit : collisions->OverlapAabb({center - extent, center + extent}, enemies)) {
             auto* enemy = static_cast<BaseEnemy*>(FindEnemyRoot(hit.object));
@@ -506,12 +523,14 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
             remaining -= step;
             vortexPhaseRemaining_ -= step;
 
+            // 消散中は残り時間だけを進め、敵を巻き込む判定には入らない。
             if (vortexPhase_ == VortexPhase::Dissipating) {
                 if (vortexPhaseRemaining_ <= 0.0f) StopVortex();
                 continue;
             }
 
             const bool traveling = vortexPhase_ == VortexPhase::Traveling;
+            // 飛行先が壁に塞がれていればその位置で消散を始め、射程端の滞留を省く。
             if (traveling && !AdvanceVortex(player, vortexSettings_.vortexSpeed * step)) {
                 BeginVortexDissipation(true);
                 break;
@@ -522,6 +541,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
             UpdateVortexContacts(player, traveling ? 1.0f : vortexSettings_.vortexHoldPullScale);
             if (!VortexCanHit()) return;
 
+            // 射程に達した場合だけ、設定された時間だけ滞留してから消える。
             if (vortexPhaseRemaining_ <= 0.0f) {
                 if (traveling && vortexSettings_.vortexHoldDuration > 0.0f) {
                     vortexPhase_ = VortexPhase::Holding;
@@ -533,6 +553,7 @@ class WindSlimeCopyAbility final : public ICopyAbilitySession {
             }
         }
 
+        // 当たり判定のある段階では風を追加し、消散へ移ったら既存の風帯を縮める。
         if (VortexCanHit()) {
             DrawVortexLayers(0.0f);
             EmitVortexWind(visualDt);

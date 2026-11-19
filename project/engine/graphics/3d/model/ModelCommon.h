@@ -3,7 +3,7 @@
 #include <d3d12.h>
 #include <wrl.h>
 
-class DirectXCommon;
+namespace engine { class DirectXCommon; }
 
 // 担当：モデルで共有するDirectX基盤とCompute Skinning用パイプラインを保持する。
 // 関連：ModelManager（共有）、Model（スキニング実行）、DirectXCommon
@@ -13,9 +13,9 @@ public:
     /// <summary>
     /// DirectX基盤とCompute Skinning用パイプラインを初期化します。
     /// </summary>
-    void Initialize(DirectXCommon* dxCommon);
+    void Initialize(engine::DirectXCommon* dxCommon);
 
-    DirectXCommon* GetDxCommon() const { return dxCommon_; }
+    engine::DirectXCommon* GetDxCommon() const { return dxCommon_; }
 
     /// <summary>Compute Shaderによるスキニングが使えるか返す。</summary>
     bool IsComputeSkinningAvailable() const {
@@ -36,7 +36,7 @@ private:
     /// <summary>Compute Skinning用のルートシグネチャとパイプラインを作る。</summary>
     void CreateComputeSkinningPipeline();
 
-    DirectXCommon* dxCommon_ = nullptr;
+    engine::DirectXCommon* dxCommon_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12RootSignature> computeSkinningRootSignature_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> computeSkinningPipelineState_;
 };

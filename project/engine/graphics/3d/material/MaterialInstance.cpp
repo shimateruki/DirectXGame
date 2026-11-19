@@ -162,6 +162,7 @@ bool LoadResolvedInternal(
     // 親の解決を終えたあと、子の共通項目とpropertiesを重ねる。
     material.version = root.value("version", material.version);
     material.baseAsset = baseAsset;
+    // 新形式はpropertiesの中、旧形式はルート直下の値を使います。親から受け取った値への上書き順は同じです。
     const json& properties = root.contains("properties") && root["properties"].is_object()
         ? root["properties"] : root;
     OverlayMaterial(properties, material);
@@ -192,8 +193,8 @@ MaterialInstanceData MaterialInstanceAsset::Capture(const engine::Object3D& obje
     material.autoTextureTiling = object.GetAutoTextureTiling();
 
     // Rendererが特殊GPUパラメータを持つ場合だけ追加項目を取得する。
-    if (const MeshRenderer* renderer = object.GetMeshRenderer()) {
-        if (const MeshRenderer::WaterParamForGpu* special = renderer->GetWaterParamData()) {
+    if (const engine::MeshRenderer* renderer = object.GetMeshRenderer()) {
+        if (const engine::MeshRenderer::WaterParamForGpu* special = renderer->GetWaterParamData()) {
             material.waveSpeed = special->waveSpeed;
             material.waveHeight = special->waveHeight;
             material.waveFrequency = special->waveFrequency;
@@ -218,6 +219,7 @@ void MaterialInstanceAsset::Apply(const MaterialInstanceData& material, engine::
     object.SetColor(material.color);
     object.SetBlendMode(static_cast<BlendMode>(std::clamp(material.blendMode, 0, 5)));
     object.SetMaterialType(material.materialType);
+    // 追加シェーダーIDの受け付け可否は材質番号で決まるので、番号を確定してから適用します。
     object.SetShaderMaterialId(material.shaderMaterialId);
     object.SetMetallic(material.metallic);
     object.SetRoughness(material.roughness);
@@ -233,8 +235,8 @@ void MaterialInstanceAsset::Apply(const MaterialInstanceData& material, engine::
     object.SetAutoTextureTiling(material.autoTextureTiling);
 
     // 特殊パラメータはRendererのGPU用データに対応するものだけ反映する。
-    if (MeshRenderer* renderer = object.GetMeshRenderer()) {
-        if (MeshRenderer::WaterParamForGpu* special = renderer->GetWaterParamData()) {
+    if (engine::MeshRenderer* renderer = object.GetMeshRenderer()) {
+        if (engine::MeshRenderer::WaterParamForGpu* special = renderer->GetWaterParamData()) {
             special->waveSpeed = material.waveSpeed;
             special->waveHeight = material.waveHeight;
             special->waveFrequency = material.waveFrequency;
@@ -265,6 +267,7 @@ bool MaterialInstanceAsset::LoadResolved(
     std::unordered_set<std::string> loading;
     if (!LoadResolvedInternal(fs::path(assetPath), material, loading, 0, errorMessage))
         return false;
+    // 予約済み番号との併用と未登録IDを拒否し、書かれた材質を描画側で解決できることを確認します。
     if (!material.shaderMaterialId.empty() &&
         (material.materialType != 0 || !ShaderMaterialRegistry::Instance().Find(material.shaderMaterialId))) {
         SetError(errorMessage, "Shader Material IDが未登録か、材質番号と併用されています: " + material.shaderMaterialId);
@@ -367,7 +370,9 @@ std::vector<std::string> MaterialInstanceAsset::Discover(const std::string& root
     return assets;
 }
 
-bool engine::Object3D::ApplyMaterialInstance(const std::string& assetPath, std::string* errorMessage) {
+namespace engine {
+
+bool Object3D::ApplyMaterialInstance(const std::string& assetPath, std::string* errorMessage) {
     // 継承を解決した材質が読めた場合だけ適用し、参照パスを更新する。
     MaterialInstanceData material;
 
@@ -380,7 +385,7 @@ bool engine::Object3D::ApplyMaterialInstance(const std::string& assetPath, std::
     return true;
 }
 
-bool engine::Object3D::SaveMaterialInstance(const std::string& assetPath, std::string* errorMessage) {
+bool Object3D::SaveMaterialInstance(const std::string& assetPath, std::string* errorMessage) {
     // 現在の材質を保存できた場合だけ、Objectの参照先を新しいアセットへ切り替える。
     MaterialInstanceData material = MaterialInstanceAsset::Capture(*this);
     material.displayName = std::filesystem::path(assetPath).stem().string();
@@ -392,3 +397,5 @@ bool engine::Object3D::SaveMaterialInstance(const std::string& assetPath, std::s
     materialInstancePath_ = std::filesystem::path(assetPath).lexically_normal().generic_string();
     return true;
 }
+
+} // namespace engine

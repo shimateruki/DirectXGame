@@ -52,6 +52,7 @@ CinematicVisualKey SampleCinematicVisual(const CinematicObjectClip& clip, float 
     const auto& motion = *selected;
     const float begin = timing(motion.startTime,motion.startSignal,motion.startSignalOffset);
     const float end = timing(motion.endTime,motion.endSignal,motion.endSignalOffset);
+    // 秒で表した区間を0～1へ正規化します。移動の進み方を滑らかにしても、色などは変換前の割合で変化させます。
     const float raw = std::clamp((sampleTime-begin)/std::max(0.000001f,end-begin),0.0f,1.0f);
     const auto smooth=[](float x) { x=std::clamp(x,0.0f,1.0f); return x*x*(3.0f-2.0f*x); };
     const float progress = motion.smoothProgress ? smooth(raw) : raw;
@@ -61,11 +62,13 @@ CinematicVisualKey SampleCinematicVisual(const CinematicObjectClip& clip, float 
     k.positionTarget = motion.to.positionReference;
     k.positionMix = progress;
     // 基準点間の補間は再生器が担当し、ここでは共通の弧と姿勢だけを評価する。
+    // 進行率を0～πラジアンに写すと、弧の高さは両端で0、中点で最大になります。
     const float arc = std::sin(progress*std::numbers::pi_v<float>);
     k.position = Math::Lerp(motion.from.position,motion.to.position,progress);
     k.position.y += arc*motion.arcHeight;
 
     // 着地の揺れは時間とともにゼロへ収束する。フレーム積分を使わず巻戻しも再現する。
+    // 跳ね返りは移動区間全体の割合と独立して、区間開始から bounceDuration 秒で収まります。
     const float settle = std::clamp((sampleTime-begin)/std::max(0.000001f,motion.bounceDuration),0.0f,1.0f);
     k.position.y += std::abs(std::sin(settle*2.0f*std::numbers::pi_v<float>*motion.bounceCycles))*(1.0f-settle)*motion.bounceHeight;
     k.rotation = Math::Lerp(motion.from.rotation,motion.to.rotation,progress)+motion.rotationArc*std::sin(progress*2.0f*std::numbers::pi_v<float>*motion.rotationCycles);
@@ -77,6 +80,7 @@ CinematicVisualKey SampleCinematicVisual(const CinematicObjectClip& clip, float 
     const float envelope = motion.scaleDecay > 0 ? std::exp(-scaleRate*motion.scaleDecay) : 1.0f-scaleRate;
     const float remaining = envelope*std::cos(scaleRate*2.0f*std::numbers::pi_v<float>*motion.scaleCycles);
     k.scale = Math::Lerp(motion.to.scale,motion.from.scale,remaining);
+    // 移動中だけ加える倍率の揺れは開始から終了までに限定します。終了後に終点を保持する区間には持ち越しません。
     if (time >= begin && time < end) {
         const float amplitude = motion.scaleWaveFadeIn ? smooth(raw) : 1.0f;
         k.scale += motion.scaleWaveAmplitude * (std::sin(time * motion.scaleWaveFrequency) * amplitude);
@@ -110,6 +114,7 @@ CinematicTransformKey InterpolateCinematicTransform(const CinematicTransformKey&
     auto value = a;
     value.time = time;
     value.position = AnimationInterpolation::Lerp(a.position,b.position,rate);
+    // 回転量をそのままつなぐ素材ではEuler角を補間し、通常の姿勢補間ではクォータニオンで最短向きを選びます。
     value.rotation = continuousRotation ? AnimationInterpolation::Lerp(a.rotation,b.rotation,rate)
                                        : AnimationInterpolation::SlerpEuler(a.rotation,b.rotation,rate);
     value.scale = AnimationInterpolation::Lerp(a.scale,b.scale,rate);
@@ -137,6 +142,7 @@ static void from_json(const json& data, engine::Vector3& value) {
     value = {};
     if (data.is_array() && data.size() >= 3) value = {data[0], data[1], data[2]};
 }
+// 各行から対応する型のJSON変換が生成されます。指定のキーは保存時に書き出し、読み込み時に省略されていれば型の既定値を使います。
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicObjectBinding, targetName, targetEventId)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(CinematicTransformKey,
     time, position, rotation, scale, easingToNext)
@@ -161,6 +167,7 @@ template<class T> json WriteTracks(const std::vector<T>& tracks) {
     for (const auto& track : tracks) {
         json item = track;
         if constexpr (requires { track.binding; }) {
+            // 既存ファイルと同じ形式を保つため、対象名とイベントIDをトラック直下へ戻します。
             item.update(item.at("binding"));
             item.erase("binding");
         }
@@ -178,6 +185,7 @@ template<class T> json WriteTracks(const std::vector<T>& tracks) {
 // 省略値は従来通りとし、変更した素材だけ形式が変わることを避ける。
 template<class T> void ReadTracks(const json& items, std::vector<T>& tracks, const char* defaultName) {
     for (auto item : items) {
+        // ファイル直下の対象情報を実行時の binding へ再構成し、従来の名前や遅延秒を現行の項目へ読み替えます。
         if constexpr (requires { T{}.binding; }) item["binding"] = item.get<CinematicObjectBinding>();
         if constexpr (requires { T{}.legacyPathFile; }) {
             item["name"] = item.value("name", item.value("targetName", ""));
@@ -254,12 +262,14 @@ float CinematicSequence::GetAuthoredDuration() const {
             result = std::max(result, motion.endSignal.empty() ? motion.endTime : GetSignalTime(motion.endSignal,motion.endTime) + motion.endSignalOffset);
     if (!presentation.view.empty()) result = std::max(result, presentation.view.back().time);
 
+    // 移動キーの時刻はトラック開始からの秒です。開始時刻を足して演出全体での終了時刻を求めます。
     for (const auto& track : transformTracks) {
         if (!track.keys.empty()) {
             result = std::max(result, track.startTime + std::max(0.0f, track.keys.back().time));
         }
     }
 
+    // VFXの起点はシグナル参照も解決した秒です。そこから発生枠の長さを含めます。
     for (const auto& track : vfxTracks) {
         result = std::max(result, GetVfxStartTime(track) + std::max(0.1f, track.duration));
     }
@@ -276,6 +286,7 @@ float CinematicSequence::GetAuthoredDuration() const {
         result = std::max(result, clip.startTime + std::max(0.05f, clip.duration));
     }
 
+    // 最後の素材が消えた後でも、後続のシグナルやイベントを通知できる長さを確保します。
     for (const auto& signal : signals) {
         result = std::max(result, signal.time);
     }
@@ -288,7 +299,7 @@ float CinematicSequence::GetAuthoredDuration() const {
 }
 
 // 保存と読込は同じ型変換を通す。旧項目の扱いは上の互換入口へ閉じ込める。
-bool CinematicSequence::Save(const std::filesystem::path& filePath) const {
+std::string CinematicSequence::ToJsonText(int indent) const {
     json root = {{"version", kCurrentVersion}, {"name", name}, {"duration", duration},
         {"anchor", anchor}, {"anchorYawOffset", anchorYawOffset},
         {"roleBindings", roleBindings}, {"previewModels", previewModels},
@@ -296,10 +307,15 @@ bool CinematicSequence::Save(const std::filesystem::path& filePath) const {
         {"cameraShots", WriteTracks(cameraShots)}, {"animationClips", WriteTracks(animationClips)},
         {"audioClips", WriteTracks(audioClips)}, {"signals", WriteTracks(signals)}, {"events", WriteTracks(events)}};
     SaveCinematicPresentation(root, presentation);
+    return root.dump(indent);
+}
+
+bool CinematicSequence::Save(const std::filesystem::path& filePath) const {
+    const auto text = ToJsonText(4);
     const std::filesystem::path path(filePath);
     if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());
     std::ofstream file(path, std::ios::binary);
-    file << root.dump(4);
+    file << text;
     file.close();
     return file.good();
 }
@@ -308,11 +324,13 @@ bool CinematicSequence::Load(const std::filesystem::path& filePath) {
     const auto resolved = CinematicAssetPath::Resolve("Resources/json/scenario", filePath);
     std::ifstream file(resolved, std::ios::binary);
     if (!file) return false;
+    // ファイルを開けない場合やJSONの構文が壊れている場合は、現在の設定を消す前に終了します。
     json root;
     try { file >> root; }
     catch (...) { return false; }
     try {
         Clear();
+        // 構文を読めたら全項目を初期化し、未記載の項目には旧形式でも読み込める既定値を補います。
         version = root.value("version", 1);
         const auto stem = filePath.stem().u8string();
         name = root.value("name", std::string(stem.begin(), stem.end()));
@@ -325,6 +343,7 @@ bool CinematicSequence::Load(const std::filesystem::path& filePath) {
         for (size_t i = 0; i < previewModels.size() && i < models.size(); ++i) previewModels[i] = models[i].get<std::string>();
         for (size_t i = 0; i < roleBindings.size() && i < roles.size(); ++i) roleBindings[i] = roles[i].get<CinematicObjectBinding>();
         ReadTracks(root.value("tracks", json::array()), transformTracks, "");
+        // 現行の項目を優先し、存在しないファイルでは旧キー vfxTracks を参照します。
         ReadTracks(root.value("vfxCues", root.value("vfxTracks", json::array())), vfxTracks, "VFX");
         ReadTracks(root.value("cameraShots", json::array()), cameraShots, "Camera Shot");
         ReadTracks(root.value("animationClips", json::array()), animationClips, "Animation Clip");

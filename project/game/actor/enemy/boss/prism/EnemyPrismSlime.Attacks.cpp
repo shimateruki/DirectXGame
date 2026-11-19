@@ -7,6 +7,7 @@ using namespace EnemyPrismSlimeImplementation;
 
 // 元の更新順序と判定を維持して、担当処理をまとめています。
 void EnemyPrismSlime::PreparePrismSpikePoints() {
+    // 主棘の候補は標的の位置を優先し、射程より遠いときはボスからの水平距離を制限する。
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     const engine::Vector3 casterPosition = GetWorldPosition();
     engine::Vector3 requestedCenter =
@@ -22,6 +23,7 @@ void EnemyPrismSlime::PreparePrismSpikePoints() {
         }
     }
 
+    // 攻撃の原点と主棘の位置を地表へ投影し、半径と射程から扇形の角度を求める。
     prismSpellOrigin_ = FindGroundPoint(casterPosition);
     prismSpellCenter_ = FindGroundPoint(requestedCenter);
     prismSpikeSector_ = CreateSpellEffect(kPrismSpikeSectorEffect);
@@ -113,6 +115,7 @@ void EnemyPrismSlime::SpawnNextPrismSpike() {
 
     visual.index = actionIndex_;
 
+    // 棘は地表より少し下へ置いておき、更新時に伸び上がるようにする。
     const bool isCenterSpike = actionIndex_ == static_cast<int>(prismSpikePositions_.size()) - 1;
     const float heightVariation = isCenterSpike ? 1.58f : 0.78f + static_cast<float>((actionIndex_ * 5) % 7) * 0.075f;
     const float widthVariation = isCenterSpike ? 1.38f : 0.92f + static_cast<float>((actionIndex_ * 7) % 5) * 0.06f;
@@ -128,6 +131,7 @@ void EnemyPrismSlime::SpawnNextPrismSpike() {
     visual.object->Update(0.0f);
     visual.object->UpdateWorldMatrix(true);
 
+    // 地面の閃光と粒子を間引き、主棘だけは間引きの対象から外す。
     const float groundEffectScale = isCenterSpike ? 1.34f : 0.74f;
 
     if ((isCenterSpike || actionIndex_ % 2 == 0) && MeshEffectManager::GetInstance()) {
@@ -145,6 +149,7 @@ void EnemyPrismSlime::SpawnNextPrismSpike() {
                            isCenterSpike ? 1.04f : 0.68f);
     }
 
+    // この棘まで扇形の命中範囲を広げた後、成長演出を更新する一覧へ追加する。
     engine::Vector3 fromOrigin = visual.groundPosition - prismSpellOrigin_;
     fromOrigin.y = 0.0f;
     ApplyPrismSpellDamage(engine::Math::Length(fromOrigin) + 1.15f);
@@ -152,6 +157,7 @@ void EnemyPrismSlime::SpawnNextPrismSpike() {
 }
 
 void EnemyPrismSlime::UpdatePrismSpikeVisuals(float deltaTime) {
+    // 棘ごとの経過秒数に合わせて、隆起・待機・破砕を順に進める。
     auto spike = prismSpikeVisuals_.begin();
 
     while (spike != prismSpikeVisuals_.end()) {
@@ -160,6 +166,7 @@ void EnemyPrismSlime::UpdatePrismSpikeVisuals(float deltaTime) {
         engine::Vector3 scale = spike->fullScale;
         engine::Vector3 position = spike->groundPosition;
 
+        // 隆起中は足元が地表へ届くまで高さと幅を増やす。
         if (spike->age < kPrismSpikeRiseDuration) {
             const float progress = SmoothStep01(spike->age / kPrismSpikeRiseDuration);
             const float overshoot = std::sin(progress * kPi) * 0.12f;
@@ -168,10 +175,12 @@ void EnemyPrismSlime::UpdatePrismSpikeVisuals(float deltaTime) {
             scale.z *= std::lerp(0.42f, 1.0f, progress);
             position.y -= (1.0f - progress) * 0.24f;
         } else if (spike->age < kPrismSpikeRiseDuration + kPrismSpikeHoldDuration) {
+            // 伸び切った棘は輪郭をわずかに揺らし、設置中の状態を見せる。
             const float shimmer = std::sin((spike->age - kPrismSpikeRiseDuration) * 13.0f) * 0.012f;
             scale.x *= 1.0f + shimmer;
             scale.z *= 1.0f - shimmer;
         } else {
+            // 壊れる直前に少し膨らませ、破砕の動きにつなぐ。
             const float fractureTime = spike->age - kPrismSpikeRiseDuration - kPrismSpikeHoldDuration;
             const float fracture = SmoothStep01(fractureTime / kPrismSpikeFractureDuration);
             const float tension = std::sin(fracture * kPi);
@@ -188,6 +197,7 @@ void EnemyPrismSlime::UpdatePrismSpikeVisuals(float deltaTime) {
         // このObject3dはSceneの所有物ではないため、通常の一括GPU更新対象に含まれません。
         spike->object->UpdateWorldMatrix(true);
 
+        // 最終姿勢を反映したら、破片を出して棘を一覧から取り除く。
         if (spike->age >= kPrismSpikeLifetime) {
             SpawnPrismSpikeShatter(*spike);
             spike = prismSpikeVisuals_.erase(spike);
@@ -353,6 +363,7 @@ void EnemyPrismSlime::UpdatePrismSpikeSectorVisual(float deltaTime) {
 }
 
 void EnemyPrismSlime::UpdateWindSpellVisual(float deltaTime) {
+    // 風の予備動作と実行中だけ魔法陣と竜巻を表示し、別の技に切り替えたら全層を隠す。
     if (currentAttack_ != AttackKind::WindWave ||
         (attackState_ != AttackState::Windup && attackState_ != AttackState::Active)) {
         for (WindVortexVisual& vortex : windVortices_) {
@@ -405,11 +416,13 @@ void EnemyPrismSlime::UpdateWindSpellVisual(float deltaTime) {
         updateCircle(vortex.circle, false);
         updateCircle(vortex.circleGlow, true);
 
+        // 詠唱中は地面の魔法陣だけを描き、竜巻本体の層は発動後に順次開く。
         if (assembling)
             continue;
         const float localAge = windTornadoAge_ - static_cast<float>(vortexIndex) * 0.15f;
         const float appear = SmoothStep01(std::clamp(localAge / 0.26f, 0.0f, 1.0f));
 
+        // 外層を高さの異なる帯として重ね、渦の中心に追従させる。
         for (std::size_t layer = 0; layer < vortex.outer.size(); ++layer) {
             auto& effect = vortex.outer[layer];
             if (!effect)
@@ -429,6 +442,7 @@ void EnemyPrismSlime::UpdateWindSpellVisual(float deltaTime) {
             effect->UpdateWorldMatrix();
         }
 
+        // 内層は色と回転速度を変え、外層と一枚に見えないようにする。
         for (auto& effect : vortex.inner) {
             if (!effect)
                 continue;
@@ -477,6 +491,7 @@ void EnemyPrismSlime::UpdateChantSigilVisual(float deltaTime) {
 }
 
 void EnemyPrismSlime::UpdateCrystalCircleVisual(float deltaTime) {
+    // 陣の通常層を作れなければ発光層も進めず、晶槍の予兆・実行中だけ表示する。
     if (!crystalCircle_) {
         return;
     }
@@ -501,6 +516,7 @@ void EnemyPrismSlime::UpdateCrystalCircleVisual(float deltaTime) {
     const float activeElapsed = assembling ? 0.0f : (std::max)(0.0f, attackStateDuration_ - attackTimer_);
     const float fade = assembling ? 1.0f : 1.0f - SmoothStep01(std::clamp(activeElapsed / 0.32f, 0.0f, 1.0f));
 
+    // 本体足元の地面を取り直し、陣を水平に置く。
     crystalCircle_->Update(deltaTime);
     crystalCircle_->SetRevealProgress(assembly);
     crystalCircle_->SetIsVisible(fade > 0.01f && assembly > 0.001f);
@@ -515,6 +531,7 @@ void EnemyPrismSlime::UpdateCrystalCircleVisual(float deltaTime) {
     crystalCircle_->UpdateLocalMatrix();
     crystalCircle_->UpdateWorldMatrix();
 
+    // 加算層は円の少し上に置き、陣が組み上がる途中から青く発光させる。
     if (crystalCircleGlow_) {
         crystalCircleGlow_->Update(deltaTime);
         crystalCircleGlow_->SetRevealProgress(assembly);
@@ -531,6 +548,7 @@ void EnemyPrismSlime::UpdateCrystalCircleVisual(float deltaTime) {
 }
 
 void EnemyPrismSlime::LaunchNextCrystalLance() {
+    // 発射番号に対応する槍があり、まだ飛行を始めていない場合だけ射出する。
     if (actionIndex_ < 0 || actionIndex_ >= static_cast<int>(crystalLanceVisuals_.size())) {
         return;
     }
@@ -541,6 +559,7 @@ void EnemyPrismSlime::LaunchNextCrystalLance() {
         return;
     }
 
+    // 発射時の標的の高さを使って照準を確定し、標的が無ければ固定方向を使う。
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     engine::Vector3 aimPosition = lance.position + lockedDirection_ * (std::max)(attack.maxRange, 1.0f);
 
@@ -556,6 +575,7 @@ void EnemyPrismSlime::LaunchNextCrystalLance() {
         launchDirection = engine::Math::Normalize(launchDirection);
     }
 
+    // 発射方向から速度と初期姿勢を確定し、未発射の組み立て更新から飛行更新に切り替える。
     lance.velocity = launchDirection * (std::max)(12.0f, attack.maxSpeed);
     lance.launched = true;
     lance.age = 0.0f;
@@ -950,6 +970,7 @@ void EnemyPrismSlime::PrepareThunderPoints() {
 }
 
 void EnemyPrismSlime::PrepareSummonPortals() {
+    // 古い陣を破棄し、今回の召喚番号から配置と敵種の乱数を作る。
     summonPortalVisuals_.clear();
     summonPortalVisuals_.reserve(kSummonPortalCount);
 
@@ -959,9 +980,11 @@ void EnemyPrismSlime::PrepareSummonPortals() {
     std::uint32_t randomState = 0x9e3779b9u ^ ((summonRandomSerial_ + 1u) * 0x85ebca6bu);
     const float startAngle = NextSummonRandom01(randomState) * kPi * 2.0f;
 
+    // 術者の周囲を分割し、角度と距離を小さくずらして陣を置く。
     for (int index = 0; index < kSummonPortalCount; ++index) {
         const float spreadAngle = (kPi * 2.0f * static_cast<float>(index)) / static_cast<float>(kSummonPortalCount);
         const float angleJitter = (NextSummonRandom01(randomState) - 0.5f) * 0.58f;
+        // 各召喚点は角度に加えて距離もずらし、中心から配置半径の62～94%の範囲で地面を探します。
         const float distanceRate = 0.62f + NextSummonRandom01(randomState) * 0.32f;
         const float angle = startAngle + spreadAngle + angleJitter;
 
@@ -984,6 +1007,7 @@ void EnemyPrismSlime::PrepareSummonPortals() {
             portal.glow->SetRevealProgress(0.0f);
         }
 
+        // 発動前に召喚する種類を確定し、対応する発光色で予告する。
         const int kindIndex = (std::min)(3, static_cast<int>(NextSummonRandom01(randomState) * 4.0f));
         portal.slimeKind = static_cast<SummonSlimeKind>(kindIndex);
 
@@ -1017,6 +1041,7 @@ void EnemyPrismSlime::PrepareSummonPortals() {
         summonPortalVisuals_.push_back(std::move(portal));
     }
 
+    // 次回の召喚では乱数の種を替え、同じ色と配置が繰り返されないようにする。
     ++summonRandomSerial_;
 }
 
@@ -1152,6 +1177,7 @@ void EnemyPrismSlime::SpawnNextSummonedSlime() {
         return;
     }
 
+    // 陣が保持する種類をファクトリーのIDと召喚時の粒子へ変換する。
     const char* enemyType = "Slime";
     const char* nameSuffix = "Pink";
     const char* spawnPreset = kPrismPhasePulsePreset;
@@ -1185,6 +1211,7 @@ void EnemyPrismSlime::SpawnNextSummonedSlime() {
         return;
     }
 
+    // 地面に置き、ボスと同じ標的を与えて駆け出せる状態にする。
     enemy->SetName(std::string("PrismSummon_") + nameSuffix + "_" + std::to_string(summonRandomSerial_) + "_" +
                    std::to_string(actionIndex_));
     enemy->SetTranslate(portal.groundPosition + engine::Vector3{0.0f, 0.12f, 0.0f});
@@ -1193,6 +1220,7 @@ void EnemyPrismSlime::SpawnNextSummonedSlime() {
     enemy->SetDetectionRange(24.0f);
     enemy->SetTarget(GetTarget());
 
+    // 召喚に成功した陣だけを発動済みに変え、描画側の閉じる処理が動けるようにする。
     portal.spawned = true;
     portal.spawnedAge = 0.0f;
     EmitPreset(spawnPreset, portal.groundPosition + engine::Vector3{0.0f, 0.24f, 0.0f});
@@ -1203,6 +1231,7 @@ void EnemyPrismSlime::SpawnNextSummonedSlime() {
                    portal.groundPosition + engine::Vector3{std::cos(angle) * 0.72f, 0.18f, std::sin(angle) * 0.72f});
     }
 
+    // 設定済みの個体の所有権を、プレビューの登録先または実行中のシーンへ渡す。
     SpawnSummonedSlime(std::move(enemy));
 }
 

@@ -14,8 +14,36 @@
 #include <cmath>
 #include <filesystem>
 
+namespace engine {
+
 namespace {
 namespace fs = std::filesystem;
+
+using MaterialRenderPolicy::SpecialKind;
+
+struct SpecialMaterialDrawSettings {
+    void (engine::Object3DCommon::*setGraphicsCommand)() = nullptr;
+    bool useProxyModel = false;
+};
+
+// ゲームとプレビューで同じPSOと代理メッシュの指定を使う。
+constexpr SpecialMaterialDrawSettings GetSpecialMaterialDrawSettings(SpecialKind kind) {
+    using engine::Object3DCommon;
+    switch (kind) {
+    case SpecialKind::Laser: return {&Object3DCommon::SetLaserGraphicsCommand};
+    case SpecialKind::SlimeGel: return {&Object3DCommon::SetSlimeGelGraphicsCommand};
+    case SpecialKind::Shockwave: return {&Object3DCommon::SetShockwaveGraphicsCommand};
+    case SpecialKind::LiquidContact: return {&Object3DCommon::SetLiquidContactGraphicsCommand};
+    case SpecialKind::DamageCrack: return {&Object3DCommon::SetDamageCrackGraphicsCommand};
+    case SpecialKind::Updraft: return {&Object3DCommon::SetUpdraftGraphicsCommand, true};
+    case SpecialKind::StunBind: return {&Object3DCommon::SetStunBindGraphicsCommand, true};
+    case SpecialKind::CrownUnlock: return {&Object3DCommon::SetCrownUnlockGraphicsCommand, true};
+    case SpecialKind::PoisonSpore: return {&Object3DCommon::SetPoisonSporeGraphicsCommand, true};
+    case SpecialKind::Cloud: return {&Object3DCommon::SetCloudGraphicsCommand, true};
+    case SpecialKind::WindOrb: return {&Object3DCommon::SetWindOrbGraphicsCommand};
+    default: return {};
+    }
+}
 
 // 特殊材質の三つのテクスチャスロットに渡す SRV 番号。画像自体の所有者は TextureManager。
 // 担当：特殊材質が参照する三枠の画像ハンドル。
@@ -117,6 +145,7 @@ void BindBakedShaderTextures(ID3D12GraphicsCommandList* commandList, const Baked
 // 水、マグマ、炎、レーザー、ポータルなど専用パイプラインの描画を担当する。
 // 焼き込みテクスチャと代理モデルもここに集約し、特殊表現の追加場所を明確にする。
 // ========================================================================
+// 通常画面の遮蔽状態と描画対象を確定し、必要なスキニングを記録してから材質の描画パイプラインを束縛する。
 void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) {
     UpdateCameraVisibility(CameraManager::GetInstance()->GetActiveCamera());
     Model* drawModel = ResolveDrawModel();
@@ -149,7 +178,7 @@ void MeshRenderer::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spot
     );
 }
 
-void MeshRenderer::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex) {
+void MeshRenderer::DrawForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex) {
     // 別カメラ用の定数バッファを使い、通常画面の wvp と視点情報を上書きしない。
     Model* drawModel = ResolveDrawModel();
     ID3D12Resource* previewWvpResource = nullptr;
@@ -183,7 +212,7 @@ void MeshRenderer::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResou
     );
 }
 
-bool MeshRenderer::PreparePreviewCameraData(Camera* camera, int previewBufferIndex, ID3D12Resource*& wvpResource, ID3D12Resource*& cameraResource) {
+bool MeshRenderer::PreparePreviewCameraData(engine::Camera* camera, int previewBufferIndex, ID3D12Resource*& wvpResource, ID3D12Resource*& cameraResource) {
     // プレビュー番号に対応する独立バッファへ、そのカメラの行列と視点を記録する。
     wvpResource = nullptr;
     cameraResource = nullptr;
@@ -192,6 +221,7 @@ bool MeshRenderer::PreparePreviewCameraData(Camera* camera, int previewBufferInd
         return false;
     }
 
+    // プレビューごとの定数に書き、番号が範囲外なら利用可能な最も近い枠を使う。
     const int safePreviewIndex = std::clamp(previewBufferIndex, 0, kPreviewBufferCount - 1);
     wvpResource = previewWvpResources_[safePreviewIndex].Get();
     cameraResource = previewCameraResources_[safePreviewIndex].Get();
@@ -207,6 +237,7 @@ bool MeshRenderer::PreparePreviewCameraData(Camera* camera, int previewBufferInd
     previewWvpData->wvp = math.Multiply(worldMatrix, camera->GetViewProjectionMatrix());
     previewWvpData->world = worldMatrix;
     previewWvpData->worldInverseTranspose = GetCachedWorldInverseTranspose(worldMatrix);
+    // プレビューには本編の遮蔽マスクを持ち込まないよう、定数を初期化して視点位置だけを設定する。
     *previewCameraData = {};
     previewCameraData->worldPosition = camera->GetEye();
     return true;
@@ -215,8 +246,14 @@ bool MeshRenderer::PreparePreviewCameraData(Camera* camera, int previewBufferInd
 void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
     UpdateCameraVisibility(CameraManager::GetInstance()->GetActiveCamera());
     // 通常画面の材質選択を描画コンポーネントへ集約する。各描画関数は既存のPSOを使う。
-    using MaterialRenderPolicy::SpecialKind;
-    switch (MaterialRenderPolicy::GetSpecialKind(GetMaterialType())) {
+    const auto kind = MaterialRenderPolicy::GetSpecialKind(GetMaterialType());
+    const auto settings = GetSpecialMaterialDrawSettings(kind);
+    if (settings.setGraphicsCommand) {
+        DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, settings.setGraphicsCommand, settings.useProxyModel);
+        return;
+    }
+
+    switch (kind) {
     case SpecialKind::Water: DrawWater(depthSrvHandle, colorSrvHandle);
     break;
 
@@ -229,47 +266,14 @@ void MeshRenderer::DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSr
     case SpecialKind::Fire: DrawFire(depthSrvHandle, colorSrvHandle);
     break;
 
-    case SpecialKind::Laser: DrawLaser(depthSrvHandle, colorSrvHandle);
-    break;
-
-    case SpecialKind::SlimeGel: DrawSlimeGel(depthSrvHandle, colorSrvHandle);
-    break;
-
-    case SpecialKind::Shockwave: DrawShockwave(depthSrvHandle, colorSrvHandle);
-    break;
-
-    case SpecialKind::LiquidContact: DrawLiquidContact(depthSrvHandle, colorSrvHandle);
-    break;
-
-    case SpecialKind::DamageCrack: DrawDamageCrack(depthSrvHandle, colorSrvHandle);
-    break;
-
-    case SpecialKind::Updraft: DrawUpdraft(depthSrvHandle, colorSrvHandle);
-    break;
-
-    case SpecialKind::StunBind: DrawStunBind(depthSrvHandle, colorSrvHandle);
-    break;
-
-    case SpecialKind::CrownUnlock: DrawCrownUnlock(depthSrvHandle, colorSrvHandle);
-    break;
-
-    case SpecialKind::PoisonSpore: DrawPoisonSpore(depthSrvHandle, colorSrvHandle);
-    break;
-
-    case SpecialKind::Cloud: DrawCloud(depthSrvHandle, colorSrvHandle);
-    break;
-
     case SpecialKind::GatePortal: DrawGatePortal(depthSrvHandle, colorSrvHandle);
-    break;
-
-    case SpecialKind::WindOrb: DrawWindOrb(depthSrvHandle, colorSrvHandle);
     break;
 
     default: break;
     }
 }
 
-void MeshRenderer::DrawSpecialMaterialForCamera(int materialType, Camera* camera, uint32_t depthSrvHandle, uint32_t colorSrvHandle, int previewBufferIndex) {
+void MeshRenderer::DrawSpecialMaterialForCamera(int materialType, engine::Camera* camera, uint32_t depthSrvHandle, uint32_t colorSrvHandle, int previewBufferIndex) {
     ID3D12Resource* previewWvpResource = nullptr;
     ID3D12Resource* previewCameraResource = nullptr;
     if (!common_ || !HasRequiredBuffers() ||
@@ -277,8 +281,15 @@ void MeshRenderer::DrawSpecialMaterialForCamera(int materialType, Camera* camera
         return;
     }
 
-    using MaterialRenderPolicy::SpecialKind;
-    switch (MaterialRenderPolicy::GetSpecialKind(materialType)) {
+    const auto kind = MaterialRenderPolicy::GetSpecialKind(materialType);
+    const auto settings = GetSpecialMaterialDrawSettings(kind);
+    if (settings.setGraphicsCommand) {
+        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle,
+            settings.setGraphicsCommand, settings.useProxyModel);
+        return;
+    }
+
+    switch (kind) {
     case SpecialKind::Water:
     {
         // 別カメラの描画で通常画面の定数を上書きしないようにします。
@@ -304,46 +315,6 @@ void MeshRenderer::DrawSpecialMaterialForCamera(int materialType, Camera* camera
         DrawFireWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle);
         break;
 
-    case SpecialKind::Laser:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetLaserGraphicsCommand);
-        break;
-
-    case SpecialKind::SlimeGel:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetSlimeGelGraphicsCommand);
-        break;
-
-    case SpecialKind::Shockwave:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetShockwaveGraphicsCommand);
-        break;
-
-    case SpecialKind::LiquidContact:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetLiquidContactGraphicsCommand);
-        break;
-
-    case SpecialKind::DamageCrack:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetDamageCrackGraphicsCommand);
-        break;
-
-    case SpecialKind::Updraft:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetUpdraftGraphicsCommand, true);
-        break;
-
-    case SpecialKind::StunBind:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetStunBindGraphicsCommand, true);
-        break;
-
-    case SpecialKind::CrownUnlock:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetCrownUnlockGraphicsCommand, true);
-        break;
-
-    case SpecialKind::PoisonSpore:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetPoisonSporeGraphicsCommand, true);
-        break;
-
-    case SpecialKind::Cloud:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetCloudGraphicsCommand, true);
-        break;
-
     case SpecialKind::GatePortal:
     {
         // プレビューでは別の定数を使い、実画面の透過円を持ち込まない。
@@ -359,10 +330,6 @@ void MeshRenderer::DrawSpecialMaterialForCamera(int materialType, Camera* camera
             &engine::Object3DCommon::SetGatePortalGraphicsCommand, true, 1, previewWaterResources_[index].Get());
         break;
     }
-
-    case SpecialKind::WindOrb:
-        DrawSpecialMaterialWithWvp(previewWvpResource, depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetWindOrbGraphicsCommand);
-        break;
 
     default:
         break;
@@ -380,6 +347,7 @@ void MeshRenderer::DrawWaterWithWvp(ID3D12Resource* wvpResource, uint32_t depthS
         return;
 
     // 0/1は従来、2/3はイラスト調。それぞれ偶数が専用グリッドです。
+    // 波で頂点を動かす設定だけを専用格子へ差し替え、他の水面は配置したメッシュ形状を保持します。
     const bool useWaterGrid = !waterParamData_ || waterParamData_->effectType < 0.5f ||
         (waterParamData_->effectType >= 1.5f && waterParamData_->effectType < 2.5f);
     if (useWaterGrid && !waterProxyModel_) {
@@ -480,6 +448,7 @@ void MeshRenderer::DrawFireWithWvp(ID3D12Resource* wvpResource, uint32_t depthSr
     SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 3, depthSrvHandle);
     SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 4, colorSrvHandle);
     BindBakedShaderTextures(commandList, GetFireBakedShaderTextures());
+    // 立体型には箱、その他には平面を使います。代理形状を作れない場合でも元モデルから描画します。
     Model* proxyModel = useVolumetricProxy ? volumetricFireProxyModel_.get() : fireProxyModel_.get();
     drawModel = proxyModel ? proxyModel : drawModel;
     drawModel->DrawMeshOnly(proxyModel ? -1 : meshDrawIndex_);
@@ -506,6 +475,7 @@ void MeshRenderer::DrawSpecialMaterialWithWvp(
 
     if (useProxyModel) {
         if (bakedTextureMode == 1) {
+            // ポータル用の素材は通常の前後平面と、結界用の円筒を設定で選びます。
             const bool cylindricalBarrier = waterParamData_ && waterParamData_->effectType >= 3.5f;
 
             if (cylindricalBarrier) {
@@ -545,53 +515,23 @@ void MeshRenderer::DrawSpecialMaterialWithWvp(
 }
 
 void MeshRenderer::DrawLaser(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    // 加算ビーム用 PSO を共有描画経路へ指定する。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetLaserGraphicsCommand);
-}
-
-void MeshRenderer::DrawSlimeGel(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    // ゼリー材質用 PSO を共有描画経路へ指定する。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetSlimeGelGraphicsCommand);
+    const auto settings = GetSpecialMaterialDrawSettings(SpecialKind::Laser);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, settings.setGraphicsCommand, settings.useProxyModel);
 }
 
 void MeshRenderer::DrawShockwave(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    // 地面衝撃波用 PSO を共有描画経路へ指定する。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetShockwaveGraphicsCommand);
-}
-
-void MeshRenderer::DrawLiquidContact(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    // 液面接触用 PSO を共有描画経路へ指定する。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetLiquidContactGraphicsCommand);
-}
-
-void MeshRenderer::DrawDamageCrack(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    // ひび割れ用 PSO を共有描画経路へ指定する。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetDamageCrackGraphicsCommand);
-}
-
-void MeshRenderer::DrawUpdraft(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    // 上昇気流は代理メッシュを使ってボリュームの見た目を作る。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetUpdraftGraphicsCommand, true);
+    const auto settings = GetSpecialMaterialDrawSettings(SpecialKind::Shockwave);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, settings.setGraphicsCommand, settings.useProxyModel);
 }
 
 void MeshRenderer::DrawStunBind(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    // 拘束光は代理メッシュで視点から形が読めるようにする。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetStunBindGraphicsCommand, true);
+    const auto settings = GetSpecialMaterialDrawSettings(SpecialKind::StunBind);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, settings.setGraphicsCommand, settings.useProxyModel);
 }
 
 void MeshRenderer::DrawCrownUnlock(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    // 王冠解除の光は代理メッシュを使う。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetCrownUnlockGraphicsCommand, true);
-}
-
-void MeshRenderer::DrawPoisonSpore(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    // 胞子は代理メッシュで薄い面を重ねる。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetPoisonSporeGraphicsCommand, true);
-}
-
-void MeshRenderer::DrawCloud(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    // 雲は代理メッシュを使用して体積感を出す。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetCloudGraphicsCommand, true);
+    const auto settings = GetSpecialMaterialDrawSettings(SpecialKind::CrownUnlock);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, settings.setGraphicsCommand, settings.useProxyModel);
 }
 
 void MeshRenderer::DrawGatePortal(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
@@ -600,8 +540,8 @@ void MeshRenderer::DrawGatePortal(uint32_t depthSrvHandle, uint32_t colorSrvHand
 }
 
 void MeshRenderer::DrawWindOrb(uint32_t depthSrvHandle, uint32_t colorSrvHandle) {
-    // 風の球は元モデルの形状を維持したまま専用 PSO へ切り替える。
-    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, &engine::Object3DCommon::SetWindOrbGraphicsCommand);
+    const auto settings = GetSpecialMaterialDrawSettings(SpecialKind::WindOrb);
+    DrawSpecialMaterial(depthSrvHandle, colorSrvHandle, settings.setGraphicsCommand, settings.useProxyModel);
 }
 
 void MeshRenderer::InitializeWaterProxyModel() {
@@ -615,6 +555,7 @@ void MeshRenderer::InitializeWaterProxyModel() {
     waterProxyModel_ = std::make_unique<Model>();
 
     constexpr int kSegments = 128;
+    // 分割数は区間数なので、両端を含む一行の頂点数は1多くなります。
     constexpr int kRow = kSegments + 1;
     std::vector<Model::VertexData> vertices;
     vertices.reserve(kRow * kRow);
@@ -830,6 +771,7 @@ void MeshRenderer::InitializeGateBarrierCylinderProxyModel() {
 
     for (int segment = 0; segment < kSegments; ++segment) {
         const uint32_t lower = static_cast<uint32_t>(segment);
+        // 上下のリングを対応させ、周方向に隣接する二組の頂点で側面の四角形を二枚の三角形に分けます。
         const uint32_t upper = lower + kSegments + 1;
         indices.insert(indices.end(), {lower, upper, lower + 1, lower + 1, upper, upper + 1});
     }
@@ -852,12 +794,16 @@ void MeshRenderer::DrawVisibilitySilhouette(uint32_t depthSrvHandle, uint32_t co
             silhouetteResource_.Reset(); silhouetteData_ = nullptr; return;
         }
     }
+    // 通常材質の基礎定数をコピーし、シルエットの色・強さと現在のカメラ情報だけを専用枠に上書きします。
     *silhouetteData_ = *waterParamData_;
     silhouetteData_->cameraWorldPosition = camera->GetEye();
     silhouetteData_->waterInverseViewProjection = camera->GetInverseViewProjectionMatrix();
     silhouetteData_->waterLightColor = {color[0], color[1], color[2]};
     silhouetteData_->visibilityParameters.x = color[3];
+    // 遮蔽時の輪郭を実際に描画される姿勢に揃えるため、通常の描画と同じスキニング済み形状を選ぶ。
     if (auto* model = ResolveDrawModel()) model->PrepareComputeSkinning();
     DrawSpecialMaterialWithWvp(wvpResource_.Get(), depthSrvHandle, colorSrvHandle,
         &engine::Object3DCommon::SetVisibilitySilhouetteGraphicsCommand, false, 0, silhouetteResource_.Get());
 }
+
+} // namespace engine

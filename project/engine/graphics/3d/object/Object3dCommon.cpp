@@ -1,4 +1,5 @@
 #include "Object3DCommon.h"
+#include "engine/graphics/3d/material/SpecialMaterialPipelines.h"
 #include "engine/graphics/3d/material/ShaderMaterialRegistry.h"
 #include "../FoliageInteraction.h"
 #include "RootSignatureBuilder.h"
@@ -13,7 +14,13 @@
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "dxcompiler.lib")
 
-void engine::Object3DCommon::Initialize(DirectXCommon* dxCommon) {
+const size_t engine::Object3DCommon::kInitializationStepCount =
+    kCommonPreparationStepCount + SpecialMaterialPipelines::kPreparationStepCount + 1; // 末尾はスカイボックス
+
+engine::Object3DCommon::Object3DCommon() = default;
+engine::Object3DCommon::~Object3DCommon() = default;
+
+void engine::Object3DCommon::Initialize(engine::DirectXCommon* dxCommon) {
     // 描画パスごとに専用 PSO を先に作り、実行中の描画切り替えでは再コンパイルしない。
     StartupProfileScope pipelineProfile("Object3dCommon pipelines");
     BeginInitialize(dxCommon);
@@ -22,7 +29,7 @@ void engine::Object3DCommon::Initialize(DirectXCommon* dxCommon) {
     }
 }
 
-void engine::Object3DCommon::InitializeForTitle(DirectXCommon* dxCommon) {
+void engine::Object3DCommon::InitializeForTitle(engine::DirectXCommon* dxCommon) {
     // タイトル背景で使う通常描画、影、水、炎、ゲート、空だけを初回描画前に準備する。
     // 未使用の材質は各描画入口で初回使用時に生成し、配置アセットの追加にも対応する。
     StartupProfileScope pipelineProfile("Object3dCommon title pipelines");
@@ -30,10 +37,7 @@ void engine::Object3DCommon::InitializeForTitle(DirectXCommon* dxCommon) {
     if (!rootSignature_) CreateRootSignature();
     if (!shadowRootSignature_) CreateShadowRootSignature();
     CreatePipelineStatesInternal(true);
-    if (!waterRootSignature_) CreateWaterRootSignature();
-    if (!waterPipelineState_) CreateWaterPipeline();
-    if (!firePipelineState_) CreateFirePipeline();
-    if (!gatePortalPipelineState_) CreateGatePortalPipeline();
+    specialMaterialPipelines_->PrepareForTitle();
     if (!skyboxPipelineState_) CreateSkyboxPipeline();
     initializationStep_ = kInitializationStepCount;
 }
@@ -46,86 +50,65 @@ void engine::Object3DCommon::EnsurePipelineState(
     }
 }
 
-void engine::Object3DCommon::BeginInitialize(DirectXCommon* dxCommon) {
+// 準備の巡回位置を先頭へ戻す。タイトルで作成済みのPSOは保持し、InitializeStepで不足分だけを補う。
+void engine::Object3DCommon::BeginInitialize(engine::DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
+    if (!specialMaterialPipelines_) {
+        specialMaterialPipelines_ = std::make_unique<SpecialMaterialPipelines>();
+    }
+    specialMaterialPipelines_->SetDirectX(*dxCommon);
     initializationStep_ = 0;
 }
 
 bool engine::Object3DCommon::InitializeStep() {
-    using Step = void (engine::Object3DCommon::*)();
-    static constexpr std::array<Step, kInitializationStepCount> kSteps = {
-        &engine::Object3DCommon::CreateRootSignature,
-        &engine::Object3DCommon::CreateShadowRootSignature,
-        &engine::Object3DCommon::CreatePipelineStates,
-        &engine::Object3DCommon::CreateLocalFogPipeline,
-        &engine::Object3DCommon::CreateEffectRootSignature,
-        &engine::Object3DCommon::CreateEffectPipeline,
-        &engine::Object3DCommon::CreateWaterRootSignature,
-        &engine::Object3DCommon::CreateWaterPipeline,
-        &engine::Object3DCommon::CreateMagmaPipeline,
-        &engine::Object3DCommon::CreateIcePipeline,
-        &engine::Object3DCommon::CreateFirePipeline,
-        &engine::Object3DCommon::CreateLaserPipeline,
-        &engine::Object3DCommon::CreateSlimeGelPipeline,
-        &engine::Object3DCommon::CreateShockwavePipeline,
-        &engine::Object3DCommon::CreateLiquidContactPipeline,
-        &engine::Object3DCommon::CreateDamageCrackPipeline,
-        &engine::Object3DCommon::CreateUpdraftPipeline,
-        &engine::Object3DCommon::CreateStunBindPipeline,
-        &engine::Object3DCommon::CreateCrownUnlockPipeline,
-        &engine::Object3DCommon::CreatePoisonSporePipeline,
-        &engine::Object3DCommon::CreateCloudPipeline,
-        &engine::Object3DCommon::CreateGatePortalPipeline,
-        &engine::Object3DCommon::CreateWindOrbPipeline,
-        &engine::Object3DCommon::CreateSkyboxPipeline,
-    };
+    if (initializationStep_ >= kInitializationStepCount) return true;
 
-    if (initializationStep_ >= kSteps.size()) {
-        return true;
-    }
-
-    // 依存するRootSignatureを先に作る順序を保ったまま、一回で一種類だけ生成する。
-    // 同じCommonを複数Sceneで使う。軽量準備や初回使用で既に作った資源は保持する。
-    const auto allReady = [](const auto& states) {
-        return std::all_of(states.begin(), states.end(), [](const auto& state) { return state.Get() != nullptr; });
-    };
-    const std::array<bool, kInitializationStepCount> ready = {
-        rootSignature_.Get() != nullptr,
-        shadowRootSignature_.Get() != nullptr,
-        allReady(graphicsPipelineStates_) && shadowPipelineState_ && foliageShadowPipelineState_,
-        localFogPipelineState_.Get() != nullptr,
-        effectRootSignature_.Get() != nullptr,
-        allReady(effectPipelineStates_),
-        waterRootSignature_.Get() != nullptr,
-        waterPipelineState_.Get() != nullptr,
-        magmaPipelineState_.Get() != nullptr,
-        icePipelineState_.Get() != nullptr,
-        firePipelineState_.Get() != nullptr,
-        laserPipelineState_.Get() != nullptr,
-        slimeGelPipelineState_.Get() != nullptr,
-        shockwavePipelineState_.Get() != nullptr,
-        liquidContactPipelineState_.Get() != nullptr,
-        damageCrackPipelineState_.Get() != nullptr,
-        updraftPipelineState_.Get() != nullptr,
-        stunBindPipelineState_.Get() != nullptr,
-        crownUnlockPipelineState_.Get() != nullptr,
-        poisonSporePipelineState_.Get() != nullptr,
-        cloudPipelineState_.Get() != nullptr,
-        gatePortalPipelineState_.Get() != nullptr,
-        windOrbPipelineState_.Get() != nullptr,
-        skyboxPipelineState_.Get() != nullptr
-    };
     const std::size_t stepIndex = initializationStep_++;
-    if (ready[stepIndex]) return initializationStep_ == kSteps.size();
-    {
-        StartupProfileScope stepProfile("Object3dCommon pipeline step " + std::to_string(stepIndex));
-        (this->*kSteps[stepIndex])();
-    }
+    const bool complete = initializationStep_ == kInitializationStepCount;
+    constexpr const char* kProfilePrefix = "Object3dCommon pipeline step ";
 
-    return initializationStep_ == kSteps.size();
+    if (stepIndex < kCommonPreparationStepCount) {
+        using Step = void (engine::Object3DCommon::*)();
+        static constexpr std::array<Step, kCommonPreparationStepCount> steps = {
+            &Object3DCommon::CreateRootSignature,
+            &Object3DCommon::CreateShadowRootSignature,
+            &Object3DCommon::CreatePipelineStates,
+            &Object3DCommon::CreateLocalFogPipeline,
+            &Object3DCommon::CreateEffectRootSignature,
+            &Object3DCommon::CreateEffectPipeline,
+        };
+        const auto allReady = [](const auto& states) {
+            return std::all_of(states.begin(), states.end(), [](const auto& state) { return state.Get() != nullptr; });
+        };
+        // タイトルなどで準備済みのPSOは段階初期化でも使い回し、不足分だけを各段で調べます。
+        const std::array<bool, kCommonPreparationStepCount> ready = {
+            rootSignature_.Get() != nullptr,
+            shadowRootSignature_.Get() != nullptr,
+            allReady(graphicsPipelineStates_) && shadowPipelineState_ && foliageShadowPipelineState_,
+            localFogPipelineState_.Get() != nullptr,
+            effectRootSignature_.Get() != nullptr,
+            allReady(effectPipelineStates_),
+        };
+        if (!ready[stepIndex]) {
+            StartupProfileScope stepProfile(kProfilePrefix + std::to_string(stepIndex));
+            (this->*steps[stepIndex])();
+        }
+    } else if (!complete) {
+        // 共通描画の準備に続き、水系を共有ルートから一段ずつ準備する。
+        const std::size_t materialStep = stepIndex - kCommonPreparationStepCount;
+        if (!specialMaterialPipelines_->IsStepReady(materialStep)) {
+            StartupProfileScope stepProfile(kProfilePrefix + std::to_string(stepIndex));
+            specialMaterialPipelines_->PrepareStep(materialStep);
+        }
+    } else if (!skyboxPipelineState_) {
+        StartupProfileScope stepProfile(kProfilePrefix + std::to_string(stepIndex));
+        CreateSkyboxPipeline();
+    }
+    return complete;
 }
 
+// 完了した準備段階の割合を返す。各段階のコンパイル時間は含めない。
 float engine::Object3DCommon::GetInitializationProgress() const {
     return static_cast<float>(initializationStep_) / static_cast<float>(kInitializationStepCount);
 }
@@ -156,6 +139,7 @@ void engine::Object3DCommon::SetMaterialPipelineState(BlendMode blendMode, int m
         const auto* definition = ShaderMaterialRegistry::Instance().Find(shaderMaterialId);
         if (definition) {
             const std::string& shaderPath = definition->pixelShader;
+            // シェーダーの定義を再読込した場合に古いPSOや作成失敗を使い回さないよう、台帳の世代をキーに含めます。
             const std::string cacheKey = shaderPath + "#" + std::to_string(ShaderMaterialRegistry::Instance().Generation());
             const std::string failureKey = cacheKey + "#" + std::to_string(static_cast<int>(blendMode));
             auto& states = shaderMaterialPipelineStates_[cacheKey];
@@ -177,6 +161,7 @@ void engine::Object3DCommon::SetMaterialPipelineState(BlendMode blendMode, int m
     const wchar_t* shaderPath = nullptr;
     std::array<Microsoft::WRL::ComPtr<ID3D12PipelineState>, static_cast<size_t>(BlendMode::Count)>* states = nullptr;
 
+    // 従来の番号を持つダッシュパネルとデカールは専用PSを使い、それ以外は共通PSOを使う。
     if (materialType == 24) {
         shaderPath = L"Resources/shader/object3d/Object3d.DashPanel.PS.hlsl";
         states = &dashPanelPipelineStates_;
@@ -213,6 +198,7 @@ bool engine::Object3DCommon::CreateMaterialVariantPipeline(const wchar_t* pixelS
 
     auto vertexShader = dxCommon_->CompileShader(L"Resources/shader/object3d/Object3d.VS.hlsl", L"vs_6_0");
     std::string shaderError;
+    // 編集した外部シェーダーのエラーをログへ返し、上位側の通常材質への復帰を可能にします。
     auto pixelShader = dxCommon_->TryCompileShader(pixelShaderPath, L"ps_6_0", L"main", shaderError);
     if (!pixelShader) {
         DebugConsole::GetInstance()->AddLog("Shader Material compile error: " + shaderError);
@@ -240,7 +226,7 @@ void engine::Object3DCommon::CreateRootSignature() {
     RootSignatureBuilder builder;
 
     // =================================================================
-    // 1. ルートパラメータの設定 (順番は元の配列[0]～[12]と完全一致させています)
+    // 各番号は描画時の束縛先と一致させる。既存の0～12を維持し、材質係数と草の描画用に13～15を使う。
     // =================================================================
 
     // [0] Material (CBV b0 - Pixel)
@@ -298,7 +284,7 @@ void engine::Object3DCommon::CreateRootSignature() {
     // s0: テクスチャ用の標準サンプラー (リニア補間、ラップ)
     builder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_PIXEL, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
 
-    // s1: 影マップ用の特殊サンプラー (くっきり判定、範囲外は真っ白)
+    // s1: 影マップは点サンプリング。Uの範囲外は白、Vの範囲外は端の値を使う。
     D3D12_STATIC_SAMPLER_DESC shadowSampler{};
     shadowSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
     shadowSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
@@ -354,6 +340,7 @@ void engine::Object3DCommon::CreatePipelineStatesInternal(bool titleBlendModesOn
 
     // ブレンドモードごとにPSOを生成
     for (size_t i = 0; i < static_cast<size_t>(BlendMode::Count); ++i) {
+        // タイトルの軽量準備では不透明と通常合成だけを先に揃え、その他の合成は後の準備へ回します。
         if ((titleBlendModesOnly && i > static_cast<size_t>(BlendMode::Normal)) ||
             graphicsPipelineStates_[i]) {
             continue;
@@ -480,7 +467,7 @@ void engine::Object3DCommon::CreateLocalFogPipeline() {
     // 半透明合成設定 (BlendMode::Normal と同じ設定を流用)
     psoBuilder.SetBlendMode(BlendMode::Normal);
 
-    // ★重要: フォグはZテスト不要＆Zバッファへの書き込みもしないので上書きしてOFFにする
+    // 霧の奥行きはピクセルシェーダーがシーン深度を読み取って決めるため、固定機能の深度テストと書き込みを無効にする。
     psoBuilder.SetDepthStencilState(false, D3D12_DEPTH_WRITE_MASK_ZERO);
 
     // レンダーターゲット (デプスバッファは使わないので DSVFormat は UNKNOWN にする)
@@ -502,6 +489,7 @@ void engine::Object3DCommon::SetLocalFogGraphicsCommand() {
 // ==========================================================
 //  エフェクト用コマンドのセット
 // ==========================================================
+// 段階準備を省いた場合は初回描画でルートとPSOを用意し、指定した合成方式の状態を選ぶ。
 void engine::Object3DCommon::SetEffectGraphicsCommand(BlendMode blendMode) {
     if (!effectPipelineStates_[static_cast<size_t>(blendMode)]) {
         if (!effectRootSignature_) {
@@ -528,7 +516,7 @@ void engine::Object3DCommon::CreateEffectRootSignature() {
     // パラメータ0: CBV (b0, 頂点シェーダー用) -> ViewProjection
     builder.AddCbv(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 
-    // パラメータ1: CBV (b1, 頂点シェーダー用) -> WorldTransform
+    // パラメータ1: 頂点側のb1を予約する。現在の描画経路はWVPを渡し、Effect3d.VSでは参照しない。
     builder.AddCbv(1, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 
     // パラメータ2: CBV (b0, ピクセルシェーダー用) -> EffectMaterial (色・UVスクロール時間など)
@@ -585,7 +573,7 @@ void engine::Object3DCommon::CreateEffectPipeline() {
     psoBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
 
     // Zテスト(奥にあるものは隠れる)は有効にしておく
-    // ※エフェクトなのでZバッファへの書き込みはしない(ZERO)
+    // ここでは深度書き込みを無効にします。下のSetBlendModeが合成方式ごとの書き込み設定を上書きします。
     psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO);
 
     // レンダーターゲットの設定
@@ -605,473 +593,77 @@ void engine::Object3DCommon::CreateEffectPipeline() {
     }
 }
 
-// 水専用のルートシグネチャ作成
-void engine::Object3DCommon::CreateWaterRootSignature() {
-    RootSignatureBuilder builder;
-
-    // [0] wvp (b0レジスタ)
-    builder.AddCbv(0, 0, D3D12_SHADER_VISIBILITY_ALL);
-
-    // [1] 波パラメータ (b1レジスタ)
-    builder.AddCbv(1, 0, D3D12_SHADER_VISIBILITY_ALL);
-
-    // [2] マテリアル/色 (b2レジスタ)
-    builder.AddCbv(2, 0, D3D12_SHADER_VISIBILITY_ALL);
-
-    //  [3] 背景深度テクスチャ (t0レジスタ)
-    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
-    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
-
-    // [5-7] ベイク済みの補助テクスチャ (t2-t4レジスタ)
-    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
-    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
-    builder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
-
-    //  サンプラー (s0レジスタ) 境界が綺麗に補間されるようにCLAMPを指定
-    builder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_PIXEL, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_CLAMP);
-
-    // 引数でポインタを渡して構築結果を受け取る
-    builder.Build(dxCommon_->GetDevice(), waterRootSignature_.GetAddressOf(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-}
-
-// 水専用のパイプライン（PSO）作成
-void engine::Object3DCommon::CreateWaterPipeline() {
-    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-    };
-
-    // 先ほど作ったシェーダーを読み込む
-    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Water.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Water.PS.hlsl", L"ps_6_0");
-
-    GraphicsPipelineBuilder psoBuilder;
-    psoBuilder.SetRootSignature(waterRootSignature_.Get());
-    psoBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
-    psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
-
-    // 水が裏側（水中）からも見えるようにカリングをオフ
-    psoBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
-
-    // 半透明合成（アルファブレンド）
-    psoBuilder.SetBlendMode(BlendMode::Normal);
-
-    // Zテストはする(true)が、Z書き込みはしない(ZERO)ように引数で直接指定
-    psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
-
-    // RenderTargetのフォーマット設定
-    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    psoBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
-
-    // 引数でポインタを渡して構築結果を受け取る
-    psoBuilder.Build(dxCommon_->GetDevice(), waterPipelineState_.GetAddressOf());
-}
-
-// 描画コマンドセット
+// 水材質のPSOと共有ルートを、現在のコマンドリストへ束縛します。
 void engine::Object3DCommon::SetWaterGraphicsCommand() {
-    // 水材質の共有ルートと半透明 PSO を対で設定する。
-    EnsurePipelineState(waterPipelineState_, &engine::Object3DCommon::CreateWaterPipeline);
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
-    commandList->SetPipelineState(waterPipelineState_.Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    specialMaterialPipelines_->BindWater();
 }
 
-void engine::Object3DCommon::CreateSpecialMaterialPipeline(
-    const wchar_t* vertexShaderPath,
-    const wchar_t* pixelShaderPath,
-    BlendMode blendMode,
-    D3D12_CULL_MODE cullMode,
-    ID3D12PipelineState** outPipelineState,
-    bool shaderDepthTest) {
-    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-    };
-
-    auto vsBlob = dxCommon_->CompileShader(vertexShaderPath, L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(pixelShaderPath, L"ps_6_0");
-
-    GraphicsPipelineBuilder psoBuilder;
-    psoBuilder.SetRootSignature(waterRootSignature_.Get());
-    psoBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
-    psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
-    psoBuilder.SetRasterizerState(cullMode, D3D12_FILL_MODE_SOLID);
-    psoBuilder.SetBlendMode(blendMode);
-
-    // 深度をSRVとして読む材質はDSVが接続されないため、シェーダーで遮蔽を判定します。
-    psoBuilder.SetDepthStencilState(!shaderDepthTest, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
-
-    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    psoBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
-    psoBuilder.Build(dxCommon_->GetDevice(), outPipelineState);
-}
-
-// ==========================================
-// マグマ専用のパイプライン作成
-// ==========================================
-void engine::Object3DCommon::CreateMagmaPipeline() {
-    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-    };
-
-    // ★頂点シェーダーは水(Water.VS)を使い回し、ピクセルシェーダーだけMagmaにする！
-    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Magma.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Magma.PS.hlsl", L"ps_6_0");
-
-    GraphicsPipelineBuilder psoBuilder;
-
-    // ルートシグネチャも水のものを完全に使い回す
-    psoBuilder.SetRootSignature(waterRootSignature_.Get());
-    psoBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
-    psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
-
-    // ★マグマは不透明で分厚いので裏面カリング(CULL_MODE_BACK)
-    psoBuilder.SetRasterizerState(D3D12_CULL_MODE_BACK, D3D12_FILL_MODE_SOLID);
-
-    // ★ブレンドなし（完全不透明）
-    psoBuilder.SetBlendMode(BlendMode::None);
-
-    // ★ZテストもZ書き込みも行う
-    psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ALL, D3D12_COMPARISON_FUNC_LESS_EQUAL);
-
-    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    psoBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
-    psoBuilder.Build(dxCommon_->GetDevice(), magmaPipelineState_.GetAddressOf());
-}
-
-// ==========================================
-// 氷専用のパイプライン作成
-// ==========================================
-void engine::Object3DCommon::CreateIcePipeline() {
-    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-    };
-
-    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Ice.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Ice.PS.hlsl", L"ps_6_0");
-
-    GraphicsPipelineBuilder psoBuilder;
-    psoBuilder.SetRootSignature(waterRootSignature_.Get());
-    psoBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
-    psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
-
-    // ★氷は分厚く見せたいのでカリングなし(CULL_MODE_NONE)
-    psoBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
-
-    // ★半透明合成
-    psoBuilder.SetBlendMode(BlendMode::Normal);
-
-    // ★Zテストはするが、Z書き込みはしない(透明物の基本)
-    psoBuilder.SetDepthStencilState(true, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_LESS_EQUAL);
-
-    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    psoBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
-    psoBuilder.Build(dxCommon_->GetDevice(), icePipelineState_.GetAddressOf());
-}
-
-// コマンドセット関数
 void engine::Object3DCommon::SetMagmaGraphicsCommand() {
-    // 水系の定数バッファ配置を共用しつつ、不透明のマグマ PSO を選ぶ。
-    EnsurePipelineState(magmaPipelineState_, &engine::Object3DCommon::CreateMagmaPipeline);
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
-    commandList->SetPipelineState(magmaPipelineState_.Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    specialMaterialPipelines_->BindMagma();
 }
 
 void engine::Object3DCommon::SetIceGraphicsCommand() {
-    // 氷の半透明パスへ切り替え、深度書き込みをしない PSO を使う。
-    EnsurePipelineState(icePipelineState_, &engine::Object3DCommon::CreateIcePipeline);
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
-    commandList->SetPipelineState(icePipelineState_.Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-}
-
-void engine::Object3DCommon::CreateFirePipeline() {
-    D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "NORMAL",   0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
-    };
-
-    auto vsBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Fire.VS.hlsl", L"vs_6_0");
-    auto psBlob = dxCommon_->CompileShader(L"Resources/shader/materials/Fire.PS.hlsl", L"ps_6_0");
-
-    GraphicsPipelineBuilder psoBuilder;
-    psoBuilder.SetRootSignature(waterRootSignature_.Get());
-    psoBuilder.SetInputLayout(inputLayout, _countof(inputLayout));
-    psoBuilder.SetShaders(vsBlob.Get(), psBlob.Get());
-
-    // 炎は裏側からも見えるようにカリングなし、半透明合成
-    psoBuilder.SetRasterizerState(D3D12_CULL_MODE_NONE, D3D12_FILL_MODE_SOLID);
-    psoBuilder.SetBlendMode(BlendMode::Normal);
-
-    // このパスはDSVを外して深度を読むため、遮蔽は炎シェーダー側で処理します。
-    psoBuilder.SetDepthStencilState(false, D3D12_DEPTH_WRITE_MASK_ZERO, D3D12_COMPARISON_FUNC_ALWAYS);
-
-    DXGI_FORMAT rtvFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
-    psoBuilder.SetRenderTargets(1, &rtvFormat, DXGI_FORMAT_D24_UNORM_S8_UINT);
-    psoBuilder.Build(dxCommon_->GetDevice(), firePipelineState_.GetAddressOf());
+    specialMaterialPipelines_->BindIce();
 }
 
 void engine::Object3DCommon::SetFireGraphicsCommand() {
-    EnsurePipelineState(firePipelineState_, &engine::Object3DCommon::CreateFirePipeline);
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
-    commandList->SetPipelineState(firePipelineState_.Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-}
-
-void engine::Object3DCommon::CreateLaserPipeline() {
-    // ビームは加算合成し、深度テクスチャによる遮蔽をシェーダー側で判定する。
-    CreateSpecialMaterialPipeline(
-        L"Resources/shader/materials/LaserBeam.VS.hlsl",
-        L"Resources/shader/materials/LaserBeam.PS.hlsl",
-        BlendMode::Add,
-        D3D12_CULL_MODE_NONE,
-        laserPipelineState_.GetAddressOf(), true
-    );
-}
-
-void engine::Object3DCommon::CreateSlimeGelPipeline() {
-    // ゼリー状の表面は両面を半透明合成する。
-    CreateSpecialMaterialPipeline(
-        L"Resources/shader/materials/SlimeGel.VS.hlsl",
-        L"Resources/shader/materials/SlimeGel.PS.hlsl",
-        BlendMode::Normal,
-        D3D12_CULL_MODE_NONE,
-        slimeGelPipelineState_.GetAddressOf()
-    );
-}
-
-void engine::Object3DCommon::CreateShockwavePipeline() {
-    // 地表の衝撃波は薄い面の裏側からも見えるよう両面描画する。
-    CreateSpecialMaterialPipeline(
-        L"Resources/shader/materials/GroundShockwave.VS.hlsl",
-        L"Resources/shader/materials/GroundShockwave.PS.hlsl",
-        BlendMode::Normal,
-        D3D12_CULL_MODE_NONE,
-        shockwavePipelineState_.GetAddressOf()
-    );
-}
-
-void engine::Object3DCommon::CreateLiquidContactPipeline() {
-    // 水面との接触表現は水と同じ定数バッファの配置を使う。
-    CreateSpecialMaterialPipeline(
-        L"Resources/shader/materials/LiquidContact.VS.hlsl",
-        L"Resources/shader/materials/LiquidContact.PS.hlsl",
-        BlendMode::Normal,
-        D3D12_CULL_MODE_NONE,
-        liquidContactPipelineState_.GetAddressOf()
-    );
-}
-
-void engine::Object3DCommon::CreateDamageCrackPipeline() {
-    // ひび割れは地形の向きに依存せず見えるよう両面描画する。
-    CreateSpecialMaterialPipeline(
-        L"Resources/shader/materials/DamageCrack.VS.hlsl",
-        L"Resources/shader/materials/DamageCrack.PS.hlsl",
-        BlendMode::Normal,
-        D3D12_CULL_MODE_NONE,
-        damageCrackPipelineState_.GetAddressOf()
-    );
-}
-
-void engine::Object3DCommon::CreateUpdraftPipeline() {
-    // 上昇気流は視点が内側に入っても見える半透明の両面パスにする。
-    CreateSpecialMaterialPipeline(
-        L"Resources/shader/materials/Updraft.VS.hlsl",
-        L"Resources/shader/materials/Updraft.PS.hlsl",
-        BlendMode::Normal,
-        D3D12_CULL_MODE_NONE,
-        updraftPipelineState_.GetAddressOf()
-    );
-}
-
-void engine::Object3DCommon::CreateStunBindPipeline() {
-    // 拘束光は背景へ加算して発光させる。
-    CreateSpecialMaterialPipeline(
-        L"Resources/shader/materials/StunBind.VS.hlsl",
-        L"Resources/shader/materials/StunBind.PS.hlsl",
-        BlendMode::Add,
-        D3D12_CULL_MODE_NONE,
-        stunBindPipelineState_.GetAddressOf()
-    );
-}
-
-void engine::Object3DCommon::CreateCrownUnlockPipeline() {
-    // 王冠解除の光も加算合成し、暗い背景で消えないようにする。
-    CreateSpecialMaterialPipeline(
-        L"Resources/shader/materials/CrownUnlock.VS.hlsl",
-        L"Resources/shader/materials/CrownUnlock.PS.hlsl",
-        BlendMode::Add,
-        D3D12_CULL_MODE_NONE,
-        crownUnlockPipelineState_.GetAddressOf()
-    );
-}
-
-void engine::Object3DCommon::CreatePoisonSporePipeline() {
-    // 胞子の薄い面を両側から描けるようカリングを無効にする。
-    CreateSpecialMaterialPipeline(
-        L"Resources/shader/materials/PoisonSpore.VS.hlsl",
-        L"Resources/shader/materials/PoisonSpore.PS.hlsl",
-        BlendMode::Normal,
-        D3D12_CULL_MODE_NONE,
-        poisonSporePipelineState_.GetAddressOf()
-    );
-}
-
-void engine::Object3DCommon::CreateCloudPipeline() {
-    // 雲は半透明で描き、視点が内部に入っても面を残す。
-    CreateSpecialMaterialPipeline(
-        L"Resources/shader/materials/Cloud.VS.hlsl",
-        L"Resources/shader/materials/Cloud.PS.hlsl",
-        BlendMode::Normal,
-        D3D12_CULL_MODE_NONE,
-        cloudPipelineState_.GetAddressOf()
-    );
-}
-
-void engine::Object3DCommon::CreateGatePortalPipeline() {
-    // ゲート面は通過前後の両側から見えるよう両面描画する。
-    CreateSpecialMaterialPipeline(
-        L"Resources/shader/materials/GatePortal.VS.hlsl",
-        L"Resources/shader/materials/GatePortal.PS.hlsl",
-        BlendMode::Normal,
-        D3D12_CULL_MODE_NONE,
-        gatePortalPipelineState_.GetAddressOf()
-    );
-}
-
-void engine::Object3DCommon::CreateWindOrbPipeline() {
-    // 風の球は閉じた形状なので裏面を除き、半透明で合成する。
-    CreateSpecialMaterialPipeline(
-        L"Resources/shader/materials/WindOrb.VS.hlsl",
-        L"Resources/shader/materials/WindOrb.PS.hlsl",
-        BlendMode::Normal,
-        D3D12_CULL_MODE_BACK,
-        windOrbPipelineState_.GetAddressOf()
-    );
+    specialMaterialPipelines_->BindFire();
 }
 
 void engine::Object3DCommon::SetLaserGraphicsCommand() {
-    // 未生成の PSO では描かず、水系の共有ルートとビーム用 PSO を組にする。
-    EnsurePipelineState(laserPipelineState_, &engine::Object3DCommon::CreateLaserPipeline);
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
-    commandList->SetPipelineState(laserPipelineState_.Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    specialMaterialPipelines_->BindLaser();
 }
 
 void engine::Object3DCommon::SetSlimeGelGraphicsCommand() {
-    // ゼリー材質の描画前に、水系の共有ルートを再設定する。
-    EnsurePipelineState(slimeGelPipelineState_, &engine::Object3DCommon::CreateSlimeGelPipeline);
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
-    commandList->SetPipelineState(slimeGelPipelineState_.Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    specialMaterialPipelines_->BindSlimeGel();
 }
 
 void engine::Object3DCommon::SetShockwaveGraphicsCommand() {
-    // 衝撃波の描画へ切り替える際に、共有ルートも同時に束縛する。
-    EnsurePipelineState(shockwavePipelineState_, &engine::Object3DCommon::CreateShockwavePipeline);
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
-    commandList->SetPipelineState(shockwavePipelineState_.Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    specialMaterialPipelines_->BindShockwave();
 }
 
 void engine::Object3DCommon::SetLiquidContactGraphicsCommand() {
-    // 接触エフェクトへ切り替える際に、共有ルートも同時に束縛する。
-    EnsurePipelineState(liquidContactPipelineState_, &engine::Object3DCommon::CreateLiquidContactPipeline);
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
-    commandList->SetPipelineState(liquidContactPipelineState_.Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    specialMaterialPipelines_->BindLiquidContact();
 }
 
 void engine::Object3DCommon::SetDamageCrackGraphicsCommand() {
-    // ひび割れ材質へ切り替える際に、共有ルートも同時に束縛する。
-    EnsurePipelineState(damageCrackPipelineState_, &engine::Object3DCommon::CreateDamageCrackPipeline);
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
-    commandList->SetPipelineState(damageCrackPipelineState_.Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    specialMaterialPipelines_->BindDamageCrack();
 }
 
 void engine::Object3DCommon::SetUpdraftGraphicsCommand() {
-    // 上昇気流の半透明パスを使う前に、共有ルートを束縛する。
-    EnsurePipelineState(updraftPipelineState_, &engine::Object3DCommon::CreateUpdraftPipeline);
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
-    commandList->SetPipelineState(updraftPipelineState_.Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    specialMaterialPipelines_->BindUpdraft();
 }
 
 void engine::Object3DCommon::SetStunBindGraphicsCommand() {
-    // 拘束光の加算パスを使う前に、共有ルートを束縛する。
-    EnsurePipelineState(stunBindPipelineState_, &engine::Object3DCommon::CreateStunBindPipeline);
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
-    commandList->SetPipelineState(stunBindPipelineState_.Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    specialMaterialPipelines_->BindStunBind();
 }
 
 void engine::Object3DCommon::SetCrownUnlockGraphicsCommand() {
-    // 王冠解除の加算パスを使う前に、共有ルートを束縛する。
-    EnsurePipelineState(crownUnlockPipelineState_, &engine::Object3DCommon::CreateCrownUnlockPipeline);
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
-    commandList->SetPipelineState(crownUnlockPipelineState_.Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    specialMaterialPipelines_->BindCrownUnlock();
 }
 
 void engine::Object3DCommon::SetPoisonSporeGraphicsCommand() {
-    // 胞子材質の半透明パスを使う前に、共有ルートを束縛する。
-    EnsurePipelineState(poisonSporePipelineState_, &engine::Object3DCommon::CreatePoisonSporePipeline);
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
-    commandList->SetPipelineState(poisonSporePipelineState_.Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    specialMaterialPipelines_->BindPoisonSpore();
 }
 
 void engine::Object3DCommon::SetCloudGraphicsCommand() {
-    // 雲材質の半透明パスを使う前に、共有ルートを束縛する。
-    EnsurePipelineState(cloudPipelineState_, &engine::Object3DCommon::CreateCloudPipeline);
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
-    commandList->SetPipelineState(cloudPipelineState_.Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    specialMaterialPipelines_->BindCloud();
 }
 
 void engine::Object3DCommon::SetGatePortalGraphicsCommand() {
-    // ゲート材質の半透明パスを使う前に、共有ルートを束縛する。
-    EnsurePipelineState(gatePortalPipelineState_, &engine::Object3DCommon::CreateGatePortalPipeline);
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
-    commandList->SetPipelineState(gatePortalPipelineState_.Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    specialMaterialPipelines_->BindGatePortal();
 }
 
 void engine::Object3DCommon::SetWindOrbGraphicsCommand() {
-    // 風の球材質の半透明パスを使う前に、共有ルートを束縛する。
-    EnsurePipelineState(windOrbPipelineState_, &engine::Object3DCommon::CreateWindOrbPipeline);
-    ID3D12GraphicsCommandList* commandList = dxCommon_->GetCommandList();
-    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
-    commandList->SetPipelineState(windOrbPipelineState_.Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    specialMaterialPipelines_->BindWindOrb();
+}
+
+void engine::Object3DCommon::SetVisibilitySilhouetteGraphicsCommand() {
+    specialMaterialPipelines_->BindVisibilitySilhouette();
 }
 
 void engine::Object3DCommon::CreateSkyboxPipeline() {
-    // 背景は常に奥へ描くため、深度テストと書き込みを行わない。
+    // 背景はシーン側で不透明物より先に描く。後から配置物を重ねられるよう、深度テストと書き込みは無効にする。
     RootSignatureBuilder rsBuilder;
     rsBuilder.AddCbv(0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
     rsBuilder.AddSimpleDescriptorTable(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 0, 1, 0, D3D12_SHADER_VISIBILITY_PIXEL);
@@ -1102,16 +694,3 @@ void engine::Object3DCommon::CreateSkyboxPipeline() {
     pipelineBuilder.Build(dxCommon_->GetDevice(), skyboxPipelineState_.GetAddressOf());
 }
 
-void engine::Object3DCommon::CreateVisibilitySilhouettePipeline() {
-    CreateSpecialMaterialPipeline(L"Resources/shader/materials/VisibilitySilhouette.VS.hlsl",
-        L"Resources/shader/materials/VisibilitySilhouette.PS.hlsl", BlendMode::Normal,
-        D3D12_CULL_MODE_BACK, visibilitySilhouettePipelineState_.GetAddressOf(), true);
-}
-
-void engine::Object3DCommon::SetVisibilitySilhouetteGraphicsCommand() {
-    EnsurePipelineState(visibilitySilhouettePipelineState_, &engine::Object3DCommon::CreateVisibilitySilhouettePipeline);
-    auto* commandList = dxCommon_->GetCommandList();
-    commandList->SetGraphicsRootSignature(waterRootSignature_.Get());
-    commandList->SetPipelineState(visibilitySilhouettePipelineState_.Get());
-    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-}

@@ -50,7 +50,7 @@ float engine::ParticleSystem::ResolveEmissionScale(const EmitterParams& params, 
         return 1.0f;
     }
 
-    const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    const engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
     if (!camera) {
         return 1.0f;
@@ -64,6 +64,7 @@ float engine::ParticleSystem::ResolveEmissionScale(const EmitterParams& params, 
 }
 
 std::size_t engine::ParticleSystem::ResolveParticleLimit(const EmitterParams& params) const {
+    // LODに正の上限指定がなければ、生成上限はGPUへ転送できる固定の粒子数とする。
     if (!params.lod.enabled || params.lod.maxAliveParticles <= 0) {
         return static_cast<std::size_t>(kMaxParticles);
     }
@@ -284,7 +285,7 @@ void engine::ParticleSystem::Update(float deltaTime) {
     }
 
     // カメラ行列がなければ描画姿勢を作れないため、計測値を残してここで戻る。
-    const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    const engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
     // カメラが無い場合の安全対策 (必要に応じて)
     if (!camera) {
@@ -339,6 +340,7 @@ void engine::ParticleSystem::Update(float deltaTime) {
                 std::lerp(p.startColor.w, p.endColor.w, lifeRatio)
             };
 
+        // 発光倍率はRGBに掛け、透過に使うアルファは寿命カーブで決めた値を保つ。
         currentColor.x *= p.hdrIntensity;
         currentColor.y *= p.hdrIntensity;
         currentColor.z *= p.hdrIntensity;
@@ -405,7 +407,7 @@ void engine::ParticleSystem::Draw() {
     const auto cpuStart = std::chrono::high_resolution_clock::now();
 
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
-    DirectXCommon* dxCommon = common_->GetDxCommon();
+    engine::DirectXCommon* dxCommon = common_->GetDxCommon();
     dxCommon->StartGpuProfile("Particle CPU pass");
     common_->SetPipeline(commandList, params_.blendMode);
 
@@ -427,7 +429,7 @@ void engine::ParticleSystem::Draw() {
 }
 
 void engine::ParticleSystem::CreateResources() {
-    DirectXCommon* dxCommon = common_->GetDxCommon();
+    engine::DirectXCommon* dxCommon = common_->GetDxCommon();
 
     // --- 頂点バッファ (四角形) ---
     vertexResource_ = dxCommon->CreateBufferResource(sizeof(ParticleVertex) * 4);
@@ -456,6 +458,7 @@ void engine::ParticleSystem::CreateResources() {
     // --- インスタンシング用リソース ---
     instancingResource_ = dxCommon->CreateBufferResource(sizeof(ParticleForGpu) * kMaxParticles);
     instancingBufferView_ = { instancingResource_->GetGPUVirtualAddress(), sizeof(ParticleForGpu) * kMaxParticles, sizeof(ParticleForGpu) };
+    // 毎フレーム粒子ごとの行列と色を書き込むため、インスタンス用バッファをマップしたまま保持する。
     instancingResource_->Map(0, nullptr, reinterpret_cast<void**>(&instancingData_));
 
     // --- カメラ行列用リソース ---
@@ -469,6 +472,7 @@ void engine::ParticleSystem::Clear() {
     spawnTimer_ = 0.0f;
 }
 
+// 既存粒子と連続放出の端数を消し、プレビューを同じ乱数の最初から再現できるようにする。
 void engine::ParticleSystem::ResetSimulation(uint32_t randomSeed) {
     Clear();
     randomEngine_.seed(randomSeed);
@@ -622,6 +626,7 @@ void engine::ParticleSystem::SpawnSlashEffect(const engine::Vector3& position, f
 #ifdef USE_IMGUI
 void engine::ParticleSystem::BeginEditorSession() {
     if (editorSession_) return;
+    // 通常再生を同じ粒子状態から再開できるよう、乱数の進みと連続放出の端数も退避する。
     savedEditorParams_ = params_; savedEditorRandom_ = randomEngine_;
     savedEditorScale_ = simulationTimeScale_; savedEditorTimer_ = spawnTimer_; savedEditorTexture_ = textureHandle_;
     particles_.swap(savedEditorParticles_); ResetSimulation();

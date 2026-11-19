@@ -13,6 +13,8 @@
 #include "engine/graphics/core/ColorSpace.h"
 #include "PostEffect.h"
 
+namespace engine {
+
 using json = nlohmann::json;
 
 namespace {
@@ -22,6 +24,7 @@ bool IntersectsFrustumSphere(const engine::Frustum& frustum, const engine::Vecto
     const float safeRadius = (std::max)(radius, 0.0f);
 
     for (const engine::Plane& plane : frustum.planes) {
+        // 各平面からの符号付き距離が半径より外なら、光が届く球全体が視界の外にあると判断します。
         const float signedDistance =
             plane.normal.x * center.x +
             plane.normal.y * center.y +
@@ -80,7 +83,7 @@ void LightManager::Initialize(DirectXCommon* dxCommon) {
 
 void LightManager::Update() {
 
-    Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
     const engine::Frustum* activeFrustum = activeCamera ? &activeCamera->GetFrustum() : nullptr;
 
     // ---------------------------------------------------
@@ -172,6 +175,7 @@ void LightManager::Update() {
 
     for (size_t index = 0; index < transientPointLights_.size();) {
         TransientPointLight& pulse = transientPointLights_[index];
+        // 一時ライトは更新一回を1/60秒として進めます。残り割合を二乗し、終了が近いほど強度を滑らかに弱めます。
         pulse.age += 1.0f / 60.0f;
         const float duration = (std::max)(pulse.duration, 0.001f);
         const float progress = std::clamp(pulse.age / duration, 0.0f, 1.0f);
@@ -179,6 +183,7 @@ void LightManager::Update() {
         pulse.data.intensity = pulse.baseIntensity * envelope;
 
         if (progress >= 1.0f) {
+            // 最後の要素を空いた位置に移すため、この周回では添字を進めず、移したライトも同じ更新で確認します。
             transientPointLights_[index] = transientPointLights_.back();
             transientPointLights_.pop_back();
             continue;
@@ -264,8 +269,8 @@ void LightManager::Update() {
     }
 }
 
-const engine::Matrix4x4& LightManager::GetDirectionalShadowViewProjection(const Camera* camera) {
-    // 光源方向とカメラ注視点から影領域を組み立て、キャッシュ行列を更新します。
+const engine::Matrix4x4& LightManager::GetDirectionalShadowViewProjection(const engine::Camera* camera) {
+    // 光源方向とカメラ位置を基準に影領域を決め、条件が変わった場合だけ行列を更新します。
     engine::Math math;
     engine::Vector3 lightDirection = directionalLightData_.direction;
 
@@ -294,6 +299,7 @@ const engine::Matrix4x4& LightManager::GetDirectionalShadowViewProjection(const 
         changed(lightDirection.z, cachedShadowDirection_.z);
 
     if (!shadowMatrixCacheValid_ || eyeChanged || directionChanged || changed(areaSize, cachedShadowAreaSize_)) {
+        // 影の基準位置から光の進行方向と逆へ200ワールド単位離し、平行光用の正射影を組み立てます。
         const engine::Vector3 lightPosition = {
             target.x - lightDirection.x * 200.0f,
             target.y - lightDirection.y * 200.0f,
@@ -349,7 +355,7 @@ void LightManager::ApplySceneClearColor() {
         sceneClearColor_.w);
 }
 
-// 戻り値を Instance* に変更
+// 既定の点光源を登録できればtrue。GPUへ転送する数の上限に達していれば、一覧は変更しない。
 bool LightManager::AddPointLight() {
     if (pointLights_.size() >= kMaxPointLights)
         return false;
@@ -373,7 +379,7 @@ bool LightManager::AddPointLight() {
     return true;
 }
 
-// 戻り値を Instance* に変更
+// 既定のスポットライトを登録できればtrue。上限超過時は対象の一覧だけを保持する。
 bool LightManager::AddSpotLight() {
     if (spotLights_.size() >= kMaxSpotLights)
         return false;
@@ -601,6 +607,7 @@ bool LightManager::LoadState(const std::string& filename) {
     try { file >> root; }
     catch (...) { return false; }
 
+    // ファイルの読み取りと解析が済んでから、前シーンの点光源・スポットライト・一時発光を取り除きます。
     ClearAllLights();
 
     if (root.contains("clearColor") && root["clearColor"].is_array() && root["clearColor"].size() >= 4) {
@@ -695,47 +702,53 @@ bool LightManager::LoadState(const std::string& filename) {
             directionalLightData_.enableFog = d["enableFog"];
     }
 
+    // 名前や色、点滅制御など、光源の種類によらない保存項目を復元する。
+    const auto readCommonLight = [](const nlohmann::json& j, auto& instance) {
+        auto& l = instance.data;
+        if (j.contains("name"))
+            instance.name = j["name"];
+        if (j.contains("position")) {
+            l.position.x = j["position"][0];
+            l.position.y = j["position"][1];
+            l.position.z = j["position"][2];
+        }
+        if (j.contains("color")) {
+            l.color.x = j["color"][0];
+            l.color.y = j["color"][1];
+            l.color.z = j["color"][2];
+            l.color.w = j["color"][3];
+        }
+        if (j.contains("intensity"))
+            l.intensity = j["intensity"];
+        if (j.contains("decay"))
+            l.decay = j["decay"];
+
+        // 旧ファイルに基準強度がなければ、読み込んだ強さを点滅の基準にする。
+        if (j.contains("baseIntensity"))
+            instance.baseIntensity = j["baseIntensity"];
+        else instance.baseIntensity = l.intensity;
+
+        if (j.contains("mode"))
+            instance.mode = (LightMode)j["mode"];
+        if (j.contains("speed"))
+            instance.speed = j["speed"];
+        if (j.contains("offset")) {
+            instance.offset.x = j["offset"][0];
+            instance.offset.y = j["offset"][1];
+            instance.offset.z = j["offset"][2];
+        }
+    };
+
     // --- 点光源 ---
     if (root.contains("pointLights") && root["pointLights"].is_array()) {
         for (const auto& j : root["pointLights"]) {
             PointLightInstance* instance = AddPointLight() ? &pointLights_.back() : nullptr;
 
             if (instance) {
+                readCommonLight(j, *instance);
                 auto& l = instance->data;
-                if (j.contains("name"))
-                    instance->name = j["name"];
-                if (j.contains("position")) {
-                    l.position.x = j["position"][0];
-                    l.position.y = j["position"][1];
-                    l.position.z = j["position"][2];
-                }
-                if (j.contains("color")) {
-                    l.color.x = j["color"][0];
-                    l.color.y = j["color"][1];
-                    l.color.z = j["color"][2];
-                    l.color.w = j["color"][3];
-                }
-                if (j.contains("intensity"))
-                    l.intensity = j["intensity"];
                 if (j.contains("radius"))
                     l.radius = j["radius"];
-                if (j.contains("decay"))
-                    l.decay = j["decay"];
-
-                // 制御データ読み込み
-                if (j.contains("baseIntensity"))
-                    instance->baseIntensity = j["baseIntensity"];
-                else instance->baseIntensity = l.intensity; // 古いデータ互換
-
-                if (j.contains("mode"))
-                    instance->mode = (LightMode)j["mode"];
-                if (j.contains("speed"))
-                    instance->speed = j["speed"];
-                if (j.contains("offset")) {
-                    instance->offset.x = j["offset"][0];
-                    instance->offset.y = j["offset"][1];
-                    instance->offset.z = j["offset"][2];
-                }
                 SetPointLight(pointLights_.size() - 1, *instance);
             }
         }
@@ -747,50 +760,19 @@ bool LightManager::LoadState(const std::string& filename) {
             SpotLightInstance* instance = AddSpotLight() ? &spotLights_.back() : nullptr;
 
             if (instance) {
+                readCommonLight(j, *instance);
                 auto& l = instance->data;
-                if (j.contains("name"))
-                    instance->name = j["name"];
-                if (j.contains("position")) {
-                    l.position.x = j["position"][0];
-                    l.position.y = j["position"][1];
-                    l.position.z = j["position"][2];
-                }
                 if (j.contains("direction")) {
                     l.direction.x = j["direction"][0];
                     l.direction.y = j["direction"][1];
                     l.direction.z = j["direction"][2];
                 }
-                if (j.contains("color")) {
-                    l.color.x = j["color"][0];
-                    l.color.y = j["color"][1];
-                    l.color.z = j["color"][2];
-                    l.color.w = j["color"][3];
-                }
-                if (j.contains("intensity"))
-                    l.intensity = j["intensity"];
                 if (j.contains("distance"))
                     l.distance = j["distance"];
-                if (j.contains("decay"))
-                    l.decay = j["decay"];
                 if (j.contains("cosAngle"))
                     l.cosAngle = j["cosAngle"];
                 if (j.contains("cosFalloffStart"))
                     l.cosFalloffStart = j["cosFalloffStart"];
-
-                // 制御データ
-                if (j.contains("baseIntensity"))
-                    instance->baseIntensity = j["baseIntensity"];
-                else instance->baseIntensity = l.intensity;
-
-                if (j.contains("mode"))
-                    instance->mode = (LightMode)j["mode"];
-                if (j.contains("speed"))
-                    instance->speed = j["speed"];
-                if (j.contains("offset")) {
-                    instance->offset.x = j["offset"][0];
-                    instance->offset.y = j["offset"][1];
-                    instance->offset.z = j["offset"][2];
-                }
                 SetSpotLight(spotLights_.size() - 1, *instance);
             }
         }
@@ -1035,7 +1017,7 @@ bool LightManager::ApplyEnvironmentProfile(const std::string& filename, float bl
 void LightManager::ApplyEnvironmentProfile(
     const EnvironmentProfileState& profile,
     float blendDuration) {
-    // 連続値は時間で補間し、離散設定は補間の確定時に切り替えます。
+    // 連続値は時間で補間し、離散設定は補間の中間で切り替えます。
     currentEnvironmentProfileFile_.clear();
     environmentBlendFrom_ = CaptureEnvironmentProfile();
     environmentBlendTo_ = profile;
@@ -1154,6 +1136,7 @@ void LightManager::UpdateEnvironmentProfile(float deltaTime) {
         params->colorTint = lerp(from.colorTint, to.colorTint);
     }
 
+    // 画像や解像度のように連続補間できない値は、補間の中間で一度だけ切り替えます。
     if (!environmentBlendDiscreteApplied_ && linearT >= 0.5f) {
         environmentBlendDiscreteApplied_ = true;
         skyboxEnabled_ = environmentBlendTo_.skyboxEnabled;
@@ -1179,6 +1162,7 @@ void LightManager::UpdateEnvironmentProfile(float deltaTime) {
     if (linearT >= 1.0f) {
         const std::string completedProfileFile =
             currentEnvironmentProfileFile_;
+        // 補間の丸め誤差を残さないよう目標値を即時適用し直し、この適用で消えるファイル名を戻します。
         ApplyEnvironmentProfile(environmentBlendTo_, 0.0f);
         currentEnvironmentProfileFile_ = completedProfileFile;
     }
@@ -1195,3 +1179,5 @@ float LightManager::GetEnvironmentProfileBlendProgress() const {
         0.0f,
         1.0f);
 }
+
+} // namespace engine

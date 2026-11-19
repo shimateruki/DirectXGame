@@ -1,4 +1,5 @@
 #pragma once
+#include <filesystem>
 #include <string>
 #include <vector>
 #include "engine/utility/math/Math.h"
@@ -16,7 +17,8 @@ enum class VfxEventType {
     LightPulse = 6,
     HitStop = 7,
     ControllerRumble = 8,
-    CameraFovPulse = 9
+    CameraFovPulse = 9,
+    Debris = 10
 };
 
 /// <summary>発火時刻と種類別パラメータをまとめたタイムラインイベントです。</summary>
@@ -32,8 +34,21 @@ struct VfxEvent {
     engine::Vector3 rotation = engine::Vector3::ZERO;
     engine::Vector3 scale = { 1.0f, 1.0f, 1.0f };
 
+    // 0は単発。正数はシーケンス先頭基準の毎秒発生数。遅延時も現在位置から1フレーム最大1回。
+    float emissionRate = 0.0f;
+    engine::Vector3 emissionDirection = {0, 1, 0}; // ワールド方向、または対象の水平回転を基準にした方向。
+    bool directionFollowsYaw = false;
+    float emissionScale = 1.0f; // EmitDirectedへ渡す速度倍率。
+
+    // 破片素材の地面高さを発生位置基準に置き換える。未指定なら素材のワールド高さを使う。
+    bool debrisGroundRelative = false;
+    float debrisGroundOffset = 0.0f;
+    bool debrisOverrideColor = false;
+    engine::Vector4 debrisColor = {1, 1, 1, 1}; // 上書きが有効な場合だけ素材の色を置き換える。
+
     bool hasFired = false;
 
+    // 移動粒子の二次ベジェ曲線で使う制御点と終点。発火位置と同じローカル空間で指定します。
     engine::Vector3 controlPoint = { 0.0f, 5.0f, 0.0f };
     engine::Vector3 endOffset = { 0.0f, 0.0f, 10.0f };
 
@@ -58,6 +73,7 @@ struct VfxEvent {
     engine::Vector4 lightColor = { 1.0f, 0.58f, 0.12f, 1.0f };
 
     bool hasAppliedPostPulse = false;
+    // 共有PostEffectへ加えた前フレームの寄与量。次の更新や停止時にこの値だけ引き戻します。
     float appliedRadialIntensity = 0.0f;
     float appliedDamageFlash = 0.0f;
     float appliedChromaticAberration = 0.0f;
@@ -114,7 +130,7 @@ public:
     float GetDuration() const;
 
     /// <summary>シーケンスを指定名で保存します。</summary>
-    void Save(const std::string& sequenceName);
+    bool SaveFile(const std::filesystem::path& path) const;
 
     /// <summary>指定名のシーケンスを読み込みます。</summary>
     void Load(const std::string& sequenceName);

@@ -26,7 +26,7 @@ bool Inside(engine::Vector2 p, float x, float y, float w, float h) {
 
 WinApp* Window() {
     // 表示モードとカーソル制御は描画に使用中のウィンドウへ適用する。
-    return DirectXCommon::GetInstance()->GetWinApp();
+    return engine::DirectXCommon::GetInstance()->GetWinApp();
 }
 
 RECT previousCursorClip{};
@@ -55,6 +55,7 @@ void SettingsMenuOverlay::Initialize(engine::SpriteCommon* common, const std::st
             return;
         }
 
+        // 状態メッセージの画像は、配置Spriteと別の名前表へ取り込みます。
         if (j.contains("labelTextures") && j["labelTextures"].is_object()) {
             for (auto it = j["labelTextures"].begin(); it != j["labelTextures"].end(); ++it) {
                 if (it.value().is_string()) {
@@ -63,6 +64,7 @@ void SettingsMenuOverlay::Initialize(engine::SpriteCommon* common, const std::st
             }
         }
 
+        // 位置・寸法・色に必要な要素が揃う行だけ読み、切り抜き範囲は指定時にだけ上書きします。
         for (const auto& data : j["sprites"]) {
             if (!data.is_object() || !data.contains("name") || !data["name"].is_string() ||
                 data["name"].get<std::string>().empty() ||
@@ -95,6 +97,7 @@ void SettingsMenuOverlay::Initialize(engine::SpriteCommon* common, const std::st
 
             layoutSprites_.emplace(data["name"].get<std::string>(), std::move(layout));
         }
+    // 数値型の不一致などで解析が途中終了した場合は、半端な配置と画像名を残しません。
     } catch (...) {
         LOG_ERROR("Settings layout '{}' contains invalid data", layoutPath);
         layoutSprites_.clear();
@@ -128,6 +131,7 @@ void SettingsMenuOverlay::SetActive(bool active) {
         return;
     if (active) {
         if (activeCount_ == 0) {
+            // 最初に開く画面だけがOSのクリップ矩形と表示状態を退避し、複数の画面で保存値を上書きしない。
             GetClipCursor(&previousCursorClip);
             CURSORINFO cursor{sizeof(CURSORINFO)};
             previousCursorVisible = !GetCursorInfo(&cursor) || (cursor.flags & CURSOR_SHOWING) != 0;
@@ -135,6 +139,7 @@ void SettingsMenuOverlay::SetActive(bool active) {
             WinApp::SetCursorVisibility(true);
         }
 
+        // 入力を預かる画面が増えたことを記録し、選択・スクロール・押しっぱなしの状態を開くたびに初期化します。
         ++activeCount_;
         Window()->SetCursorRecenteringSuppressed(true);
         ReadValues();
@@ -152,13 +157,16 @@ void SettingsMenuOverlay::SetActive(bool active) {
         --activeCount_;
         Window()->SetCursorRecenteringSuppressed(activeCount_ > 0);
 
+        // 最後の通常画面を閉じたときだけ実カーソルを戻し、別ウィンドウへ移っていたらクリップは適用しません。
         if (activeCount_ == 0 && !replayOnly_) {
             if (GetForegroundWindow() == Window()->GetHwnd())
                 ClipCursor(&previousCursorClip);
             WinApp::SetCursorVisibility(previousCursorVisible);
         }
 
+        // 未適用の音量プレビューを終了し、最後に確定した値へ戻します。
         if (!replayOnly_) {
+            // 最後に適用した値を音量プレビューへ戻し、閉じる直前の調整をキャンセルする。
             draft_ = original_;
             PreviewAudio();
         }
@@ -166,6 +174,7 @@ void SettingsMenuOverlay::SetActive(bool active) {
         modal_ = Modal::None;
     }
 
+    // 使い回すSpriteを一度全て隠し、開く場合だけ現在の状態から画面を組み直します。
     active_ = active;
 
     for (auto& s : sprites_)
@@ -207,6 +216,7 @@ void SettingsMenuOverlay::Commit() {
             return std::string(std::istreambuf_iterator<char>(f), {});
         };
 
+        // 同じファイルにある別の設定を消さないよう、既存のオブジェクトの公開三項目だけ更新します。
         const std::string oldUser = read(userPath);
         auto j = oldUser.empty() ? nlohmann::json::object() : nlohmann::json::parse(oldUser);
         if (!j.is_object())
@@ -234,6 +244,7 @@ void SettingsMenuOverlay::Commit() {
                 }
             }
 
+            // 一時ファイルを閉じた後に置き換え、書き込み途中で失敗したときは元のファイルを使う。
             if (MoveFileExW(temporary.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
                 return true;
             fs::remove(temporary);
@@ -249,10 +260,12 @@ void SettingsMenuOverlay::Commit() {
         return;
     }
 
+    // ファイルの置き換えが完了してから、確定値を音量・カメラとキャンセル時の基準へ反映します。
     auto* s = GameSettingsManager::GetInstance();
     PreviewAudio();
     s->SetCameraSensitivity(draft_.sensitivity);
 
+    // 保存した設定を新しい基準にし、次回のキャンセルで適用前の値に戻らないようにする。
     original_ = draft_;
     modal_ = Modal::None;
     status_ = "saved";
@@ -274,6 +287,7 @@ void SettingsMenuOverlay::Adjust(int direction) {
     // 表示している百分率を整数で動かし、浮動小数点の誤差で1刻みが飛ばないようにする。
     status_.clear();
     float& value = row_ == 0 ? draft_.bgm : row_ == 1 ? draft_.se : draft_.sensitivity;
+    // 音量は0〜100%、感度は20〜100%。保存値はどれも百分率を100で割った値に戻す。
     const int minimum = row_ == 2 ? 20 : 0;
     const int percent = std::clamp(static_cast<int>(std::lround(value * 100.f)) + direction,
                                    minimum, 100);
@@ -359,6 +373,7 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float deltaTime) {
         return Result::None;
     }
 
+    // 開くときに押した入力が残っている間は描画だけ更新し、全て離してから設定操作を受け付ける。
     if (suppressInput_) {
         if (input_->GetPressedKeys().empty() && input_->GetPressedMouseButton() < 0 &&
             input_->GetPressedGamepadButton() == 0)
@@ -374,6 +389,7 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float deltaTime) {
     engine::Vector2 p = Pointer();
     const bool click = input_->IsMouseButtonTriggered(0);
 
+    // 確認画面が入力を受け取る間は、背後の設定値や行選択へ伝えない。
     if (modal_ != Modal::None) {
         horizontalHeldDirection_ = 0;
         if (horizontal)
@@ -394,6 +410,7 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float deltaTime) {
 
         HandleModal(choose, back);
     } else {
+        // 項目の端から上下へ進むとフッターへ移り、フッターから戻ると移動方向に応じた端の項目を選ぶ。
         if (vertical) {
             if (footer_ >= 0) {
                 footer_ = -1;
@@ -408,6 +425,7 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float deltaTime) {
         if (footer_ < 0) {
             const int held = engine::ReadMenuHorizontalHeld(
                 *input_, MenuControls::Get(MenuControls::Screen::Settings).bindings);
+            // 長押しはOSの経過ミリ秒で測る。初回は320ms待ち、1.2秒を超えたら繰り返し間隔を65msから35msへ縮める。
             const uint64_t now = GetTickCount64();
 
             if (held == 0) {
@@ -444,6 +462,7 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float deltaTime) {
                 ActivateRow();
         }
 
+        // マウスではクリック位置の項目を選び、スライダーをつかんだ場合だけ押下中の調整へ進みます。
         if (click && modal_ == Modal::None) {
             for (int f = 0; f < 3; ++f)
                 if (InsideLayout(p, "settings_footer_button_" + std::to_string(f))) {
@@ -463,10 +482,12 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float deltaTime) {
                 }
         }
 
+        // 押下終了でドラッグを解除し、継続中はバーの端を超えても値を範囲内に収めます。
         if (!input_->IsMouseButtonPressed(0))
             dragging_ = false;
         if (dragging_ && modal_ == Modal::None && (row_ >= 0 && row_ < 3)) {
             const LayoutSprite* track = FindLayoutSprite("settings_slider_track_" + std::to_string(row_));
+            // ポインターがバー左端から進んだ比率を求め、感度の行だけ保存範囲0.2〜1.0へ写す。
             const float t = track && track->size.x > 0.0f
                                 ? std::clamp((p.x - track->position.x) / track->size.x, 0.0f, 1.0f)
                                 : 0.0f;
@@ -481,6 +502,7 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float deltaTime) {
                 draft_.sensitivity = .2f + t * .8f;
         }
 
+        // ホイール操作は設定行の上に限定し、表示中の選択がスクロール範囲に収まるようにします。
         const LayoutSprite* firstRow = FindLayoutSprite("settings_row_0");
         const LayoutSprite* lastRow = FindLayoutSprite("settings_row_2");
         const bool pointerOverRows = firstRow && lastRow &&
@@ -491,9 +513,11 @@ SettingsMenuOverlay::Result SettingsMenuOverlay::Update(float deltaTime) {
             footer_ = -1;
         }
 
+        // 現在行が表示窓の先頭から末尾に収まる範囲へ、先頭の行番号を制限する。
         scroll_ = std::clamp(scroll_, std::max(0, row_ - kVisibleRows + 1), row_);
     }
 
+    // 戻る操作などで閉じていない場合だけ、現在の選択と編集値で描画を作り直します。
     if (active_)
         BuildFrame();
     return active_ ? Result::None : Result::Closed;
@@ -564,11 +588,13 @@ void SettingsMenuOverlay::PictureLayout(const std::string& name, bool selected, 
         return;
     }
 
+    // 選択用の画像がある場合はそちらを使い、位置と幅の差分を配置の基準値へ重ねます。
     const std::string& texture = selected && !layout->selectedTexture.empty()
                                      ? layout->selectedTexture : layout->texture;
     Picture(texture, layout->position.x + offsetX, layout->position.y + offsetY,
             layout->size.x * widthScale, layout->size.y, layout->color);
 
+    // 切り抜き付きの場合は、直前に配置したSpriteにだけ元画像上の範囲を適用します。
     if (layout->hasCrop) {
         sprites_[usedSprites_ - 1]->SetTextureRect(layout->cropOrigin, layout->cropSize);
         sprites_[usedSprites_ - 1]->Update();
@@ -611,6 +637,7 @@ void SettingsMenuOverlay::BuildFrame() {
     PictureLayout("settings_frame");
     PictureLayout("settings_title");
 
+    // 三つの設定を行ごとに描き、実値は数値に、正規化した値はゲージの幅とつまみ位置に使います。
     for (int r = 0; r < 3; ++r) {
         const bool selected = row_ == r && footer_ < 0;
         const std::string index = std::to_string(r);
@@ -618,9 +645,11 @@ void SettingsMenuOverlay::BuildFrame() {
         PictureLayout("settings_row_label_" + index);
 
         const float value = r == 0 ? draft_.bgm : r == 1 ? draft_.se : draft_.sensitivity;
+        // 感度の最小値20%でつまみがバーの左端に来るよう、範囲全体を0〜1へ戻す。音量は保存値をそのまま使う。
         const float t = std::clamp(r == 2 ? (value - 0.2f) / 0.8f : value, 0.0f, 1.0f);
         PictureLayout("settings_slider_track_" + index);
         const LayoutSprite* fill = FindLayoutSprite("settings_slider_fill_" + index);
+        // 幅が0になる場合も塗りをデザイン座標の1だけ残す。
         PictureLayout("settings_slider_fill_" + index, false, 0.0f, 0.0f,
                       fill && fill->size.x > 0.0f ? std::max(1.0f / fill->size.x, t) : t);
 
@@ -635,6 +664,7 @@ void SettingsMenuOverlay::BuildFrame() {
         if (selected && modal_ == Modal::None) DrawCursor(r);
     }
 
+    // 保存結果がある時はそれを優先し、なければ変更の有無を案内します。
     CenteredLabel(status_.empty() ? (IsDirty() ? "dirty" : "clean") : status_, "settings_status");
 
     for (int f = 0; f < 3; ++f) {
@@ -645,6 +675,7 @@ void SettingsMenuOverlay::BuildFrame() {
         PictureLayout("settings_footer_label_" + index);
     }
 
+    // 確認が必要な操作では下の選択カーソルを隠し、上に重ねたダイアログの二択を表示します。
     if (modal_ != Modal::None) {
         PictureLayout("settings_modal_mask");
         PictureLayout("settings_modal_panel");
@@ -667,6 +698,7 @@ void SettingsMenuOverlay::BuildFrame() {
     PictureLayout("settings_footer_confirm_frame");
     PictureLayout(MenuControls::Get(MenuControls::Screen::Settings).confirmHint.Resolve(gamepad), gamepad);
 
+    // 前フレームにだけ使ったダイアログなどのSpriteを非表示にして、組み直した画面に残さないようにします。
     for (size_t i = usedSprites_; i < sprites_.size(); ++i) sprites_[i]->SetVisible(false);
 }
 
@@ -691,12 +723,13 @@ void SettingsMenuOverlay::CaptureReplayState(nlohmann::json& state) const {
 }
 
 // 表示位置と編集中の値を再現し、旧レイアウトの行番号も現行項目へ読み替えます。
-// リプレイ専用状態にするため実設定の保存とウィンドウ操作は行いません。
+// リプレイ専用の表示へ切り替え、実設定やカーソルの表示・クリップ位置は変更しません。
 void SettingsMenuOverlay::RestoreReplayState(const nlohmann::json& state) {
     if (!state.is_object())
         return;
     const bool active = state.value("active", false);
 
+    // 再生時も設定画面が出ている間は、中央へ戻すカーソル処理を抑止します。
     if (active_ != active) {
         activeCount_ += active ? 1 : -1;
         active_ = active;
@@ -706,6 +739,7 @@ void SettingsMenuOverlay::RestoreReplayState(const nlohmann::json& state) {
     replayOnly_ = true;
     modal_ = Modal::None;
 
+    // 記録した編集値は表示に使える範囲に制限し、設定ファイルには書き戻しません。
     if (state.contains("values") && state["values"].is_object()) {
         const auto& v = state["values"];
         draft_.bgm = std::clamp(v.value("bgm", .8f), 0.f, 1.f);
@@ -719,6 +753,7 @@ void SettingsMenuOverlay::RestoreReplayState(const nlohmann::json& state) {
 
     if (state.value("layoutVersion", 1) < 3) {
         int category = state.value("category", 0);
+        // 最も古い形式のカテゴリは0・1を最初のカテゴリへ寄せ、2以上を一段ずらしてから現行の行に変換する。
         if (state.value("layoutVersion", 1) < 2) category = category >= 2 ? category - 1 : 0;
         savedRow = category == 0 ? std::min(savedRow, 1) : category == 1 ? 2 : 0;
     }
@@ -726,9 +761,10 @@ void SettingsMenuOverlay::RestoreReplayState(const nlohmann::json& state) {
     animationTime_ = state.value("animationTime", 0.f);
     category_ = scroll_ = 0;
     row_ = std::clamp(savedRow, 0, 2);
+    // フッターの-1は行を選択している状態。記録から戻す場合も0へ丸めず保持する。
     footer_ = std::clamp(state.value("footer", -1), -1, 2);
 
-    // リプレイ復元では実際の設定保存・ウィンドウ変更を行いません。
+    // 選択と編集値を戻した後、画面が開いている場合だけSpriteを組み直します。
     if (active_)
         BuildFrame();
     else

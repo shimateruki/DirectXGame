@@ -40,9 +40,11 @@ bool CopySample(IMFSample& sample, LONG stride, std::vector<uint8_t>& pixels) {
     if (FAILED(hr))
         return false;
     const auto pitch = std::abs(static_cast<int64_t>(stride));
+    // 行末の余白も含めて最後の行の開始位置まで進み、コピーする画素列全体がバッファ内に収まるか確認します。
     const auto required = pitch * (VideoSpritePlayer::kHeight - 1) + kRowBytes;
     const bool valid = firstRow && pitch >= kRowBytes && (use2D || required <= length);
     if (valid) {
+        // 負のストライドで先頭が物理バッファの先頭を指す場合は、画像の論理的な最上行へ移してから降順に読みます。
         if (!use2D && stride < 0)
             firstRow += pitch * (VideoSpritePlayer::kHeight - 1);
         for (uint32_t y = 0; y < VideoSpritePlayer::kHeight; ++y) {
@@ -60,6 +62,7 @@ bool CopySample(IMFSample& sample, LONG stride, std::vector<uint8_t>& pixels) {
     return valid;
 }
 
+// GPU転送先と同じ寸法・RGB32の動画だけを扱い、行の間隔は通知された値を優先する。
 bool ReadFormat(IMFSourceReader& reader, LONG& stride) {
     ComPtr<IMFMediaType> actual;
     UINT32 width = 0, height = 0, pitch = 0;
@@ -76,6 +79,7 @@ bool ReadFormat(IMFSourceReader& reader, LONG& stride) {
     return true;
 }
 
+// 先頭の映像ストリームだけを有効にし、Media FoundationにRGB32への変換を任せる。
 bool OpenReader(const std::filesystem::path& path, ComPtr<IMFSourceReader>& reader, LONG& stride) {
     ComPtr<IMFAttributes> attributes;
     ComPtr<IMFMediaType> output;
@@ -108,6 +112,7 @@ struct VideoSpritePlayer::Playback {
     bool hasImage = false;
 
     void Read() {
+        // デコードを担当するスレッドでCOMとMedia Foundationを初期化し、同じスレッドの終了時に解放する。
         const HRESULT com = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
         const bool mediaStarted = SUCCEEDED(com) && SUCCEEDED(MFStartup(MF_VERSION));
         uint64_t previous = 0;
@@ -119,6 +124,7 @@ struct VideoSpritePlayer::Playback {
                 changed.wait(lock, [&] { return stop || previous != request; });
                 if (stop)
                     break;
+                // ファイルと要求番号をまとめて取得し、時間のかかるデコードはロックを外して実行する。
                 id = previous = request;
                 file = path;
             }
@@ -126,6 +132,7 @@ struct VideoSpritePlayer::Playback {
                 continue;
             if (!mediaStarted || !Decode(file, id)) {
                 std::lock_guard lock(mutex);
+                // 閉じた動画や切り替え前の失敗を、新しい再生要求のエラーとして扱わないようにします。
                 if (request == id)
                     error = true;
             }
@@ -146,6 +153,7 @@ struct VideoSpritePlayer::Playback {
         for (;;) {
             {
                 std::unique_lock lock(mutex);
+                // 未表示フレームを最大3枚に制限し、表示側が消費するまでデコードの先走りを抑えます。
                 changed.wait(lock, [&] { return stop || request != id || queue.size() < 3; });
                 if (stop || request != id)
                     return true;
@@ -165,6 +173,7 @@ struct VideoSpritePlayer::Playback {
                     origin = timestamp;
                 VideoFrame frame;
                 frame.startsLoop = first;
+                // Media Foundationの100ナノ秒刻みを秒へ変換し、ループ先頭のフレームを時刻0に揃えます。
                 frame.seconds = static_cast<double>(timestamp - origin) / 10000000.0;
                 if (!CopySample(*sample.Get(), stride, frame.pixels))
                     return false;
@@ -174,6 +183,7 @@ struct VideoSpritePlayer::Playback {
                 queue.push_back(std::move(frame));
                 first = false;
             }
+            // 空の動画はエラーにする。1枚以上読めた場合は先頭に戻し、次のフレームをループの始点として通知する。
             if (flags & MF_SOURCE_READERF_ENDOFSTREAM) {
                 if (first)
                     return false;
@@ -199,9 +209,11 @@ VideoSpritePlayer::~VideoSpritePlayer() {
     }
     state.changed.notify_one();
     if (state.worker.joinable())
+        // デコード側が参照するPlaybackを破棄する前に、待機中のワーカーが停止したことを確認します。
         state.worker.join();
 }
 
+// 旧動画と表示を閉じ、新しいファイル名と識別番号を既存のデコードスレッドへ渡す。
 void VideoSpritePlayer::RequestOpen(const std::filesystem::path& path) {
     Close();
     auto& state = *playback_;
@@ -217,6 +229,7 @@ void VideoSpritePlayer::RequestOpen(const std::filesystem::path& path) {
     state.changed.notify_one();
 }
 
+// 要求番号を進めて旧デコードを無効化した後、表示と転送先の使用権を手放す。スレッドは次の動画に再利用する。
 void VideoSpritePlayer::Close() {
     auto& state = *playback_;
     {
@@ -250,6 +263,7 @@ void VideoSpritePlayer::Update(double deltaSeconds) {
         } else if (next.seconds > state.seconds) {
             break;
         }
+        // 現在時刻までに複数枚進んだ場合は順に取り出し、最後に到達した画像をGPU転送候補にします。
         state.selected = std::move(next);
         state.pending = true;
         state.queue.pop_front();
@@ -269,6 +283,7 @@ std::optional<uint32_t> VideoSpritePlayer::PrepareTextureForDraw(ID3D12GraphicsC
         state.pending = false;
         state.hasImage = true;
     }
+    // 転送が見送られたフレームは以前に転送できた画像を使います。初回転送前は表示に使えるハンドルを返しません。
     return state.hasImage ? handle : std::nullopt;
 }
 

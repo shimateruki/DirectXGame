@@ -11,7 +11,7 @@
 // 主な入口：Initialize / Update / DrawImGui / Save / Load
 class GpuParticleEditor : public IEditable {
 public:
-    // GPU粒子の編集状態と候補一覧を初期化する。
+    // 連続発生の間隔を測る時計を 0 秒にする。画像候補は描画時に TextureManager から取得する。
     void Initialize();
 
         // プレビュー再生やパラメータ変更をフレーム時間に合わせて更新します。

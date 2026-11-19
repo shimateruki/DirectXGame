@@ -10,16 +10,17 @@ void CameraEditor::DrawOrbitCenterGizmo(const engine::Vector2& gameViewOffset, c
         return;
     if (settings_.currentMode != Mode::Editor)
         return;
-    if (settings_.gameFollowMode != Camera::FollowMode::Orbit)
+    if (settings_.gameFollowMode != engine::Camera::FollowMode::Orbit)
         return;
     if (!settings_.orbitGuideVisible || !settings_.orbitCenterGizmoVisible)
         return;
     if (gameViewSize.x <= 1.0f || gameViewSize.y <= 1.0f)
         return;
+    // 新しい操作は画像の中から始める。ドラッグ中はポインターが画像の外へ出ても終了まで操作を見届ける。
     if (!isGameViewHovered_ && !isDraggingOrbitCenterGizmo_)
         return;
 
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     if (!camera)
         return;
 
@@ -32,6 +33,7 @@ void CameraEditor::DrawOrbitCenterGizmo(const engine::Vector2& gameViewOffset, c
     engine::Matrix4x4 world = math.MakeTranslateMatrix(gizmoPosition);
     engine::Matrix4x4 view = camera->GetViewMatrix();
     engine::Matrix4x4 projection = camera->GetProjectionMatrix();
+    // ギズモはワールド軸上を動くので、吸着幅も三軸共通のワールド距離を使う。
     float snap[3] = { snapValue, snapValue, snapValue };
 
     ImGuizmo::SetDrawlist();
@@ -48,6 +50,7 @@ void CameraEditor::DrawOrbitCenterGizmo(const engine::Vector2& gameViewOffset, c
     if (ImGuizmo::IsUsing()) {
         // ドラッグ中はカメラへ即時反映し、操作を離した時だけ設定を保存する。
         isDraggingOrbitCenterGizmo_ = true;
+        // ギズモが編集した行列の平行移動成分を取り出し、開始視点または軌道中心の設定へ変換する。
         engine::Vector3 editedCenter = { world.m[3][0], world.m[3][1], world.m[3][2] };
 
         if (editStartEye) {
@@ -142,6 +145,7 @@ void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graph
     auto drawCameraBody = [&](const engine::Vector3& eye, const engine::Vector3& forward, float sizeScale, const engine::Vector4& bodyColor, const engine::Vector4& accentColor) {
         if (!settings_.cameraBodyVisible || instanceCount >= maxDrawLimit)
             return;
+        // 実モデルを描ける場合は別経路がカメラ本体を描く。ワイヤーの筐体は共通描画設定がないときだけ使う。
         if (object3dCommon_)
             return;
 
@@ -215,6 +219,7 @@ void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graph
         const engine::Vector3 up = GetConfiguredCameraUp(safeForward, right);
         const engine::Vector3 target = eye + safeForward * frustumLength;
         const float safeFovY = std::clamp(fovY, DegToRad(1.0f), DegToRad(179.0f));
+        // 縦画角の半分と前方距離から、遠方の断面の半高を求める。tanの入力はラジアン。
         const float halfHeight = frustumLength * std::tan(safeFovY * 0.5f);
 
         // 縦FOVと固定の16:9比から、視線先のフラスタム四隅を復元する。
@@ -257,24 +262,42 @@ void CameraEditor::DrawCameraGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graph
         }
     }
 
-    // 範囲の色はObjectの材質色と独立。Play中は編集用の箱を描かない。
+    // 選択中の範囲を先に描き、プリミティブ上限に達しても編集中の範囲を優先する。
+    auto* selectedCamera = GetSelectedCameraObject();
     if (!SceneManager::GetInstance()->IsPlaying()) {
-        if (const auto* scene = GetCurrentScene()) for (const auto& object : scene->GetObjects()) {
-            if (!object || !object->IsCameraObject() || !object->GetIsVisible()) continue;
+        auto drawRegion = [&](const engine::Object3D* object, bool selected) {
+            if (!object || !object->IsCameraObject() || !object->GetIsVisible()) return;
             const auto& region = object->GetSceneCameraSettings().region;
-            if (!region.enabled) continue;
+            if (!region.enabled) return;
+
+            engine::Vector4 color = region.color;
+            const bool dim = selectedCamera && !selected;
+            if (dim) color.w *= 0.35f;
+            drawWireBox(region.center, {1,0,0}, {0,1,0}, {0,0,1},
+                region.size.x * 0.5f, region.size.y * 0.5f, region.size.z * 0.5f,
+                selected ? 0.075f : (dim ? 0.02f : 0.035f), color);
+
+            if (selected) {
+                const auto labelAnchor = region.center + engine::Vector3{0, region.size.y * 0.5f, 0};
+                drawCubeLine(labelAnchor, object->GetWorldPosition(), 0.045f, color);
+            }
+            // 経路は地面の範囲枠と重ならないよう 1.5 ワールド単位上に描き、終点を箱で示す。
             if (region.routeEnabled) {
                 const auto lift = engine::Vector3{0,1.5f,0};
-                drawCubeLine(region.pathStart+lift, region.pathEnd+lift, .08f, region.color);
-                drawWireBox(region.pathEnd+lift,{1,0,0},{0,1,0},{0,0,1},.3f,.3f,.3f,.06f,region.color);
+                drawCubeLine(region.pathStart+lift, region.pathEnd+lift, dim ? .04f : .08f, color);
+                drawWireBox(region.pathEnd+lift,{1,0,0},{0,1,0},{0,0,1},.3f,.3f,.3f,.06f,color);
             }
-            drawWireBox(region.center, {1,0,0}, {0,1,0}, {0,0,1},
-                region.size.x * 0.5f, region.size.y * 0.5f, region.size.z * 0.5f, 0.035f, region.color);
+        };
+        drawRegion(selectedCamera, true);
+        if (const auto* scene = GetCurrentScene()) {
+            for (const auto& object : scene->GetObjects()) {
+                if (object.get() != selectedCamera) drawRegion(object.get(), false);
+            }
         }
     }
 
     // Camera Object選択中は、そのObject自身のFOV・位置・注視先でCamera Editorと同じガイドを描きます。
-    if (engine::Object3D* cameraObject = GetSelectedCameraObject()) {
+    if (engine::Object3D* cameraObject = selectedCamera) {
         // Scene内カメラは保存されたFOVと姿勢を使い、ゲームカメラとは色を分ける。
         engine::Vector3 eye{};
         engine::Vector3 target{};
@@ -310,7 +333,7 @@ void CameraEditor::DrawOrbitGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graphi
         return;
     if (!settings_.orbitGuideVisible)
         return;
-    if (settings_.gameFollowMode != Camera::FollowMode::Orbit)
+    if (settings_.gameFollowMode != engine::Camera::FollowMode::Orbit)
         return;
     if (instanceCount >= maxDrawLimit)
         return;
@@ -319,6 +342,7 @@ void CameraEditor::DrawOrbitGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graphi
     const engine::Vector3 center = GetOrbitCenter();
     const float radius = settings_.orbitRadius;
     const float markerSize = settings_.orbitGuideMarkerSize;
+    // 保存設定の度をラジアンへ換算し、水平リング上の開始位置を求める。
     const float startAngle = DegToRad(settings_.orbitStartAngleDeg);
 
     auto drawSphere = [&](const engine::Vector3& pos, float size, const engine::Vector4& color) {
@@ -348,6 +372,7 @@ void CameraEditor::DrawOrbitGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graphi
         center.z + radius * std::sin(startAngle)
     };
 
+    // リング上の点は軌道の高さを含まない。そこへ設定の高さを足した位置が視点の開始位置。
     engine::Vector3 startEye = startGround;
     startEye.y += settings_.orbitHeight;
 
@@ -356,7 +381,7 @@ void CameraEditor::DrawOrbitGuide(PrimitiveDrawer& primitiveDrawer, ID3D12Graphi
     drawCubeLine(center, startGround, 0.04f, { 0.1f, 0.9f, 1.0f, 0.9f });
     drawCubeLine(startGround, startEye, 0.04f, { 0.3f, 1.0f, 0.2f, 0.9f });
 
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
     if (camera) {
         drawSphere(camera->GetEye(), markerSize * 0.75f, { 0.75f, 0.35f, 1.0f, 1.0f });
@@ -380,6 +405,7 @@ bool CameraEditor::DrawRegionGizmo(const engine::Vector2& offset, const engine::
         regionGizmoBefore_ = nullptr;
         return false;
     }
+    // 選択を変えたときはUndoの開始状態も入れ替え、別のカメラに古い範囲を適用しない。
     if (regionGizmoObjectId_ != object->GetPersistentGuid()) {
         regionGizmoBefore_ = nullptr; regionGizmoObjectId_ = object->GetPersistentGuid();
     }
@@ -387,6 +413,7 @@ bool CameraEditor::DrawRegionGizmo(const engine::Vector2& offset, const engine::
     if (!camera) return false;
     auto& region = object->GetSceneCameraSettings().region;
     engine::Math math;
+    // 適用範囲はワールド軸に平行。行列の拡大で各辺の長さ、平行移動で箱の中心を渡す。
     auto world = math.MakeScaleMatrix(region.size) * math.MakeTranslateMatrix(region.center);
     auto view = camera->GetViewMatrix(); auto projection = camera->GetProjectionMatrix();
     float snapValues[] = {snap, snap, snap};
@@ -402,14 +429,17 @@ bool CameraEditor::DrawRegionGizmo(const engine::Vector2& offset, const engine::
     if (usingGizmo || modified) {
         if (!regionGizmoBefore_.is_object()) regionGizmoBefore_ = before;
         region.center = {world.m[3][0], world.m[3][1], world.m[3][2]};
+        // 対角成分の絶対値を辺の長さにし、反転やゼロ幅でも範囲の各軸を0.1以上に保つ。
         region.size = {(std::max)(0.1f, std::abs(world.m[0][0])),
             (std::max)(0.1f, std::abs(world.m[1][1])), (std::max)(0.1f, std::abs(world.m[2][2]))};
         editor->MarkDirtyForObject(object);
     }
+    // ドラッグ中の全フレームを個別に記録せず、開始時の状態と確定結果を一回の履歴にする。
     if (!usingGizmo && regionGizmoBefore_.is_object()) {
         editor->RegisterObjectEdited(object, regionGizmoBefore_, "カメラ適用範囲をギズモ編集");
         regionGizmoBefore_ = nullptr;
     }
+    // 編集中の領域を通常の Transform ギズモやクリック選択で上書きしないよう、そのフレームの入力を占有したと返す。
     return true;
 #else
     (void)offset; (void)size; (void)snapEnabled; (void)snap; (void)editor;

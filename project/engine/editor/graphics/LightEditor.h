@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-class Model;
+namespace engine { class Model; }
 namespace engine { class Object3DCommon; }
 
 // 担当：ライト・空・環境プロファイルを編集し、設定ファイルへ保存する。
@@ -54,7 +54,7 @@ private:
     // 保存名を照明設定用JSONディレクトリに固定します。
     std::string BuildFullPathFromFileName() const;
 
-    LightManager* lightManager_ = nullptr;
+    engine::LightManager* lightManager_ = nullptr;
     char environmentProfileFileName_[128] = "environment_profile.json";
     float environmentProfileBlendDuration_ = 0.75f; // 環境設定を補間する秒数。
     char currentFileName_[128] = "light_layout.json";

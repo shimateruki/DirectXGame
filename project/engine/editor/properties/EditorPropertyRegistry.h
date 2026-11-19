@@ -80,6 +80,7 @@ struct EditorPropertyUiHints {
     float minValue = 0.0f;
     float maxValue = 0.0f;
     std::string format;
+    // 整数の表示だけに加える差。内部値や JSON の値には含めない。
     int integerDisplayOffset = 0;
     std::string assetDirectory;
     EditorPropertyAssetEditor assetEditor = EditorPropertyAssetEditor::None;

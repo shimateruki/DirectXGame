@@ -25,17 +25,17 @@
   },
   "steps": [
     {
-      "id": "intro",
+      "id": "spawn_checkpoint",
       "condition": "timer",
-      "threshold": 0.35,
+      "threshold": 0.0,
       "showPrompt": false,
       "checkpoint": [
         -42,
         -0.54,
         -16
       ],
-      "minimumDisplayTime": 0.35,
-      "completionDelay": 0.25
+      "minimumDisplayTime": 0.0,
+      "completionDelay": 0.0
     },
     {
       "id": "move",

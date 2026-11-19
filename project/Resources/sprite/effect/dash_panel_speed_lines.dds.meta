@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "c78dab73204c58f143c4942e9a8580f8",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/effect/dash_panel_speed_lines.dds",
+  "version": 1
+}

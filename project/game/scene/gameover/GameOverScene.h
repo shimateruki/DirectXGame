@@ -25,7 +25,7 @@
 #include <vector>
 
 // --- 前方宣言 ---
-class DirectXCommon;
+namespace engine { class DirectXCommon; }
 namespace engine { class InputManager; }
 
 /// <summary>
@@ -214,7 +214,7 @@ class GameOverScene : public BaseScene, public ISceneGameplayAccess {
     void DrawBackgroundSprite();
 
     // --- エンジン基盤 ---
-    DirectXCommon* dxCommon_ = nullptr;
+    engine::DirectXCommon* dxCommon_ = nullptr;
     engine::InputManager* inputManager_ = nullptr;
 
     // --- サブシステム (機能を委譲するクラスたち) ---

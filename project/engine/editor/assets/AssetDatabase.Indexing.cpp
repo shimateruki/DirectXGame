@@ -5,6 +5,9 @@
 #include <Windows.h>
 
 #include <algorithm>
+#include <array>
+#include <cstddef>
+#include <string_view>
 #include <cctype>
 #include <chrono>
 #include <ctime>
@@ -23,70 +26,153 @@ using json = nlohmann::json;
 
 using namespace AssetDatabaseInternal;
 
-// Resources配下の変更通知を登録し、監視できないディレクトリは登録せず結果を返します。
+namespace {
+
+// 監視通知のパスは Resources からの相対パス。ファイルが消えた後も名前だけで判定する。
+bool IsRuntimeOrCachePath(const fs::path& path) {
+    const std::string name = ToLowerAscii(PathToUtf8(path));
+    if (name == "json/save" || name.starts_with("json/save/") ||
+        name == "json/user_config.json" || name == "json/user_config.json.meta") {
+        return true;
+    }
+    for (const auto& part : path) {
+        const auto component = ToLowerAscii(PathToUtf8(part));
+        if (component == ".cache" || component == ".backup" || component == ".trash" || component == "tools") {
+            return true;
+        }
+    }
+    return false;
+}
+
+} // namespace
+
+// 非同期要求が完了するまで、OVERLAPPED と通知バッファのアドレスを保持する。
+struct AssetDatabase::FilesystemWatcher {
+    HANDLE directory_ = INVALID_HANDLE_VALUE;
+    OVERLAPPED request_{};
+    alignas(DWORD) std::array<std::byte, 64 * 1024> buffer_{};
+    bool pending_ = false;
+
+    bool Arm() {
+        // 前回の通知情報を消し、同じ完了イベントを初期化して次の非同期読み取りに使う。
+        const HANDLE event = request_.hEvent;
+        request_ = {};
+        request_.hEvent = event;
+        ResetEvent(event);
+        pending_ = ReadDirectoryChangesW(directory_, buffer_.data(), static_cast<DWORD>(buffer_.size()),
+            TRUE, FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME | FILE_NOTIFY_CHANGE_SIZE |
+                FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_CREATION,
+            nullptr, &request_, nullptr) != FALSE;
+        return pending_;
+    }
+
+    ~FilesystemWatcher() {
+        if (pending_) {
+            // 非同期 I/O のキャンセル完了を待ってからバッファとイベントを解放する。
+            CancelIoEx(directory_, &request_);
+            DWORD ignored = 0;
+            GetOverlappedResult(directory_, &request_, &ignored, TRUE);
+        }
+        if (request_.hEvent) {
+            CloseHandle(request_.hEvent);
+        }
+        if (directory_ != INVALID_HANDLE_VALUE) {
+            CloseHandle(directory_);
+        }
+    }
+};
+
+AssetDatabase::AssetDatabase() = default;
+
+AssetDatabase::~AssetDatabase() {
+    StopFilesystemWatcher();
+    CloseDdsCacheProcessHandle();
+}
+
 bool AssetDatabase::StartFilesystemWatcher() {
-    // Resources 配下の変更を通知で受け、頻繁な全走査を避けます。
+    StopFilesystemWatcher();
     if (!initialized_ || resourcesRoot_.empty()) {
         return false;
     }
 
-    StopFilesystemWatcher();
-    const auto addWatcher = [this](const fs::path& directory, BOOL watchSubtree, DWORD filter) {
-        const HANDLE notification = FindFirstChangeNotificationW(
-            directory.c_str(),
-            watchSubtree,
-            filter);
-        if (notification != INVALID_HANDLE_VALUE) {
-            changeNotificationHandles_.push_back(notification);
-        }
-    };
-
-    // Resources直下は名前の追加・削除だけを監視し、除外フォルダ内部の更新を拾わないようにします。
-    addWatcher(
-        resourcesRoot_,
-        FALSE,
-        FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME);
-
-    // 監視対象は除外フォルダを避けた直下ディレクトリごとに作る。
-    std::error_code error;
-
-    for (const fs::directory_entry& entry : fs::directory_iterator(resourcesRoot_, error)) {
-        if (error) {
-            break;
-        }
-
-        if (!entry.is_directory(error) || ShouldSkipPath(entry.path())) {
-            error.clear();
-            continue;
-        }
-
-        addWatcher(
-            entry.path(),
-            TRUE,
-            FILE_NOTIFY_CHANGE_FILE_NAME |
-                FILE_NOTIFY_CHANGE_DIR_NAME |
-                FILE_NOTIFY_CHANGE_SIZE |
-                FILE_NOTIFY_CHANGE_LAST_WRITE |
-                FILE_NOTIFY_CHANGE_CREATION);
+    auto watcher = std::make_unique<FilesystemWatcher>();
+    watcher->directory_ = CreateFileW(resourcesRoot_.c_str(), FILE_LIST_DIRECTORY,
+        FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING,
+        FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, nullptr);
+    if (watcher->directory_ == INVALID_HANDLE_VALUE) {
+        return false;
     }
 
-    filesystemChangePending_ = false;
-    return !changeNotificationHandles_.empty();
+    // 通知待機を確立できてから監視器の所有権を移す。途中で失敗したときは仮監視器の破棄に任せる。
+    watcher->request_.hEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+    if (!watcher->request_.hEvent || !watcher->Arm()) {
+        return false;
+    }
+    filesystemWatcher_ = std::move(watcher);
+    return true;
 }
 
 void AssetDatabase::StopFilesystemWatcher() {
-    // OS の変更通知ハンドルをすべて閉じ、古い通知を次の監視へ持ち越さない。
-    for (void* rawHandle : changeNotificationHandles_) {
-        FindCloseChangeNotification(static_cast<HANDLE>(rawHandle));
-    }
-
-    changeNotificationHandles_.clear();
+    filesystemWatcher_.reset();
     filesystemChangePending_ = false;
 }
 
 void AssetDatabase::RestartFilesystemWatcher() {
-    StopFilesystemWatcher();
     StartFilesystemWatcher();
+}
+
+bool AssetDatabase::PollFilesystemWatcher() {
+    if (!filesystemWatcher_) {
+        return false;
+    }
+
+    auto& watcher = *filesystemWatcher_;
+    DWORD bytes = 0;
+    if (!GetOverlappedResult(watcher.directory_, &watcher.request_, &bytes, FALSE)) {
+        if (GetLastError() == ERROR_IO_INCOMPLETE) {
+            return false;
+        }
+        // 通知を取得できなかった区間は、全体再走査で取り戻す。
+        watcher.pending_ = false;
+        RestartFilesystemWatcher();
+        return true;
+    }
+    watcher.pending_ = false;
+
+    // 0バイトの完了や壊れた通知は個別の変更を追えないため、全体の再走査を要求する。
+    bool changed = bytes == 0;
+    constexpr auto headerSize = offsetof(FILE_NOTIFY_INFORMATION, FileName);
+    for (DWORD offset = 0; !changed && offset < bytes;) {
+        const auto remaining = bytes - offset;
+        if (remaining < headerSize) {
+            changed = true;
+            break;
+        }
+        const auto* entry = reinterpret_cast<const FILE_NOTIFY_INFORMATION*>(watcher.buffer_.data() + offset);
+        if (entry->FileNameLength > remaining - headerSize || entry->FileNameLength % sizeof(wchar_t) != 0) {
+            changed = true;
+            break;
+        }
+        const fs::path relativePath(std::wstring_view(entry->FileName, entry->FileNameLength / sizeof(wchar_t)));
+        // セーブや索引キャッシュの生成では再索引を起動せず、素材側の通知があるときだけ変更として返す。
+        changed = !IsRuntimeOrCachePath(relativePath);
+        if (entry->NextEntryOffset == 0) {
+            break;
+        }
+        if (entry->NextEntryOffset < headerSize || entry->NextEntryOffset >= remaining ||
+            entry->NextEntryOffset % alignof(DWORD) != 0) {
+            changed = true;
+            break;
+        }
+        offset += entry->NextEntryOffset;
+    }
+
+    // 通知内容を取り出し終えてからバッファを監視へ返し、次の通知を待つ。
+    if (!watcher.Arm()) {
+        RestartFilesystemWatcher();
+        return true;
+    }
+    return changed;
 }
 
 std::vector<fs::path> AssetDatabase::CollectSourcePaths() {
@@ -174,6 +260,7 @@ void AssetDatabase::BeginInitialIndexBuild(bool createMissingMeta, bool buildDds
 
 bool AssetDatabase::ProcessInitialIndexBuild() {
     // 一フレームの走査量を制限し、エディター操作を止めないようにします。
+    // 時間と件数の両方で上限を設け、残りの位置は次フレームへ引き継ぐ。
     const auto frameDeadline = std::chrono::steady_clock::now() + kInitialIndexFrameBudget;
 
     if (initialDirectoryScanInProgress_) {
@@ -273,6 +360,7 @@ bool AssetDatabase::ProcessInitialIndexBuild() {
         }
     }
 
+    // フレーム内の上限に達した場合は、公開用索引を完成扱いにせず次フレームに続ける。
     if (pendingSourcePathIndex_ < pendingSourcePaths_.size()) {
         return true;
     }

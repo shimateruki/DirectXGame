@@ -43,6 +43,7 @@ class BomberCopyAbility final : public ICopyAbilitySession {
             }
         }
 
+        // 爆発後だけ噴流と着地を処理します。上向き速度を与えた直後は接地情報が残っていても着地扱いにしません。
         if (!blastActive_)
             return;
         blastElapsed_ += deltaTime;
@@ -64,6 +65,7 @@ class BomberCopyAbility final : public ICopyAbilitySession {
     }
 
     void Cancel(Player& player) override {
+        // 被弾などで爆発待ちと噴流を止め、移動側に渡した空中の押し出しも解除します。
         blastWindupActive_ = false;
         blastActive_ = false;
         player.SetAbilityAirImpulse({});
@@ -71,6 +73,7 @@ class BomberCopyAbility final : public ICopyAbilitySession {
 
   private:
     void SpawnBomb(Player& player, bool placed) {
+        // 爆弾を配置できるシーンと描画基盤が揃っている場合だけ生成します。
         SceneManager* manager = SceneManager::GetInstance();
         BaseScene* scene = manager ? manager->GetCurrentScene() : nullptr;
         if (!scene || !scene->GetObject3DCommon())
@@ -78,6 +81,7 @@ class BomberCopyAbility final : public ICopyAbilitySession {
         auto bomb = EnemyFactory::GetInstance()->CreateEnemy("Bomb", scene->GetObject3DCommon());
         if (!bomb)
             return;
+        // 狙い方向を水平にし、設置は足元寄り、投擲は少し前方かつ上から始めます。
         const engine::Vector3 forward = NormalizePlanar(player.GetLockOnAttackDirection());
         engine::Vector3 position = player.GetWorldPosition() + forward * (placed ? 1.55f : 2.1f);
         position.y += placed ? 0.42f : 2.15f;
@@ -91,6 +95,7 @@ class BomberCopyAbility final : public ICopyAbilitySession {
             bomb->SetIsLocked(true);
         }
 
+        // プレイヤーの爆弾として起爆を予約し、設置と投擲で導火時間・初速・演出を分けます。
         if (EnemyBomb* enemyBomb = dynamic_cast<EnemyBomb*>(bomb.get())) {
             enemyBomb->SetPlayerOwned(true);
             enemyBomb->Ignite(placed ? 1.35f : 2.25f);
@@ -164,7 +169,6 @@ class BomberCopyAbility final : public ICopyAbilitySession {
     bool blastActive_ = false;
 };
 
-// 王冠の欠片から借りる力。弾・衝撃波は実メッシュと実際の命中判定を同じ位置で更新します。
 } // namespace
 
 namespace CopyAbilityDetail {

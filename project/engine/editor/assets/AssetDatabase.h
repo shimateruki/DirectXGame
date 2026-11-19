@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -173,6 +174,8 @@ public:
     static const char* GetAssetTypeName(EditorAssetType type);
 
 private:
+    AssetDatabase();
+
     /// .meta 読込時に生成・更新したかを呼び出し元へ返す内部結果。
     // 関連：AssetDatabase（この型を使う機能の本体）
     struct MetaLoadResult {
@@ -233,6 +236,9 @@ private:
 
     // 現在のResourcesルートで変更監視を開始し直す。
     void RestartFilesystemWatcher();
+
+    // 完了済みの通知を取り込み、アセット変更か通知欠落があれば true を返す。
+    bool PollFilesystemWatcher();
 
     std::vector<std::filesystem::path> CollectSourcePaths();
 
@@ -305,8 +311,8 @@ private:
     bool persistentIndexCacheAvailable_ = false; // 再利用可能な索引キャッシュを読み込めたか。
     AssetDatabaseRefreshResult pendingRefreshResult_;
 
-    // Windows の監視・プロセスハンドルは対応する停止処理で解放します。
-    std::vector<void*> changeNotificationHandles_;
+    struct FilesystemWatcher;
+    std::unique_ptr<FilesystemWatcher> filesystemWatcher_;
     bool filesystemChangePending_ = false;
     std::chrono::steady_clock::time_point filesystemChangeReadyAt_{};
     AssetDatabaseRefreshResult lastRefreshResult_;

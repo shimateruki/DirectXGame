@@ -171,6 +171,7 @@ float ApplyEasing(int type, float t) {
 // 初期化・基本機能
 // ==========================================================================
 
+// 対象の取り直しで旧編集のUndo候補が混ざらないよう、操作中の状態も初期化します。
 void GhostRecorder::Initialize(SceneManager* sceneManager) {
 	sceneManager_ = sceneManager;
 	target_ = nullptr;
@@ -200,6 +201,7 @@ void GhostRecorder::Initialize(SceneManager* sceneManager) {
 
 void GhostRecorder::SetTarget(engine::Object3D* target) {
 	// 編集対象を変えたら、以前のアンカーと選択ピンを参照し続けない。
+	// 別の対象へ切り替えるときは、まずカメラ上書きを解除します。以前の対象の姿勢はこの切替では復元しません。
 	if (target_ != target)
 		Stop(false);
 	target_ = target;
@@ -266,6 +268,7 @@ void GhostRecorder::ClearTargetIfMissingFromScene() {
 }
 
 void GhostRecorder::Update(float deltaTime) {
+	// Sceneから対象が消えた場合は、保持していた参照を解放してそのフレームを終える。
 	ClearTargetIfMissingFromScene();
 	if (!target_)
 		return;
@@ -277,6 +280,7 @@ void GhostRecorder::Update(float deltaTime) {
 		return;
 	}
 
+	// Play再開時は配置・ループ位相・乗車待ちを取り直してから記録または再生する。
 	if (wasEditorPaused_) {
 		wasEditorPaused_ = false;
 
@@ -295,7 +299,7 @@ void GhostRecorder::Update(float deltaTime) {
 		}
 	}
 
-	// 録画中
+	// 録画中は対象の姿勢を追加し、このフレームでは再生しない。
 	if (state_ == State::Recording) {
 		GhostFrame frame;
 		frame.position = target_->GetTranslate();
@@ -304,7 +308,7 @@ void GhostRecorder::Update(float deltaTime) {
 		frames_.push_back(frame);
 	}
 
-	// 再生中
+	// 再生中は乗車条件を確認し、開始姿勢または経過時間に応じた姿勢を適用する。
 	else if (state_ == State::Playing) {
         // 本番Objectの再生だけ乗車条件を適用する。録画編集とカメラ演出は従来どおり。
         const auto* path = target_->GetPathMoverComponent();
@@ -317,10 +321,11 @@ void GhostRecorder::Update(float deltaTime) {
                 CaptureBasePose();
             ridePlaybackStarted_ = true;
         }
-        if ((mode == PathMoverComponent::PlaybackMode::WhileRiding && !playerRiding_) ||
-            (mode == PathMoverComponent::PlaybackMode::RideToEnd && !ridePlaybackStarted_))
-            return;
-
+        const bool waitingForRider = mode == PathMoverComponent::PlaybackMode::WhileRiding && !playerRiding_;
+        const bool waitingForFirstRide = mode == PathMoverComponent::PlaybackMode::RideToEnd && !ridePlaybackStarted_;
+        if (waitingForRider || waitingForFirstRide) {
+            return; // 乗車条件を満たすまでは再生時刻も進めない。
+        }
 
 		if (frames_.empty()) {
 			Stop(false);
@@ -356,6 +361,7 @@ void GhostRecorder::Update(float deltaTime) {
 		float nextTime = playbackTimeSeconds_ + step;
 		if (looping) {
 			// 終点の時刻で折り返し、指定した区間時間に余分な1フレームを足さない。
+			// 複数周を通過したフレームでも、各周の末尾から先頭への順序で記録イベントを届けます。
 			while (nextTime >= duration) {
 				EvaluateAtTime(duration, true, playbackTimeSeconds_);
 				nextTime -= duration;
@@ -417,6 +423,7 @@ void GhostRecorder::StartRecording() {
 	if (!target_)
 		return;
 	frames_.clear();
+	// 古いフレームを消してから次の Update で新しい姿勢を収録できる状態に移ります。
 	state_ = State::Recording;
 }
 
@@ -453,6 +460,7 @@ void GhostRecorder::ApplyFrameTransform(const GhostFrame& frame) {
 		const engine::Vector3 origin = (!genParams_.generateRelative && !frames_.empty()) ? frames_.front().position : engine::Vector3{};
 		const engine::Vector3 originRotation = (!genParams_.generateRelative && !frames_.empty()) ? frames_.front().rotation : engine::Vector3{};
 		const engine::Vector3 offset = frame.position - origin;
+		// ローカル指定では記録の移動差分を開始時の回転で向け直します。変換するのは差分なので行列の平行移動は含めません。
 		const engine::Vector3 worldOffset = isLocalSpace_
 			? engine::Math::TransformNormal(offset, engine::Math::MakeRotateQuaternionMatrix(engine::Math::EulerToQuaternion(baseRotation_)))
 			: offset;
@@ -465,6 +473,7 @@ void GhostRecorder::ApplyFrameTransform(const GhostFrame& frame) {
 	}
 
 	if (isRelative_) {
+		// 相対再生では「記録値÷記録先頭値」を現在の基準倍率に掛けます。先頭がほぼ0の軸は倍率1として扱います。
 		const engine::Vector3 firstScale = frames_.empty() ? engine::Vector3{ 1.0f, 1.0f, 1.0f } : frames_.front().scale;
 		const auto ratio = [](float value, float initial) { return std::abs(initial) > 0.00001f ? value / initial : 1.0f; };
 		target_->SetScale({ baseScale_.x * ratio(frame.scale.x, firstScale.x),
@@ -522,6 +531,7 @@ engine::Vector3 GhostRecorder::GetSplinePoint(const std::vector<engine::Vector3>
 		return points[0];
 
 	int numPoints = (int)points.size();
+	// 経路全体の割合 t を区間番号と区間内の割合に変換します。区間数は制御点より1つ少なくなります。
 	float p = t * (numPoints - 1);
 	int index = (int)p;
 	float localT = p - index;
@@ -610,6 +620,7 @@ std::vector<GhostFrame> GhostRecorder::BuildPreviewSamples(int sampleCount) {
 
 		for (int i = 0; i < count; ++i) {
 			float t = (count <= 1) ? 0.0f : static_cast<float>(i) / static_cast<float>(count - 1);
+			// 全体の割合を記録フレーム番号へ写し、小数部分だけを隣接フレームの補間率にします。最後のサンプルは末尾そのものに合わせます。
 			float p = t * static_cast<float>(frames_.size() - 1);
 			int index = static_cast<int>(p);
 			float localT = p - static_cast<float>(index);
@@ -638,6 +649,7 @@ std::vector<GhostFrame> GhostRecorder::BuildPreviewSamples(int sampleCount) {
 				const engine::Vector3 firstScale = frames_.front().scale;
 				const engine::Vector3 baseScale = target_->GetScale();
 				const auto ratio = [](float value, float initial) { return std::abs(initial) > 0.00001f ? value / initial : 1.0f; };
+				// 各軸の記録開始時に対する倍率変化を、現在のプレビュー対象の倍率へ掛けます。開始倍率がほぼ0の軸は現在値を保ちます。
 				sample.scale = { baseScale.x * ratio(sample.scale.x, firstScale.x),
 					baseScale.y * ratio(sample.scale.y, firstScale.y), baseScale.z * ratio(sample.scale.z, firstScale.z) };
 			}
@@ -682,6 +694,7 @@ std::vector<GhostFrame> GhostRecorder::BuildPreviewSamples(int sampleCount) {
 		drawRotOffset = SubEuler(currentRot, genParams_.startRot);
 	}
 
+	// まだ記録がない場合は、始点・経由点・終点を現在の配置基準へ寄せ、見本用の制御点を組み立てます。
 	auto addPos = [&](const engine::Vector3& p) {
 		positions.push_back({ p.x + drawOffset.x, p.y + drawOffset.y, p.z + drawOffset.z });
 		};
@@ -750,6 +763,7 @@ void GhostRecorder::DrawObjectGhostPreview(ID3D12Resource* pointLightResource, I
 		return;
 	}
 
+	// 同じObjectを複数の地点へ描く前に、姿勢と描画状態をまとめて退避します。
 	engine::Vector3 oldPos = target_->GetTranslate();
 	engine::Vector3 oldRot = target_->GetRotation();
 	engine::Vector3 oldScale = target_->GetScale();
@@ -772,6 +786,7 @@ void GhostRecorder::DrawObjectGhostPreview(ID3D12Resource* pointLightResource, I
 		target_->Draw(pointLightResource, spotLightResource);
 	}
 
+	// 最後の見本を描いたら姿勢・色・ブレンド・可視状態を戻し、通常描画が使う行列を最後に更新します。
 	target_->SetTranslate(oldPos);
 	target_->SetRotation(oldRot);
 	target_->SetScale(oldScale);
@@ -819,6 +834,7 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 		engine::Vector3 clip = TransformCoord(worldPos, viewProjection);
 		if (clip.z < 0.0f || clip.z > 1.0f)
 			return ImVec2(-10000.0f, -10000.0f);
+		// 透視除算後のXYをビューポートのピクセル座標へ写します。画面のYは下向きなので符号を反転します。
 		float screenX = offset.x + (clip.x + 1.0f) * 0.5f * size.x;
 		float screenY = offset.y + (1.0f - clip.y) * 0.5f * size.y;
 		return ImVec2(screenX, screenY);
@@ -960,6 +976,7 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 			static engine::Vector3 cachedOffset = engine::Vector3::ZERO;
 			static engine::Vector3 cachedRotOffset = engine::Vector3::ZERO;
 
+			// 始点のドラッグ中は座標補正を固定し、変更した始点で補正値が毎フレーム動いて操作量を打ち消さないようにします。
 			if (isDraggingGizmo_ && selectedPinType_ == SelectedPinType::Start) {
 				drawOffset = cachedOffset;
 				drawRotOffset = cachedRotOffset;
@@ -984,7 +1001,7 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 	bool isGizmoHovered = false;
 
 	if (!isReadOnly && selectedPinType_ != SelectedPinType::None) {
-		Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+		engine::Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
 
 		if (cam) {
 			ImGui::PushID("GhostRecorderGizmo");
@@ -1037,6 +1054,7 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 						op = ImGuizmo::SCALE;
 				}
 
+				// 移動はワールド軸、回転と拡縮は対象のローカル軸で操作します。
 				ImGuizmo::MODE mode = (op == ImGuizmo::TRANSLATE) ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
 				ImGuizmo::Manipulate(&view.m[0][0], &proj.m[0][0], op, mode, &worldMat.m[0][0], nullptr, nullptr);
 
@@ -1052,10 +1070,12 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 					engine::Vector3 newTrans, newRotDeg, newScale;
 					ImGuizmo::DecomposeMatrixToComponents(&worldMat.m[0][0], &newTrans.x, &newRotDeg.x, &newScale.x);
 
+					// 画面で操作した位置から表示用の原点差分を戻し、保存側の座標へ変換します。
 					targetPos->x = newTrans.x - drawOffset.x;
 					targetPos->y = newTrans.y - drawOffset.y;
 					targetPos->z = newTrans.z - drawOffset.z;
 
+					// ImGuizmoの分解結果は度数です。回転差分の逆合成をする前にラジアンへ戻します。
 					float radX = newRotDeg.x * (std::numbers::pi_v<float> / 180.0f);
 					float radY = newRotDeg.y * (std::numbers::pi_v<float> / 180.0f);
 					float radZ = newRotDeg.z * (std::numbers::pi_v<float> / 180.0f);
@@ -1099,14 +1119,31 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 		float l2 = (b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y);
 		if (l2 == 0.0f)
 			return sqrtf((p.x - a.x) * (p.x - a.x) + (p.y - a.y) * (p.y - a.y));
+		// マウスを線分へ射影し、割合を0～1へ収めてから最短距離をピクセルで求めます。
 		float t = ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / l2;
 		t = std::max(0.0f, std::min(1.0f, t));
 		ImVec2 proj = { a.x + t * (b.x - a.x), a.y + t * (b.y - a.y) };
 		return sqrtf((p.x - proj.x) * (p.x - proj.x) + (p.y - proj.y) * (p.y - proj.y));
 		};
 
+	// 軌跡上の挿入候補を拾うしきい値は15ピクセルです。近い区間が見つかるたびに候補を入れ替えます。
 	float minLineDist = 15.0f;
 	int hitSegmentIndex = -1;
+
+	// 軌跡・矢印・光点は同じ区間を使う。終点は最後の区間の補間率1として扱う。
+	const auto segmentAt = [&](float t) {
+		const float index = t * (allPos.size() - 1);
+		const int lastSegment = static_cast<int>(allPos.size()) - 2;
+		const int segment = static_cast<int>(index);
+		if (segment > lastSegment) {
+			return std::pair{ lastSegment, 1.0f };
+		}
+		return std::pair{ segment, index - segment };
+	};
+	const auto samplePosition = [&](float t, const std::pair<int, float>& segment) {
+		return genParams_.useSpline ? GetSplinePoint(allPos, t) :
+			engine::Math::Lerp(allPos[segment.first], allPos[segment.first + 1], segment.second);
+	};
 
 	// --- 4. パスの軌跡(ライン)を描画 ＆ ラインクリック判定 ---
 	const int samples = 60;
@@ -1116,16 +1153,7 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 
 	for (int i = 1; i <= samples; ++i) {
 		float t = (float)i / (float)samples;
-		engine::Vector3 currentPos = genParams_.useSpline ? GetSplinePoint(allPos, t) : [&]() {
-			float p = t * (allPos.size() - 1);
-			int elementIndex = (int)p;
-			float lt = p - elementIndex;
-			if (elementIndex >= (int)allPos.size() - 1) {
-				elementIndex = (int)allPos.size() - 2;
-				lt = 1.0f;
-			}
-			return engine::Math::Lerp(allPos[elementIndex], allPos[elementIndex + 1], lt);
-		}();
+		engine::Vector3 currentPos = samplePosition(t, segmentAt(t));
 		ImVec2 screenPos = worldToScreen(localToWorld(currentPos));
 
 		if (screenPos.x > -5000.0f && prevScreenPos.x > -5000.0f) {
@@ -1151,15 +1179,16 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 
 	for (int i = 0; i <= arrowSteps; ++i) {
 		float t = (float)i / (float)arrowSteps;
-		float p = t * (allPos.size() - 1); int elementIndex = (int)p; float lt = p - elementIndex; if (elementIndex >= (int)allPos.size() - 1) { elementIndex = (int)allPos.size() - 2; lt = 1.0f; }
-		engine::Vector3 pos = genParams_.useSpline ? GetSplinePoint(allPos, t) : engine::Math::Lerp(allPos[elementIndex], allPos[elementIndex + 1], lt);
+		const auto segment = segmentAt(t);
+		engine::Vector3 pos = samplePosition(t, segment);
 
 		// プレビュー矢印の向きをSlerpで補間
-		engine::Vector3 rot = AnimationInterpolation::SlerpEuler(allRot[elementIndex], allRot[elementIndex + 1], lt);
+		engine::Vector3 rot = AnimationInterpolation::SlerpEuler(allRot[segment.first], allRot[segment.first + 1], segment.second);
 
 		ImVec2 baseScr = worldToScreen(localToWorld(pos));
 		if (baseScr.x < -5000.0f)
 			continue;
+		// ピッチとヨーはラジアンです。正面の+Zから求めた単位方向を3ワールド単位先まで描きます。
 		float cosX = cosf(rot.x);
 		engine::Vector3 forward = { cosX * sinf(rot.y), -sinf(rot.x), cosX * cosf(rot.y) };
 		engine::Vector3 lookTarget = { pos.x + forward.x * 3.0f, pos.y + forward.y * 3.0f, pos.z + forward.z * 3.0f };
@@ -1174,16 +1203,7 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 	// --- 6. アニメーションして流れる光点の描画 ---
 	for (int i = 0; i < 5; ++i) {
 		float t = fmodf(time * 0.4f + (float)i / 5.0f, 1.0f);
-		engine::Vector3 pPos = genParams_.useSpline ? GetSplinePoint(allPos, t) : [&]() {
-			float p = t * (allPos.size() - 1);
-			int elementIndex = (int)p;
-			float lt = p - elementIndex;
-			if (elementIndex >= (int)allPos.size() - 1) {
-				elementIndex = (int)allPos.size() - 2;
-				lt = 1.0f;
-			}
-			return engine::Math::Lerp(allPos[elementIndex], allPos[elementIndex + 1], lt);
-		}();
+		engine::Vector3 pPos = samplePosition(t, segmentAt(t));
 		ImVec2 pScr = worldToScreen(localToWorld(pPos));
 		if (pScr.x > -5000.0f)
 			drawList->AddCircleFilled(pScr, 3.0f, IM_COL32(255, 255, 0, 200));
@@ -1209,6 +1229,7 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 		};
 
 	auto drawWireBox = [&](const engine::Vector3& pos, const engine::Vector3& rot, const engine::Vector3& scale, ImU32 color) {
+		// 中心が原点の一辺1の箱です。拡縮・回転・移動後に親の変換を掛け、投影できた辺だけを描きます。
 		engine::Vector3 localVerts[8] = {
 			{-0.5f, -0.5f, -0.5f}, {0.5f, -0.5f, -0.5f}, {-0.5f, 0.5f, -0.5f}, {0.5f, 0.5f, -0.5f},
 			{-0.5f, -0.5f,  0.5f}, {0.5f, -0.5f,  0.5f}, {-0.5f, 0.5f,  0.5f}, {0.5f, 0.5f,  0.5f}
@@ -1288,6 +1309,7 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 				return engine::Math::Transform(ndcPos, invVP);
 				};
 
+			// 同じ画面座標を深度0の近面と1の遠面へ逆投影し、両点を通るマウスレイを作ります。
 			engine::Vector3 rayOrigin = screenToWorld(mousePos, 0.0f);
 			engine::Vector3 rayEnd = screenToWorld(mousePos, 1.0f);
 			engine::Vector3 rayDir = engine::Math::Normalize({ rayEnd.x - rayOrigin.x, rayEnd.y - rayOrigin.y, rayEnd.z - rayOrigin.z });
@@ -1314,7 +1336,7 @@ void GhostRecorder::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 			float diffZ = refPos.z - rayOrigin.z;
 			float distToRef = std::sqrt(diffX * diffX + diffY * diffY + diffZ * diffZ);
 
-			// マウスレイ上でパスに最も近い位置へ新しい点を追加する。
+			// 線に当たらない場合に使う候補です。近面のレイ始点から基準点と同じ距離だけ進めます。
 			engine::Vector3 hitPos = { rayOrigin.x + rayDir.x * distToRef, rayOrigin.y + rayDir.y * distToRef, rayOrigin.z + rayDir.z * distToRef };
 			engine::Vector3 localPos = { hitPos.x - drawOffset.x, hitPos.y - drawOffset.y, hitPos.z - drawOffset.z };
 
@@ -1416,6 +1438,7 @@ void GhostRecorder::DrawImGui() {
         }
         isLocalSpace_ = false;
     };
+    // 編集中の対象が変わったら共有ファイルブラウザーの選択を解除し、新しい対象に割り当てられた素材を読み直します。
     if (fileRecorder != this || fileTarget != target_) {
         fileRecorder = this;
         fileTarget = target_;
@@ -1618,6 +1641,7 @@ void GhostRecorder::DrawImGui() {
 				ImGui::PopID();
 			}
 
+			// 一覧を描画している間は削除番号だけを保持し、ループを抜けてから配列を変更します。
 			if (waypointToDelete >= 0) {
 				genParams_.waypoints.erase(genParams_.waypoints.begin() + waypointToDelete);
 				CommitHistory("Ghost Recorder Delete Waypoint");
@@ -1731,6 +1755,7 @@ void GhostRecorder::DrawImGui() {
 				// 始点を一度だけ記録し、各区間は指定秒数ぶん進んで次の点へ到達する。
 				appendFrame(pts.front().pos, pts.front().rot, pts.front().scale, pts.front().eventId);
 				for (int i = 0; i < static_cast<int>(pts.size()); ++i) {
+					// 待機秒を60 Hzのサンプル数に変換します。同じ点の待機サンプルにはイベントを入れず、到達時の一度だけにします。
 					const int waitFrames = std::max(0, static_cast<int>(std::lround(pts[i].waitTime * 60.0f)));
 					for (int wait = 0; wait < waitFrames; ++wait)
 						appendFrame(pts[i].pos, pts[i].rot, pts[i].scale, 0);
@@ -1738,6 +1763,7 @@ void GhostRecorder::DrawImGui() {
 					if (i + 1 == static_cast<int>(pts.size()))
 						break;
 
+					// 移動区間にも最低1サンプルを割り当てます。始点は済んでいるので、中間と終点だけを追加します。
 					const int travelFrames = std::max(1, static_cast<int>(std::lround(pts[i].durationToNext * 60.0f)));
 					for (int step = 1; step <= travelFrames; ++step) {
 						const float t = ApplyEasing(pts[i].easingToNext, static_cast<float>(step) / travelFrames);
@@ -1757,6 +1783,7 @@ void GhostRecorder::DrawImGui() {
 
 				isRelative_ = genParams_.generateRelative;
 				Stop();
+                // 生成直後は保存先を選ぶだけです。保存成功時のコールバックが対象に素材名を設定します。
                 attachOnSave = true;
                 const auto stem = files.GetDocument().stem().u8string();
                 files.RequestSaveAs(stem.empty() ? "anim_path" : std::string(stem.begin(), stem.end()));
@@ -1780,6 +1807,7 @@ void GhostRecorder::DrawImGui() {
 		ImGui::SetNextItemWidth(-1);
 		ImGui::SliderInt("##SeekBar", &displayFrame, 0, maxFrame, "Frame: %d");
 
+		// シークをつかんだ時点で通常再生を止め、操作中はスライダーの整数フレーム番号から姿勢を評価します。
 		if (ImGui::IsItemActivated()) {
 			isScrubbing_ = true;
 			state_ = State::Idle;
@@ -1812,8 +1840,10 @@ void GhostRecorder::DrawImGui() {
 	if (ImGui::Button(ICON_FA_STOP " 停止"))
 		Stop();
 
+	// ボタンや経由点の変更で既に履歴を登録したフレームでは、入力欄用の履歴を重ねて作らないようにします。
 	const bool changedThisFrame = !GenerationParamsEqual(beforeUiState, genParams_);
 
+	// 変更前の設定をドラッグ開始時に一度だけ採り、連続入力が終わったところで一件の履歴にまとめます。
 	if (!historyRegisteredThisFrame_) {
 		if (changedThisFrame && !hasUiEditStart_) {
 			uiEditStartState_ = beforeUiState;
@@ -1905,6 +1935,7 @@ bool GhostRecorder::LoadFile(const std::filesystem::path& path) try {
 	json root;
 	file >> root;
 	if (!root.contains("frames") || !root["frames"].is_array()) return false;
+	// フレームと編集設定はいったんローカルに読み、変換に失敗しても既存の記録を途中まで置き換えないようにします。
 	std::vector<GhostFrame> loadedFrames;
 	auto settings = genParams_;
 	bool relative = isRelative_;
@@ -2018,6 +2049,7 @@ bool GhostRecorder::LoadFile(const std::filesystem::path& path) try {
 
 
 	}
+    // 変換が済んでから設定を差し替えます。古いアンカー参照も破棄し、名前を基に現在のシーンから引き直せる状態にします。
     frames_ = std::move(loadedFrames);
     genParams_ = std::move(settings);
     anchorName_ = std::move(anchorName);
@@ -2060,6 +2092,7 @@ void GhostRecorder::EvaluateAtTime(float timeSeconds, bool dispatchEvents, float
 
 	const int lastFrameIndex = static_cast<int>(frames_.size()) - 1;
 	const float clampedTime = std::clamp(timeSeconds, 0.0f, GetDurationSeconds());
+	// 記録は60フレーム毎秒です。経過秒から求めた小数部を隣接姿勢間の補間率に使います。
 	const float framePosition = clampedTime * 60.0f;
 	const int frameIndex = std::clamp(static_cast<int>(std::floor(framePosition)), 0, lastFrameIndex);
 	const int nextFrameIndex = std::min(frameIndex + 1, lastFrameIndex);
@@ -2078,10 +2111,12 @@ void GhostRecorder::EvaluateAtTime(float timeSeconds, bool dispatchEvents, float
 	currentFrameIndex_ = static_cast<size_t>(frameIndex);
 	ApplyFrameTransform(sample);
 
+	// 巻き戻しや通知無効のシークでは姿勢の反映で止め、イベントを再発火させません。
 	if (!dispatchEvents || clampedTime < previousTimeSeconds) {
 		return;
 	}
 
+	// 直前に処理したフレームを除き、今回までに通過した記録を古い順に通知します。
 	const int firstEventFrame = std::max(0, static_cast<int>(std::floor(previousTimeSeconds * 60.0f)) + 1);
 	const int lastEventFrame = std::min(lastFrameIndex, static_cast<int>(std::floor(clampedTime * 60.0f + 0.0001f)));
 
@@ -2092,6 +2127,7 @@ void GhostRecorder::EvaluateAtTime(float timeSeconds, bool dispatchEvents, float
 	}
 }
 
+// 生成時の設定にアンカーがあれば、アンカーの位置・向きと保存オフセットから再生基準を作ります。拡大率は対象自身から退避します。
 void GhostRecorder::CaptureBasePose() {
 	ClearTargetIfMissingFromScene();
 
@@ -2137,11 +2173,12 @@ void GhostRecorder::RestoreBasePose() {
 			target_->SetRotation(AddEuler(anchor_->GetRotation(), genParams_.anchorOffsetRot));
 		}
 		else {
-			// アンカーがいなければ今まで通り
+			// アンカーを解決できない場合は、再生開始時に退避した位置と向きへ戻します。
 			target_->SetTranslate(basePosition_);
 			target_->SetRotation(baseRotation_);
 		}
 
+		// 位置・回転を戻してから開始時の拡大率へ戻し、ローカル行列、親を含むワールド行列の順で反映します。
 		target_->SetScale(baseScale_);
 		target_->UpdateLocalMatrix();
 		target_->UpdateWorldMatrix();

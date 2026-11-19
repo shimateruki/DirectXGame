@@ -88,6 +88,7 @@ void DrawTimelineBlock(
         return;
     }
 
+    // チャンネル名の幅を避け、時刻を秒から画面のX座標へ変換する。
     const float x0 = origin.x + labelWidth + beginTime * pixelsPerSecond;
     const float x1 = origin.x + labelWidth + endTime * pixelsPerSecond;
     drawList->AddRectFilled(
@@ -95,6 +96,7 @@ void DrawTimelineBlock(
         ImVec2(x1 - 1.0f, laneY + laneHeight - 3.0f),
         color,
         3.0f);
+    // 帯が狭い場合は名前を省き、表示する場合も帯の外へはみ出さないようにする。
     if (label && x1 - x0 >= 48.0f) {
         drawList->PushClipRect(
             ImVec2(x0 + 3.0f, laneY),
@@ -170,6 +172,7 @@ void ActorDebugPanel::DrawTimelineWindow() {
             playing_ = !playing_;
         }
 
+        // 矢印は通常1ステップ、Shift併用では10ステップ分を固定刻みの秒数としてシークする。
         const int stepFrames = ImGui::GetIO().KeyShift ? 10 : 1;
 
         if (ImGui::IsKeyPressed(ImGuiKey_LeftArrow, false)) {
@@ -268,6 +271,7 @@ void ActorDebugPanel::DrawTimelineWindow() {
         ImGui::EndTable();
     }
 
+    // プリズムの詠唱専用表示は、レイヤー数と負値で返る生成状態を分けて知らせます。
     if (const auto* prismSlime = dynamic_cast<const EnemyPrismSlime*>(previewEnemy_)) {
         const int chantLayers = prismSlime->GetDebugChantVisibleLayerCount();
 
@@ -534,6 +538,7 @@ void ActorDebugPanel::DrawTimelineWindow() {
     }
 
     // 現在位置は全レーンを縦断する線で示し、Canvas 上のクリックやドラッグでシークします。
+    // 表示ヘッドは記録から選んだ標本の時刻ではなく、現在の再生時刻そのものに置きます。
     const float playheadTime = std::clamp(elapsedTime_, 0.0f, duration);
     const float playheadX = origin.x + kLabelWidth + playheadTime * timelinePixelsPerSecond_;
     drawList->AddLine(ImVec2(playheadX, origin.y), ImVec2(playheadX, canvasEnd.y), IM_COL32(255, 82, 82, 255), 2.0f);
@@ -570,6 +575,7 @@ void ActorDebugPanel::DrawTimelineWindow() {
 
             ImGui::EndTooltip();
 
+            // 手動シーク中に再生や自動スクロールで位置が動かないよう、両方を止めます。
             if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
                 timelineFollowPlayhead_ = false;
                 playing_ = false;
@@ -577,6 +583,7 @@ void ActorDebugPanel::DrawTimelineWindow() {
             }
         }
 
+        // 通常のホイール操作と区別し、Ctrlを押したときだけ秒あたりの横幅を調整します。
         if (ImGui::GetIO().KeyCtrl && std::abs(ImGui::GetIO().MouseWheel) > 0.0f) {
             timelinePixelsPerSecond_ = std::clamp(
                 timelinePixelsPerSecond_ + ImGui::GetIO().MouseWheel * 18.0f,
@@ -610,6 +617,7 @@ void ActorDebugPanel::DrawCrownMovieTimeline() {
     ImGui::TextUnformatted(crownDefeatMode_
         ? "最終撃破ムービー / 60 fps"
         : "王冠継承・崩壊ムービー / 60 fps");
+    // プレビューが未開始なら開始場所だけ案内し、後続の再生操作を表示しません。
     if (!enabled_) {
         ImGui::TextDisabled("右のInspectorから「ムービープレビューを開始」を押してください。");
         ImGui::PopID();
@@ -635,6 +643,7 @@ void ActorDebugPanel::DrawCrownMovieTimeline() {
         SeekPreview(0);
     }
 
+    // プレビューの固定刻みに合わせ、移動フレーム数を秒へ換算してシークします。
     const int frames[] = { -10, -1, 1, 10 };
 
     for (int frame : frames) {
@@ -666,6 +675,7 @@ void ActorDebugPanel::DrawCrownMovieTimeline() {
     // 最終撃破は章ごとのジャンプボタンを表示して終了し、継承ムービーのレーンは作りません。
     if (crownDefeatMode_) {
         const auto* game=sceneManager_?dynamic_cast<GamePlayScene*>(sceneManager_->GetCurrentScene()):nullptr;
+        // 撃破側はシーンのマーカーから秒位置を取得し、シーンがないときは全尺に対する割合で補います。
         const auto point=[&](const char* marker,float fallback){return game?game->GetCrownDefeatMarkerTime(marker):fallback*loopDuration_;};
         const char* names[] = { "最後の一撃", "王冠の亀裂", "王冠破砕", "力の喪失", "小スライム", "勝利", "終了" };
         const float points[] = { 0, .14f*loopDuration_, point("rupture",.28f)+.015f*loopDuration_,

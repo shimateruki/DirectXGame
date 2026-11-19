@@ -19,7 +19,7 @@ namespace {
 engine::Vector2 CalculatePlayerIrisCenter(Player* player) {
     // プレイヤーが画面内にいる時だけ投影位置を使い、画面外なら中央から閉じる。
     engine::Vector2 irisCenter = {0.5f, 0.5f};
-    Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
 
     if (!player || !cam) {
         return irisCenter;
@@ -85,7 +85,8 @@ void PlayerStateDead::Enter(Player* player) {
             hookMarker->SetIsVisible(false);
         }
 
-        Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+        // 槍雨ムービー中はそのカメラを維持し、それ以外の死亡では視点を固定します。残機が尽きる場合だけ短い寄りを重ねます。
+        engine::Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
 
         if (cam && !(GetCurrentGamePlayScene() && GetCurrentGamePlayScene()->IsSealBarrageMovieActive())) {
             cam->SetFreezeEye(true);
@@ -95,10 +96,10 @@ void PlayerStateDead::Enter(Player* player) {
                 engine::Vector3 focusEye = engine::Math::Lerp(cam->GetEye(), focus, 0.16f);
                 focusEye.y += 0.10f;
 
-                Camera::CameraOverrideParams cameraOverride;
+                engine::Camera::CameraOverrideParams cameraOverride;
                 cameraOverride.duration = 0.24f;
                 cameraOverride.exitDuration = 0.0f;
-                cameraOverride.easing = Camera::OverrideEasing::EaseOut;
+                cameraOverride.easing = engine::Camera::OverrideEasing::EaseOut;
                 cameraOverride.fixedEyePos = focusEye;
                 cameraOverride.fixedTargetPos = focus;
                 cameraOverride.trackEyeX = false;
@@ -133,12 +134,13 @@ void PlayerStateDead::Update(Player* player, float deltaTime) {
         return;
 
     if (timer_ == 0.0f)
-        if (Camera* camera = CameraManager::GetInstance()->GetActiveCamera())
+        if (engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera())
             camera->SetFreezeEye(true);
     timer_ += deltaTime;
     finalDeath_ = finalDeath_ || GameDataManager::GetInstance()->GetLives() <= 0;
     deathAnimation_.Update(player, deltaTime);
 
+    // 死亡モーションが暗転可能な時刻に達してから画面を閉じ、暗転完了後に残機減少演出を開始します。
     const float irisDuration = finalDeath_ ? 1.45f : 1.25f;
     if (deathAnimation_.IsReadyForFade() && !lifePresentationStarted_ &&
         Fade::GetInstance()->GetStatus() == Fade::Status::None) {
@@ -156,14 +158,16 @@ void PlayerStateDead::Update(Player* player, float deltaTime) {
         return;
     }
 
+    // 残機が減る表示が終わるまでは、シーン遷移を要求しません。
     GamePlayScene* scene = GetCurrentGamePlayScene();
 
     if (scene && !scene->IsLifeLostPresentationFinished()) {
         return;
     }
 
+    // 再度遷移を要求されないようフラグを立て、次のシーンへ移る前に現在のカメラ固定を解除します。
     sceneChangeRequested_ = true;
-    Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
 
     if (cam) {
         if (cam->IsOverridden()) {
@@ -173,6 +177,7 @@ void PlayerStateDead::Update(Player* player, float deltaTime) {
         cam->SetFreezeEye(false);
     }
 
+    // 残機が無ければゲームオーバーへ移り、残る場合はステージ再開時にアイリスを開くよう予約します。
     if (GameDataManager::GetInstance()->GetLives() <= 0) {
         Fade::GetInstance()->Stop();
         SceneManager::GetInstance()->ChangeSceneWithoutLoading("GAMEOVER");
@@ -189,7 +194,7 @@ void PlayerStateDead::Exit(Player* player) {
         player->SetIsControlActive(true);
     }
 
-    Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
 
     if (cam) {
         if (cam->IsOverridden()) {
@@ -209,7 +214,7 @@ void PlayerStateFallingOut::Enter(Player* player) {
         return;
     player->SetIsControlActive(false);
     irisCenter_ = CalculatePlayerIrisCenter(player);
-    Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
 
     if (cam) {
         cam->SetFreezeEye(true);
@@ -231,6 +236,7 @@ void PlayerStateFallingOut::Update(Player* player, float deltaTime) {
 
     // フェーズごとの処理
     switch (phase_) {
+    // 落下を見せる時間だけ待ち、その後に落下地点を中心とする暗転を始めます。
     case Phase::Waiting:
         waitTimer_ += deltaTime;
 
@@ -242,6 +248,7 @@ void PlayerStateFallingOut::Update(Player* player, float deltaTime) {
 
         break;
 
+    // 暗転が終わってから残機減少演出へ渡します。
     case Phase::IrisOut:
         if (Fade::GetInstance()->IsFinished()) {
             Fade::GetInstance()->Stop();
@@ -252,6 +259,7 @@ void PlayerStateFallingOut::Update(Player* player, float deltaTime) {
 
         break;
 
+    // 残機減少の表示を待ち、再開できる場合のみ、復帰地点とそれを映すカメラを先に更新します。
     case Phase::LifeLost:
         if (GamePlayScene* scene = GetCurrentGamePlayScene()) {
             if (!scene->IsLifeLostPresentationFinished()) {
@@ -283,6 +291,7 @@ void PlayerStateFallingOut::Update(Player* player, float deltaTime) {
         phase_ = Phase::IrisIn;
         break;
 
+    // 復帰位置で画面を開き切ってから、待機状態に移し入力を戻します。
     case Phase::IrisIn:
         if (Fade::GetInstance()->IsFinished()) {
             // 全ての演出終了

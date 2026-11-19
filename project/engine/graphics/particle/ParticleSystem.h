@@ -74,6 +74,7 @@ public:
         engine::Vector3 spawnArea = { 1.0f, 1.0f, 1.0f };          // 発生範囲 (ランダム幅)
         engine::Vector3 initialVelocity = { 0.0f, 1.0f, 0.0f };    // 初速
         engine::Vector3 velocityRandomness = { 0.5f, 0.5f, 0.5f }; // 初速のランダム幅
+        // 毎秒の速度変化を表す加速度（ワールド単位/秒²）。発生時に各粒子へ渡します。
         engine::Vector3 acceleration = engine::Vector3::ZERO;
         int emitCount = 1;                 // 単発発生1回あたりの粒子数
         float particlesPerSecond = 10.0f; // 毎秒の発生数
@@ -87,6 +88,7 @@ public:
         float hdrIntensity = 1.0f;
 
         bool isEmitting = true; // 発生させるかどうか
+        // 旧エディターが保持する固定10点のサイズカーブ。新しいキー式カーブは下の別フィールドで管理します。
         float sizeCurve[10] = { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
         bool useAuthoringCurves = false;
         VfxFloatCurve sizeOverLife;
@@ -119,7 +121,7 @@ public:
     /// <param name="position">発生の中心位置。</param>
     /// <param name="count">発生させる粒子数。</param>
     /// <param name="direction">指定時はこの方向を基準に初速を決める。</param>
-    /// <param name="spreadAngle">direction の周囲へ広げる角度。</param>
+    /// <param name="spreadAngle">X・Y回転に使う散らばり角（ラジアン）。各軸で±半分の範囲から選ぶ。</param>
     void SpawnParticles(const engine::Vector3& position, int count,
         float initialSpeed = 2.0f,
         const engine::Vector3* direction = nullptr,
@@ -249,7 +251,7 @@ private:
     // 今回の描画へ転送する生存粒子数。GPUインスタンス数にも使う。
     UINT particleCount_ = 0;
 
-    // 自動発生の端数秒。発生間隔をまたいだ余りを次フレームへ引き継ぐ。
+    // 自動発生で1粒に満たなかった分を次フレームへ持ち越します。
     float spawnTimer_ = 0.0f; // 未発生分を小数で蓄積する粒子数。秒数ではない。
 
     // 粒子更新にだけ掛ける時間倍率。プレビューの一時停止にも使う。

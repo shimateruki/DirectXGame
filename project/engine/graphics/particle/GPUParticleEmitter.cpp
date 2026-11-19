@@ -46,11 +46,14 @@ void GpuParticleEmitter::Update(float deltaTime) {
 
     if (emitTimer_ >= emitInterval_) {
         EmitOnce();
+        // 長いフレームでも発生要求は一回に絞り、次回へは間隔未満の経過時間だけを持ち越します。
         emitTimer_ = std::fmod(emitTimer_, emitInterval_);
     }
 }
 
+// 初回の発生を一周期待たず、次の有効なUpdateで発生するようにタイマーを進めておく。
 void GpuParticleEmitter::Play() { isPlaying_ = true; emitTimer_ = emitInterval_; }
+// 次回開始に停止前の端数を持ち越さない。放出済みの粒子はGPU側の寿命で消える。
 void GpuParticleEmitter::Stop() { isPlaying_ = false; emitTimer_ = 0.0f; }
 
 // 発生元Objectのモデル情報と姿勢を収集し、設定済みSystemへ一回分の粒子を発生させます。
@@ -68,13 +71,13 @@ void GpuParticleEmitter::EmitOnce() {
 
         if (modelObj && modelObj->GetModel()) {
             worldMat = modelObj->GetWorldMatrix();
-            Model* model = modelObj->GetModel();
+            engine::Model* model = modelObj->GetModel();
             const auto& modelData = model->GetModelData();
 
             if (!modelData.meshes.empty()) {
                 vb = modelData.meshes[0].vertexResource.Get();
                 vCount = static_cast<uint32_t>(modelData.meshes[0].vertices.size());
-                vStride = sizeof(Model::VertexData);
+                vStride = sizeof(engine::Model::VertexData);
                 boneSrv = model->GetBoneSrvIndex();
             }
         }
@@ -83,6 +86,7 @@ void GpuParticleEmitter::EmitOnce() {
         }
 
         engine::Math math;
+        // 平行移動を含めず、追従先の回転と拡縮でローカルオフセットを変換してから、発生元のワールド位置へ足します。
         engine::Vector3 worldOffset = math.TransformNormal(offset_, worldMat);
         spawnPos.x = worldMat.m[3][0] + worldOffset.x;
         spawnPos.y = worldMat.m[3][1] + worldOffset.y;
@@ -92,6 +96,7 @@ void GpuParticleEmitter::EmitOnce() {
         spawnPos = offset_;
     }
 
+    // 頂点がない場合もメッシュ情報を渡し、直前の別エミッターのモデルを使い回さないようにします。
     GpuParticleManager::GetInstance()->SetEmitterMesh(vb, vCount, vStride, boneSrv);
     GpuParticleManager::GetInstance()->Emit(presetName_, spawnPos, worldMat);
 }

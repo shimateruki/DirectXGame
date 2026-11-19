@@ -111,11 +111,11 @@ void DrawTextWithOutline(ImDrawList* drawList, const ImVec2& pos, ImU32 color, c
 
 // エディタ画面右上に、現在カメラ基準のワールド軸ギズモを描画する。
 
-void DrawSceneDirectionGizmo(const GameViewArea& area, Camera* camera);
+void DrawSceneDirectionGizmo(const GameViewArea& area, engine::Camera* camera);
 
 // 選択オブジェクトのローカル軸をゲームビュー上に重ねて描画する。
 
-void DrawSelectedObjectOrientation(const GameViewArea& area, Camera* camera, engine::Object3D* selectedObject);
+void DrawSelectedObjectOrientation(const GameViewArea& area, engine::Camera* camera, engine::Object3D* selectedObject);
 
 }
 

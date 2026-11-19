@@ -480,6 +480,7 @@ bool AssetDatabase::TryReusePersistentAsset(
     fs::path metaPath = sourcePath;
     metaPath += ".meta";
     std::error_code error;
+    // .meta の有無が以前と異なる場合や、新規作成が必要になった場合は解析済みレコードを使わない。
     const bool metaExists = fs::exists(metaPath, error) && !error;
     if (error || entry.metaExists != metaExists ||
         (pendingCreateMissingMeta_ && !metaExists)) {
@@ -500,6 +501,7 @@ bool AssetDatabase::TryReusePersistentAsset(
         return false;
     }
 
+    // 別のレコードが先に同じ GUID を取得した場合は再利用を中止し、通常読み込み側の重複処理に任せる。
     const auto owner = guidOwners.find(entry.record.guid);
 
     if (!entry.record.guid.empty() && owner != guidOwners.end()) {
@@ -544,6 +546,7 @@ void AssetDatabase::StorePendingPersistentAsset(const EditorAssetRecord& record)
         return;
     }
 
+    // 本体だけ一致しても.metaの編集は別にあり得るので、存在時は容量と更新時刻を対で残す。
     if (entry.metaExists) {
         fs::file_time_type metaWriteTime{};
 
@@ -647,6 +650,7 @@ std::string AssetDatabase::GenerateGuid() {
         return std::mt19937_64(seed);
     }());
 
+    // 64 ビット乱数を 2 回生成し、それぞれゼロ埋めした 16 桁の 16 進表記を連結する。
     std::lock_guard<std::mutex> lock(mutex);
     std::ostringstream stream;
     stream << std::hex << std::setfill('0')

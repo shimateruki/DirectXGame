@@ -20,11 +20,13 @@ void KeyConfig::Initialize() {
     bindings_["Attack"] = { 0x2C, -1, XINPUT_GAMEPAD_X };              // Z / Xボタン
     bindings_["Dash"] = { 0x2A, -1, XINPUT_GAMEPAD_RIGHT_SHOULDER };   // L-Shift / RB
 
+    // 能力・解除とロックオンは移動系と別のアクションへ割り当てる。
     bindings_["Ability"] = { 0x12, -1, XINPUT_GAMEPAD_Y };
     bindings_["MorphRelease"] = { 0x13, -1, XINPUT_GAMEPAD_B };        // R / Bボタン
 
     bindings_["LockOn"] = { DIK_Q, -1, XINPUT_GAMEPAD_RIGHT_THUMB };
     bindings_["LockOnNext"] = { DIK_G, -1, XINPUT_GAMEPAD_LEFT_THUMB };
+    // 主・副操作はキーボード未割当とし、左右のマウスボタンと対応するパッド入力を指定する。
     bindings_["PrimaryAttack"] = { 0, 0, XINPUT_GAMEPAD_X };
     bindings_["SecondaryAction"] = { 0, 1, XINPUT_GAMEPAD_LEFT_SHOULDER };
 
@@ -47,6 +49,7 @@ WORD KeyConfig::GetPadCode(const std::string& actionName) const {
 // 数値のキーコードを「A」や「Space」などの分かりやすい文字列に変換する（完全版）
 // =================================================================
 std::string KeyConfig::GetKeyName(int keyCode) const {
+    // 0は未割当。対応表のない非ゼロ値だけを末尾で16進表示する。
     if (keyCode == 0)
         return "None";
 
@@ -203,6 +206,7 @@ std::string KeyConfig::GetPadName(WORD padCode) const {
     // 画面に出せない未知のコードも数値付きで表示し、割当の確認を可能にする。
     if (padCode == 0)
         return "None";
+    // ボタン単体のXInput値を案内名へ変換する。ここでは複数ボタンの組み合わせを分解しない。
     switch (padCode) {
     case XINPUT_GAMEPAD_A: return "A";
 

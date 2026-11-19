@@ -56,6 +56,7 @@ inline EditorObjectFactoryRegistry::TypeInfo MakeEnemyTypeInfo(const std::string
 
 // 具体的な敵・ギミック・アイテムの生成方法はゲーム側で登録します。
 inline void RegisterGameEditorFactories() {
+    // 攻撃の確認・イベント・基本値など、型ごとに変わるエディター機能をゲーム側から登録する。
     RegisterGameAttackPreviews();
     RegisterGameCopyPreviews();
     RegisterGameEditorEvents();
@@ -66,6 +67,7 @@ inline void RegisterGameEditorFactories() {
     RegisterGameInspectorExtensions();
     RegisterGameActorDebug();
 #endif
+    // 生成を行う場面では、エディターが直接クラスを知らなくても本番と同じファクトリーを呼べるようにする。
     using Registry = EditorObjectFactoryRegistry;
     Registry::Register(Registry::Kind::Enemy, [](const std::string& type, engine::Object3DCommon* common) {
         return EnemyFactory::GetInstance()->CreateEnemy(type, common);
@@ -74,12 +76,14 @@ inline void RegisterGameEditorFactories() {
         auto* factory = GimmickFactory::GetInstance();
         return factory->IsKnownType(type) ? factory->CreateGimmick(type, common) : nullptr;
     });
+    // 敵の候補表示に必要な名前は、種類ごとのステータス設定を初期化してから取り出す。
     auto* statuses = GameplayStatusManager::GetInstance();
     statuses->Initialize();
     std::vector<Registry::TypeInfo> enemyTypes;
     for (const auto& type : statuses->GetEnemyTypes())
         enemyTypes.push_back(GameEditorFactoryDetail::MakeEnemyTypeInfo(type));
     Registry::RegisterTypes(Registry::Kind::Enemy, std::move(enemyTypes));
+    // ギミックの候補と型の判定には、ゲーム側ファクトリーへ登録された情報をそのまま使う。
     std::vector<Registry::TypeInfo> gimmickTypes;
     for (const auto& type : GimmickFactory::GetInstance()->GetRegisteredTypes())
         gimmickTypes.push_back({type.id, type.displayName, type.matches});

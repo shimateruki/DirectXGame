@@ -30,11 +30,13 @@ class PlayerSlimeAnimator {
 
     void SetMode(Mode mode);
     void SetWhipPose(const engine::Vector3& scale, const engine::Vector3& rotation, const engine::Vector3& shear = {}) {
+        // 溜めや振り抜きの途中は通常の鞭姿勢を優先し、戻り演出のフラグを外します。
         whipReturnPoseActive_ = false; whipPoseActive_ = true; whipPose_.scale = scale; whipPose_.rotate = rotation; whipPose_.shear = shear;
     }
     const BodyAnimationClip::Sample& GetWhipPose() const { return whipPose_; }
     float GetPullProgress() const { return pullProgress_; }
     void SetWhipReturnPose(const BodyAnimationClip::Sample& pose) {
+        // 振り抜き後は鞭の状態を抜けても、終了の合図までは描画姿勢の復帰を続けます。
         whipReturnPoseActive_ = true; whipPoseActive_ = true; whipPose_ = pose;
     }
     void ClearWhipPose() { whipReturnPoseActive_ = false; whipPoseActive_ = false; whipPose_ = {}; }
@@ -89,7 +91,7 @@ class PlayerSlimeAnimator {
     AnimatorControllerRuntime* GetControllerRuntime() { return controllerLoaded_ ? &controllerRuntime_ : nullptr; }
 
   private:
-    // 状態に応じたスケールと回転を計算し、作成済みクリップを優先して適用します。
+    // XZ平面の単位方向を返し、ほぼゼロの場合は+Zへ置き換えます。
     engine::Vector3 NormalizeOrForward(const engine::Vector3& direction) const;
 
     // 速度とモード時計から伸縮を作り、Idle・Run・Jumpなどの質感を分ける。

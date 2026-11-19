@@ -212,6 +212,7 @@ void TutorialScene::RestoreReplaySceneState(const json& state) {
     if (!state.is_object()) {
         return;
     }
+    // 残量だけでなく被弾表示の保持時間も戻し、同じ時点のHPバーを再現します。
     if (const auto found = state.find("healthHud"); found != state.end() && found->is_object()) {
         auto& hp = healthHud_.State();
         hp.previousHp = found->value("previousHp", hp.previousHp);
@@ -234,6 +235,7 @@ void TutorialScene::RestoreReplaySceneState(const json& state) {
         goalSavePerformed_ = found->value("savePerformed", false);
     }
 
+    // 演出の種類・時間・視点を記録から戻し、橋を落とした後の進行を保持します。
     if (const auto found = state.find("movie"); found != state.end() && found->is_object()) {
         const int movieState = (std::clamp)(found->value("state", 0), 0, 1);
         movieState_ = static_cast<MovieState>(movieState);
@@ -243,6 +245,7 @@ void TutorialScene::RestoreReplaySceneState(const json& state) {
         hasBridgeDropped_ = found->value("bridgeDropped", false);
     }
 
+    // 記録と現在の配列で重なる範囲だけ、今回拾ったスターの目印を復元します。
     if (const auto found = state.find("sessionStarCoins"); found != state.end() && found->is_array()) {
         for (size_t index = 0; index < 3 && index < found->size(); ++index) {
             sessionStarCoins_[index] = (*found)[index].get<bool>();
@@ -287,6 +290,7 @@ SceneLoadManifest TutorialScene::BuildAsyncLoadManifest() const {
 
     manifest.AddTexture(GetSceneLoadContext().skyboxPath.empty() ? "Resources/output_skybox.dds"
                                                                  : GetSceneLoadContext().skyboxPath);
+    // シーン資産のBGMを優先し、未指定の場合は現在ステージの登録値を先読み対象にします。
     std::string preloadBgmPath = GetSceneLoadContext().bgmPath;
 
     if (preloadBgmPath.empty()) {
@@ -329,6 +333,7 @@ bool TutorialScene::InitializeLoadingStep() {
 
     for (;;) {
         switch (loadingInitializePhase_) {
+        // 入力と共有カメラを先に接続し、配置を作る前の基盤を整えます。
         case 0: {
             inputManager_ = engine::InputManager::GetInstance();
             LOG("Tutorial Scene Initialized!");
@@ -352,6 +357,7 @@ bool TutorialScene::InitializeLoadingStep() {
             completeUnit();
             return false;
 
+        // 対象集合を用意した後で、ロックオン表示と弾の衝突管理を結び付けます。
         case 2: {
             objectManager_ = std::make_unique<ObjectManager>();
             lockOnSystem_ = std::make_unique<LockOnSystem>();
@@ -389,6 +395,7 @@ bool TutorialScene::InitializeLoadingStep() {
             loadingInitializeItemIndex_ = 0;
             continue;
 
+        // メッシュエフェクトも一項目ずつ準備し、描画開始時の初回読込を減らします。
         case 5:
             if (loadingInitializeItemIndex_ < std::size(kTutorialMeshEffectsToPreload)) {
                 MeshEffectManager::GetInstance()->PreloadEffect(
@@ -401,6 +408,7 @@ bool TutorialScene::InitializeLoadingStep() {
             loadingInitializeItemIndex_ = 0;
             continue;
 
+        // 破片の個別先読みより先に、プリセット定義全体を管理器へ読み込みます。
         case 6:
             DebrisEffectManager::GetInstance()->Initialize(GetObject3DCommon());
             DebrisEffectManager::GetInstance()->LoadAllPresets("Resources/json/debris/");
@@ -409,6 +417,7 @@ bool TutorialScene::InitializeLoadingStep() {
             completeUnit();
             return false;
 
+        // チュートリアルで使う破片だけを個別に先読みします。
         case 7:
             if (loadingInitializeItemIndex_ < std::size(kTutorialDebrisPresetsToPreload)) {
                 DebrisEffectManager::GetInstance()->PrewarmPreset(
@@ -421,6 +430,7 @@ bool TutorialScene::InitializeLoadingStep() {
             loadingInitializeItemIndex_ = 0;
             continue;
 
+        // 技から参照されるVFXシーケンスを毎回一件ずつ読みます。
         case 8:
             if (loadingInitializeItemIndex_ < std::size(kTutorialVfxSequencesToPreload)) {
                 VfxSequencer sequence;
@@ -432,6 +442,7 @@ bool TutorialScene::InitializeLoadingStep() {
             ++loadingInitializePhase_;
             continue;
 
+        // 環境画像を取得し、配置を展開する前に背景用の空を準備します。
         case 9:
             skyboxTextureHandle_ =
                 TextureManager::GetInstance()->Load(ResolveSceneSkyboxPath("Resources/output_skybox.dds"));
@@ -441,6 +452,7 @@ bool TutorialScene::InitializeLoadingStep() {
             completeUnit();
             return false;
 
+        // 先に3D配置を展開し、次の段階でHUDからプレイヤーを参照できるようにします。
         case 10:
             levelLoader_ = std::make_unique<LevelLoader>();
             levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/tutorial.json");
@@ -448,6 +460,7 @@ bool TutorialScene::InitializeLoadingStep() {
             completeUnit();
             return false;
 
+        // レイアウトにある能力表示とHPの名前を結び付け、チュートリアル中だけ保護を有効にします。
         case 11:
             levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/tutorialScene.json");
             copyStyleHud_.Bind(GetSpriteByName("hud_copy_style"));
@@ -463,6 +476,7 @@ bool TutorialScene::InitializeLoadingStep() {
             completeUnit();
             return false;
 
+        // 案内・保存表示と出口の目印を用意し、手順管理の初期化に成功したときだけ完了通知を受けます。
         case 12:
             controlsGuideOverlay_ = std::make_unique<ControlsGuideOverlay>();
             controlsGuideOverlay_->Initialize(GetSpriteCommon(), player_);
@@ -479,15 +493,16 @@ bool TutorialScene::InitializeLoadingStep() {
             completeUnit();
             return false;
 
+        // 照明とカメラの初期状態をそろえてから、ロード完了を呼び出し側へ通知します。
         case 13:
-            LightManager::GetInstance()->LoadState(ResolveSceneLightPath("Resources/json/light/light_layout.json"));
+            engine::LightManager::GetInstance()->LoadState(ResolveSceneLightPath("Resources/json/light/light_layout.json"));
             CameraEditor::GetInstance()->Initialize();
 
             // 本編と同じ三人称カメラ設定を共有します。
             CameraEditor::GetInstance()->LoadFile("game_camera.json");
             CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
 
-            if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+            if (engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
                 camera->ResetFollowSmoothing();
             }
 
@@ -510,6 +525,7 @@ float TutorialScene::GetLoadingInitializeProgress() const {
 }
 
 void TutorialScene::Finalize() {
+    // 配置の管理を破棄する前に、出口とゲートが持つ一時状態を解除します。
     HideExitGuide();
     exitGuide_.Reset();
     exitGuideRequested_ = false;
@@ -532,6 +548,7 @@ void TutorialScene::Finalize() {
     DebrisEffectManager::GetInstance()->Clear();
     CollisionManager::GetInstance()->ClearObjects();
     BulletManager::GetInstance()->Finalize();
+    // このシーンが所有する表示資源を解放します。HP表示の借用参照はSpriteを消す前に外します。
     saveIndicatorOverlay_.reset();
     particleSystem_.reset();
     healthHud_.Reset();
@@ -541,6 +558,7 @@ void TutorialScene::Finalize() {
 }
 
 void TutorialScene::Update(float deltaTime) {
+    // ゲート演出が時間を引き受ける間は、案内を隠し、通常のゲーム更新を行いません。
     if (GimmickStageGate::UpdateSceneEntry(*this, deltaTime)) {
         HideExitGuide();
         if (saveIndicatorOverlay_) saveIndicatorOverlay_->Update(deltaTime);
@@ -587,6 +605,7 @@ void TutorialScene::Update(float deltaTime) {
         }
     }
 
+    // 操作ガイドが入力を受け持ったフレームは、保存通知の表示だけを進めます。
     if (HandleControlsGuideOverlay(deltaTime)) {
         HideExitGuide();
         if (saveIndicatorOverlay_) {
@@ -602,7 +621,7 @@ void TutorialScene::Update(float deltaTime) {
 
     // --- ポストエフェクト更新 ---
     PostEffect::GetInstance()->Update(deltaTime);
-    Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
 
     if (activeCamera) {
         PostEffect::GetInstance()->GetParams()->projectionInverse = engine::Math::Inverse(activeCamera->GetProjectionMatrix());
@@ -611,13 +630,14 @@ void TutorialScene::Update(float deltaTime) {
     static engine::Math math;
     LightEditor::GetInstance()->Update();
 
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
     lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_, deltaTime);
     CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
 
     engine::Object3D* target = lockOnSystem_->GetTarget();
 
+    // ロックオン先の当たり判定中心を投影し、奥行きに応じて印の大きさを変えます。
     if (target && lockOnSystem_->IsLockingOn()) {
         isDrawLockOn_ = true;
         Aabb aabb = target->GetAabb();
@@ -668,10 +688,11 @@ void TutorialScene::Update(float deltaTime) {
         isDrawLockOn_ = false;
     }
 
+    // ゲームカメラが操作を許すモードのときだけ、設定の感度を使って視点を回します。
     if (!CameraEditor::GetInstance()->IsEditorMode()) {
-        Camera::FollowMode currentMode = camera->GetFollowMode();
+        engine::Camera::FollowMode currentMode = camera->GetFollowMode();
 
-        if (currentMode == Camera::FollowMode::Aimable || currentMode == Camera::FollowMode::FirstPerson) {
+        if (currentMode == engine::Camera::FollowMode::Aimable || currentMode == engine::Camera::FollowMode::FirstPerson) {
             camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
             engine::Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
 
@@ -685,6 +706,7 @@ void TutorialScene::Update(float deltaTime) {
     CameraManager::GetInstance()->Update(deltaTime);
     particleSystem_->Update(deltaTime);
 
+    // 現在の対象を通知して手順を進め、以降で配置物とルールの更新を行います。
     if (tutorialDirector_) {
         tutorialDirector_->NotifyLockOnTarget(lockOnSystem_->IsLockingOn() ? lockOnSystem_->GetTarget() : nullptr);
         tutorialDirector_->Update(deltaTime);
@@ -719,13 +741,14 @@ void TutorialScene::Draw() {
     // カメラがプレイヤーに接近したら身体と子パーツを各3Dパスから除き、視界を確保します。
     // チュートリアルは専用の演出パスを持たず、通常モデル→半透明→深度参照表現の順です。
     bool isFirstPerson = false;
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
     if (player_ && camera) {
         engine::Vector3 pPos = player_->GetWorldPosition();
         pPos.y += 1.0f;
         engine::Vector3 cPos = camera->GetEye();
         engine::Vector3 toCam = {cPos.x - pPos.x, cPos.y - pPos.y, cPos.z - pPos.z};
+        // 足元から1ワールド単位上を頭側の目安とし、視点が3ワールド単位より近いときに本体を描画から外す。
         float distance = std::sqrt(toCam.x * toCam.x + toCam.y * toCam.y + toCam.z * toCam.z);
 
         if (distance < 3.0f) {
@@ -733,14 +756,14 @@ void TutorialScene::Draw() {
         }
     }
 
-    ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
-    ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
+    ID3D12Resource* pointLightRes = engine::LightManager::GetInstance()->GetPointLightResource();
+    ID3D12Resource* spotLightRes = engine::LightManager::GetInstance()->GetSpotLightResource();
 
     auto& objects = objectManager_->GetObjects();
 
     // 背景と不透明モデルで深度を確定してから、弾と半透明を描画します。
-    if (skybox_ && camera && LightManager::GetInstance()->IsSkyboxEnabled()) {
-        skybox_->SetTextureHandle(LightManager::GetInstance()->GetSkyboxTextureHandle());
+    if (skybox_ && camera && engine::LightManager::GetInstance()->IsSkyboxEnabled()) {
+        skybox_->SetTextureHandle(engine::LightManager::GetInstance()->GetSkyboxTextureHandle());
         skybox_->Draw(camera->GetConstantBuffer());
     }
 
@@ -916,6 +939,7 @@ void TutorialScene::UpdateExitGuide(float deltaTime) {
         return;
     auto* target = tutorialDirector_ ? tutorialDirector_->GetDirectionGuideTarget() : nullptr;
     const bool alive = player_ && player_->GetParameters() && player_->GetParameters()->hp > 0.0f;
+    // 手順が誘導先を指定し、生存して動ける場面に限って矢印を出します。
     const bool requested = target && alive && !isGoal_ && !player_->IsCinematicLocked();
     if (!requested) {
         exitGuide_.Hide(*arrow);
@@ -927,11 +951,13 @@ void TutorialScene::UpdateExitGuide(float deltaTime) {
         exitGuide_.Hide(*arrow);
         return;
     }
+    // 誘導開始時にだけ到着状態をリセットし、その後はプレイヤーの足元へ追従させます。
     if (!exitGuideRequested_) {
         exitGuide_.Reset();
         exitGuideRequested_ = true;
     }
     auto anchor = player_->GetWorldPosition();
+    // ワールド境界箱の下端を矢印の基準にし、プレイヤー原点や形態の違いで足元から浮くのを防ぐ。
     anchor.y = player_->GetModelWorldAabb().min.y;
     exitGuide_.Update(*arrow, anchor, target->GetWorldPosition(), deltaTime);
 }
@@ -942,6 +968,8 @@ void TutorialScene::HandleTutorialFlowCompleted() {
         return;
     }
 
+    // 保存に成功した場合だけ出口を通れるようにし、失敗時は閉じたまま再試行を予約します。
+    // チュートリアルはステージ番号-1で保存する。終了時にスターコインは加算しない。
     if (GameDataManager::GetInstance()->CommitStageClear(-1, {})) {
         if (tutorialDirector_)
             tutorialDirector_->SetCompletionGateEnabled(true);

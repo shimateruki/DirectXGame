@@ -18,7 +18,7 @@ ModelManager* ModelManager::GetInstance() {
     return &instance;
 }
 
-void ModelManager::Initialize(DirectXCommon* dxCommon) {
+void ModelManager::Initialize(engine::DirectXCommon* dxCommon) {
     // モデル共通描画基盤を初期化し、各Modelが共有するDirectXリソースを準備する。
     assert(dxCommon);
     modelCommon_ = std::make_unique<ModelCommon>();
@@ -29,13 +29,13 @@ void ModelManager::Finalize() {
     // 読み込み済みモデルと共通リソースを、DirectXの終了前に解放する。
     models_.clear(); // 読み込み済みモデルをすべて解放する。
     preparedModels_.clear();
-    modelCommon_.reset(); // ModelCommonを先に破棄し、GPU関連の参照を残さない。
+    modelCommon_.reset(); // 共有パイプラインを借用するModelを破棄したあと、ModelCommonを解放します。
 }
 
 // モデル名から実ファイルを解決して読み込み、同じキーのモデルは再利用する。
 
 
-Model* ModelManager::LoadModel(const std::string& modelName) {
+engine::Model* ModelManager::LoadModel(const std::string& modelName) {
     // すでに同じキーで読み込まれている場合は、GPUリソースを作り直さず再利用する。
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
@@ -74,66 +74,9 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
     std::string directoryPath;
     std::string fileName;
 
-    // ==========================================
-    // ★ 修正：モデル自身のフォルダ名(stem)もしっかりパスに含める！
-    // ==========================================
-    // サブフォルダ指定がある場合は、モデル自身と同名のフォルダ配下をまず候補にする。
-    if (!parentPath.empty()) {
-        // "enemy_core_shards" + "/" + "enemy_core1" + "/"
-        directoryPath = kDefaultBaseDirectory + parentPath + "/" + stem + "/";
-    }
-    else {
-        directoryPath = kDefaultBaseDirectory + stem + "/";
-    }
-
-    // 拡張子付きで指定された場合でも、拡張子なしキーやフォルダキーの既存登録を優先して探す。
-    if (!ext.empty()) {
-        fileName = path.filename().string();
-        std::string legacyDirectory = directoryPath;
-        std::string directDirectory = kDefaultBaseDirectory + (parentPath.empty() ? "" : parentPath + "/");
-
-        // 旧配置と直下配置の両方を見て、既存アセットの読み込み互換性を保つ。
-        if (std::filesystem::exists(legacyDirectory + fileName)) {
-            directoryPath = legacyDirectory;
-        }
-        else if (std::filesystem::exists(directDirectory + fileName)) {
-            directoryPath = directDirectory;
-        }
-    }
-    else {
-        const std::string objName = stem + ".obj";
-        const std::string gltfName = stem + ".gltf";
-        const std::string glbName = stem + ".glb";
-
-        // 拡張子なし指定では、OBJ/GLTF/GLBの順に実在する代表ファイルを探す。
-        if (std::filesystem::exists(directoryPath + objName)) {
-            fileName = objName;
-        }
-        else if (std::filesystem::exists(directoryPath + gltfName)) {
-            fileName = gltfName;
-        }
-        else if (std::filesystem::exists(directoryPath + glbName)) {
-            fileName = glbName;
-        }
-        else if (std::filesystem::exists(directoryPath)) {
-            for (const auto& entry : std::filesystem::directory_iterator(directoryPath)) {
-                if (!entry.is_regular_file())
-                    continue;
-                std::string candidateExt = entry.path().extension().string();
-
-                if (candidateExt == ".obj" || candidateExt == ".gltf" || candidateExt == ".glb") {
-                    fileName = entry.path().filename().string();
-                    break;
-                }
-            }
-
-            if (fileName.empty()) {
-                fileName = objName;
-            }
-        }
-        else {
-            fileName = objName;
-        }
+    // 先読みと同じ順序で実ファイルを探す。未検出時は従来の候補をローダーに渡す。
+    if (!ResolveModelPath(modelName, directoryPath, fileName) && ext.empty()) {
+        fileName = stem + ".obj";
     }
 
     std::string fullPath = directoryPath + fileName;
@@ -152,13 +95,14 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
         }
     }
 
-    auto newModel = std::make_unique<Model>();
+    auto newModel = std::make_unique<engine::Model>();
     ModelCommon* modelCommon = nullptr;
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
         modelCommon = modelCommon_.get();
     }
 
+    // 先読みが済んでいればCPU側の解析結果を移し、ここではGPUの作成と画像の登録を行います。
     if (preparedModel) {
         newModel->InitializeFromCpuData(
             modelCommon,
@@ -175,6 +119,7 @@ Model* ModelManager::LoadModel(const std::string& modelName) {
 
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
+        // 解析・生成中に別スレッドが先に登録した場合は、後から作ったモデルの代わりに既存の参照を返します。
         auto existingIt = models_.find(modelName);
 
         if (existingIt != models_.end()) {
@@ -206,9 +151,10 @@ bool ModelManager::PrepareModel(const std::string& modelName) {
     auto prepared = std::make_unique<PreparedModel>();
     prepared->directoryPath = directoryPath;
     prepared->fileName = fileName;
-    prepared->data = Model::LoadCpuData(directoryPath, fileName);
+    prepared->data = engine::Model::LoadCpuData(directoryPath, fileName);
 
-    for (const Model::MaterialData& material : prepared->data.materials) {
+    // 通常ロードと同じ色空間でテクスチャを先読みし、後のLoadがデコード済みの画像を見つけられるようにします。
+    for (const engine::Model::MaterialData& material : prepared->data.materials) {
         TextureManager::GetInstance()->Prepare(
             material.textureFilePath.empty()
                 ? "Resources/sprite/common/white.png"
@@ -254,6 +200,7 @@ bool ModelManager::ResolveModelPath(
 
     if (!extension.empty()) {
         fileName = path.filename().string();
+        // 拡張子指定ではモデル名と同じサブフォルダーを先に探し、無ければ親フォルダー直下を探します。
         const std::string legacyDirectory = directoryPath;
         const std::string directDirectory =
             kDefaultBaseDirectory + (parentPath.empty() ? "" : parentPath + "/");
@@ -415,7 +362,7 @@ void ModelManager::LoadAllModels() {
                 if (!models_.contains(keyName)) {
                     auto start = std::chrono::high_resolution_clock::now();
 
-                    auto newModel = std::make_unique<Model>();
+                    auto newModel = std::make_unique<engine::Model>();
                     newModel->Initialize(modelCommon_.get(), dirPath, fileName);
                     models_[keyName] = std::move(newModel);
 

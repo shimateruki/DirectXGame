@@ -20,12 +20,12 @@ inline bool Enabled() { return GetEnvironmentVariableA("CG2_GOAL_PRESENTATION_TE
 struct Access {
     static void Begin(GamePlayScene* game) { game->StartGoalPresentationPreview(); }
     static void End(GamePlayScene* game) { game->StopGoalPresentationPreview(); }
-    static Camera* CameraFor(GamePlayScene* game) { return game->goalPresentationCamera_.get(); }
+    static engine::Camera* CameraFor(GamePlayScene* game) { return game->goalPresentationCamera_.get(); }
     static float Time(GamePlayScene* game) { return game->goalPresentationTimer_.Elapsed(); }
     static engine::Object3D* Crown(GamePlayScene* game) { return game->FindGoalCrownObject(); }
 };
 inline void Require(bool value,const char* error) { if (!value) throw std::runtime_error(error); }
-inline void CheckFrame(engine::Object3D* object,Camera* camera,float top) {
+inline void CheckFrame(engine::Object3D* object,engine::Camera* camera,float top) {
     const auto lo=object->GetModel()->GetLocalAabbMin(),hi=object->GetModel()->GetLocalAabbMax();
     for(int i=0;i<8;++i) {
         const auto world=engine::Math::Transform({(i&1)?hi.x:lo.x,(i&2)?hi.y:lo.y,(i&4)?hi.z:lo.z},object->GetWorldMatrix());
@@ -48,7 +48,7 @@ inline void AfterDraw(SceneManager* manager,const std::string& path) {
     static bool done=false,landing=false,apex=false,result=false;
     static int cleared=0;
     static engine::Vector3 crownPos{},crownScale{},crownRotation{},playerPos{},playerRotation{};
-    static Camera* originalCamera=nullptr;
+    static engine::Camera* originalCamera=nullptr;
     static std::string idle1,idle2;
     static float settledFoot=0,baseRoughness=0,baseEnvIntensity=0;
     static bool baseEnvMap=false,footCaptured=false;

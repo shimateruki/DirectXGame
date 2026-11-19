@@ -72,10 +72,12 @@ engine::Vector3 GoalWorldScale(engine::Object3D* object) {
         engine::Math::Length({m.m[2][0],m.m[2][1],m.m[2][2]})};
 }
 engine::Vector3 GoalLocalPosition(engine::Object3D* object, const engine::Vector3& world) {
+    // ワールド座標で求めた装着位置を、SetTranslateが受け取る親基準の座標へ変換する。
     return object && object->GetParent()
         ? engine::Math::Transform(world,engine::Math::Inverse(object->GetParent()->GetWorldMatrix())) : world;
 }
 std::array<engine::Vector3,8> GoalWorldCorners(engine::Object3D* object) {
+    // モデルの境界箱の8頂点をワールドへ変換し、カメラの収まり判定で輪郭を考慮できるようにする。
     std::array<engine::Vector3,8> result{};
     const auto lo=object->GetModel() ? object->GetModel()->GetLocalAabbMin() : engine::Vector3{-0.5f,-0.5f,-0.5f};
     const auto hi=object->GetModel() ? object->GetModel()->GetLocalAabbMax() : engine::Vector3{0.5f,0.5f,0.5f};
@@ -119,7 +121,7 @@ void GamePlayScene::SetIsGoal(bool isGoal) {
 
     if (!isGoal_) {
         goalCinematicPlayer_.Stop(false);
-        Camera* restoreCamera = goalCameraRestoreOverride_;
+        engine::Camera* restoreCamera = goalCameraRestoreOverride_;
         goalClearPlayerAnimator_.RestoreInitialPose();
 
         // 王冠だけはScene配置物を直接動かすので、演出開始前のTransformを復元します。
@@ -180,9 +182,11 @@ void GamePlayScene::StartGoalPresentation(engine::Object3D* crownObject) {
         return;
     }
 
+    // クリア記録を更新する前に初回・再取得を控え、後から同じタイムラインで金色・銀色を切り替えられるようにする。
     const int currentStage = StageManager::GetInstance()->GetCurrentStageIndex();
     goalWasStageCleared_ = GameDataManager::GetInstance()->IsStageCleared(currentStage);
 
+    // 操作を先に止め、王冠やカメラの開始状態を取得する間に通常更新で動かないようにする。
     player_->BeginCinematicLock();
     SetIsGoal(true);
     goalPresentationState_ = GoalPresentationState::Celebrating;
@@ -216,10 +220,11 @@ void GamePlayScene::StartGoalPresentation(engine::Object3D* crownObject) {
         goalCrownSnapshotValid_ = true;
     }
 
+    // 開始時に映っていたカメラ側を向くよう、プレイヤーから視点への水平成分を初期向きの候補にする。
     engine::Vector3 preferredForward = engine::Vector3::ZERO;
 
     if (player_) {
-        Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
+        engine::Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
 
         if (activeCamera) {
             const engine::Vector3 playerPosition = player_->GetWorldPosition();
@@ -229,6 +234,7 @@ void GamePlayScene::StartGoalPresentation(engine::Object3D* crownObject) {
         }
     }
 
+    // 喜びモーションで使う姿勢と前後左右をアニメーターから取得し、同じ基準を王冠とカメラにも使う。
     if (goalClearPlayerAnimator_.Start(player_, goalCrownPosition_, preferredForward)) {
         goalSavedPlayerControlActive_ = goalClearPlayerAnimator_.WasControlActive();
         goalPlayerBasePosition_ = goalClearPlayerAnimator_.GetBasePosition();
@@ -242,6 +248,7 @@ void GamePlayScene::StartGoalPresentation(engine::Object3D* crownObject) {
         goalPlayerSnapshotValid_ = false;
     }
 
+    // 王冠を頭の幅に合わせるため、モデルの実寸と親スケールから装着時のローカル倍率を求める。
     if (crownObject && crownObject->GetModel() && player_->GetModel()) {
         const auto bodySize=player_->GetModel()->GetLocalAabbMax()-player_->GetModel()->GetLocalAabbMin();
         const auto bodyScale=GoalWorldScale(player_);
@@ -253,6 +260,7 @@ void GamePlayScene::StartGoalPresentation(engine::Object3D* crownObject) {
     } else {
         goalCrownWearScale_=goalCrownBaseScale_;
     }
+    // 演出でカメラを差し替える前に、終了時に戻す上書き先を控える。
     goalCameraRestoreOverride_=CameraManager::GetInstance()->GetActiveCameraOverride();
     LockGoalPresentationCameraInput();
     SetupGoalPresentationCamera();
@@ -266,6 +274,7 @@ void GamePlayScene::StartGoalPresentation(engine::Object3D* crownObject) {
             }
         }
 
+        // 色違いの演出素材を選び、王冠を追うものとプレイヤーを追うものをそれぞれ結び直す。
         for (auto& track : goalCinematicSequence_.vfxTracks) {
             const auto* cue = GoalCinematicVfx::FindCue(track.sequenceName);
             if (cue) {
@@ -293,6 +302,7 @@ void GamePlayScene::StartGoalPresentation(engine::Object3D* crownObject) {
 
 // 演出モードは互いに排他的です。早期終了で通常入力と敵更新の二重実行を防ぎます。
 void GamePlayScene::Update(float deltaTime) {
+    // ゲートの入場処理がフレームを使う間は、HUDだけ進めて通常更新を待つ。
     if (GimmickStageGate::UpdateSceneEntry(*this, deltaTime)) {
         UpdateUi(deltaTime);
         return;
@@ -307,6 +317,7 @@ void GamePlayScene::Update(float deltaTime) {
         EndCrownMoviePreview();
     }
 
+    // 編集モードへ戻ったら撃破演出を破棄し、再生中にだけ演出用の表示を更新する。
     if (!SceneManager::GetInstance()->IsPlaying() && (crownDefeat_.active || crownDefeat_.completed))
         ResetCrownDefeat();
     if (crownDefeat_.active) {
@@ -328,10 +339,12 @@ void GamePlayScene::Update(float deltaTime) {
         return;
     }
 
+    // 継承用に組み替えたシーンの状態は、エディターへ戻った時点で復元する。
     if (crownFinale_.prepared && !SceneManager::GetInstance()->IsPlaying()) {
         ResetCrownFinaleWorld();
     }
 
+    // 継承中も演出のオブジェクトを進めるため、継承の更新後にシーンシステムを呼ぶ。
     if (crownFinale_.active) {
         UpdatePostEffectState(deltaTime);
         UpdateCrownFinale(deltaTime);
@@ -354,6 +367,7 @@ void GamePlayScene::Update(float deltaTime) {
     }
 #endif
 
+    // 再生停止でカットと入場を終了し、次回の再生切り替えを検出できるようにする。
     if (!runtimePlaying) {
         FinishSealBarrageMovie();
         stageEntryRuntimeWasPlaying_ = false;
@@ -372,6 +386,7 @@ void GamePlayScene::Update(float deltaTime) {
             stageEntryPresentationRetryTimer_ = 0.0f;
         }
 
+        // 入場先の準備ができるまで再試行し、その間はプレイヤーの表示と操作を保留する。
         if (stageEntryPresentationPending_ && !stageEntryPresentationActive_ && !stageEntryPresentationCompleted_) {
             if (!StartStageEntryPresentation()) {
                 stageEntryPresentationRetryTimer_ += std::max(deltaTime, 0.0f);
@@ -417,6 +432,7 @@ void GamePlayScene::Update(float deltaTime) {
         return;
     }
 
+    // ボス登場中は演出とシーン内オブジェクトを進め、通常の操作入力より先に抜ける。
     if (arenaBossIntroActive_) {
         UpdatePostEffectState(deltaTime);
         UpdateArenaBossIntro(deltaTime);
@@ -425,6 +441,7 @@ void GamePlayScene::Update(float deltaTime) {
         return;
     }
 
+    // 報酬中は受け取りの演出とシーン内オブジェクトを進め、通常の操作入力より先に抜ける。
     if (arenaBossRewardActive_) {
         UpdatePostEffectState(deltaTime);
         UpdateArenaBossDefeatReward(deltaTime);
@@ -433,10 +450,12 @@ void GamePlayScene::Update(float deltaTime) {
         return;
     }
 
+    // 操作ガイドが入力を受け取ったフレームは、ポーズやゲーム内操作に同じ入力を渡さない。
     if (HandleControlsGuideOverlay(deltaTime)) {
         return;
     }
 
+    // ポーズがフレームを使った場合は、プレイ時間の加算と通常進行を保留する。
     if (HandlePauseOverlay(deltaTime)) {
         return;
     }
@@ -451,6 +470,7 @@ void GamePlayScene::Update(float deltaTime) {
 
     UpdatePostEffectState(deltaTime);
 
+    // 残機喪失の処理中はUIを進めながら、通常のカメラとシーンの更新を待つ。
     if (lifeLostState_.IsActive()) {
         UpdateUi(deltaTime);
         return;
@@ -501,6 +521,7 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
                                                         engine::Vector3{0.92f, 0.05f, -0.10f}, engine::Vector3{-0.70f, -0.20f, 0.16f},
                                                         engine::Vector3{0.70f, -0.20f, 0.16f}, engine::Vector3{0.00f, 0.28f, 0.58f}};
 
+    // 上下動は前フレームとの差分だけ加え、配置の高さに揺れを積み重ねない。
     const float previousTime = goalCrownIdleTime_;
     goalCrownIdleTime_ += deltaTime;
     goalCrownSparkleTimer_ -= deltaTime;
@@ -522,6 +543,7 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
 
         foundGoalCrown = true;
 
+        // 接近時は発光を強め、場面内で最も近い王冠を粒子の発生頻度の基準にする。
         float nearRate = 0.0f;
 
         if (player_) {
@@ -531,6 +553,7 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
             strongestNearRate = std::max(strongestNearRate, nearRate);
         }
 
+        // 配置の姿勢へ上下動と回転を足し、今フレームのワールド位置を先に確定する。
         engine::Vector3 position = object->GetTranslate();
         position.y += bobDelta;
         object->SetTranslate(position);
@@ -545,6 +568,7 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
 
         const engine::Matrix4x4& crownWorld = object->GetWorldMatrix();
 
+        // 冠の各部位の粒子をローカル座標で並べ、回転後のワールド座標へ変換して発生させる。
         if (emitSparkle) {
             const engine::Vector3& localOffset = kSparkleOffsets[goalCrownSparklePatternIndex_ % kSparkleOffsets.size()];
             GpuParticleManager::GetInstance()->Emit(kGoalCrownSparklePreset, engine::Math::Transform(localOffset, crownWorld));
@@ -564,6 +588,7 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
         return;
     }
 
+    // 王冠が見つかったフレームでだけ次回時刻と発生位置の巡回を進める。
     if (emitSparkle) {
         goalCrownSparkleTimer_ +=
             kFarSparkleInterval + (kNearSparkleInterval - kFarSparkleInterval) * strongestNearRate;
@@ -572,6 +597,7 @@ void GamePlayScene::UpdateGoalCrownIdleAnimation(float deltaTime) {
 }
 
 bool GamePlayScene::HandleControlsGuideOverlay(float deltaTime) {
+    // スライド中は両画面の位置を更新し、場面が落ち着くまで他の操作に入力を渡さない。
     if (pausePageSliding_) {
         UpdatePausePageSlide(deltaTime);
         return true;
@@ -589,6 +615,7 @@ bool GamePlayScene::HandleControlsGuideOverlay(float deltaTime) {
         controlsGuideOverlay_->SetPlayer(player_);
         controlsGuideOverlay_->Update(deltaTime);
 
+        // ポーズから開いたガイドだけ、能力ページの端からポーズメニューへ続けて移動できる。
         if (pauseGuideSession_ && controlsGuideOverlay_->ConsumeMenuPageRequest()) {
             BeginPausePageSlide(true);
             return true;
@@ -633,6 +660,7 @@ void GamePlayScene::UpdatePausePageSlide(float deltaTime) {
     controlsGuideOverlay_->SetMenuTransitionOffset(-distance * (pausePageToMenu_ ? eased : 1.0f - eased), true);
     pauseMenuOverlay_->SetGuideTransitionOffset(distance * (pausePageToMenu_ ? 1.0f - eased : eased), true);
 
+    // 遷移の最後に両ページの座標を戻し、出ていく側だけを閉じて次の入力を受け付ける。
     if (t >= 1.0f) {
         pausePageSliding_ = false;
         controlsGuideOverlay_->SetMenuTransitionOffset(0.0f, false);
@@ -645,6 +673,7 @@ void GamePlayScene::UpdatePausePageSlide(float deltaTime) {
 
 bool GamePlayScene::HandlePauseOverlay(float deltaTime) {
     // ポーズ中はUIだけ進め、ゲーム世界の更新と入力を止める。
+    // 設定を重ねている間は設定画面が入力を受け取り、背面のポーズメニューを動かさない。
     if (settingsOverlay_ && settingsOverlay_->IsActive()) {
         settingsOverlay_->Update(deltaTime);
         return true;
@@ -654,11 +683,13 @@ bool GamePlayScene::HandlePauseOverlay(float deltaTime) {
         PauseMenuOverlay::Action action = pauseMenuOverlay_->Update(deltaTime);
 
         switch (action) {
+        // ポーズのセッションを閉じ、次のフレームからゲーム操作を受け付ける。
         case PauseMenuOverlay::Action::Resume:
             pauseMenuOverlay_->SetActive(false);
             pauseGuideSession_ = false;
             break;
 
+        // ポーズ中のガイドとして開き、二画面間のスライドを始める。
         case PauseMenuOverlay::Action::OpenGuide:
             if (controlsGuideOverlay_) {
                 controlsGuideOverlay_->SetPlayer(player_);
@@ -669,16 +700,19 @@ bool GamePlayScene::HandlePauseOverlay(float deltaTime) {
 
             break;
 
+        // 現在ステージをロード画面なしで読み直す。
         case PauseMenuOverlay::Action::Retry:
             pauseMenuOverlay_->SetActive(false);
             SceneManager::GetInstance()->ChangeSceneWithoutLoading("GAMEPLAY");
             break;
 
+        // ポーズを閉じてステージ選択へ移る。
         case PauseMenuOverlay::Action::StageSelect:
             pauseMenuOverlay_->SetActive(false);
             SceneManager::GetInstance()->ChangeScene("SELECT");
             break;
 
+        // 戻り先のポーズ画面を保持したまま共通設定を重ねる。
         case PauseMenuOverlay::Action::OpenSettings:
             if (settingsOverlay_) {
                 settingsOverlay_->SetActive(true);
@@ -686,6 +720,7 @@ bool GamePlayScene::HandlePauseOverlay(float deltaTime) {
 
             break;
 
+        // ポーズを閉じてタイトルへ移る。
         case PauseMenuOverlay::Action::ReturnTitle:
             pauseMenuOverlay_->SetActive(false);
             SceneManager::GetInstance()->ChangeScene("TITLE");
@@ -699,6 +734,7 @@ bool GamePlayScene::HandlePauseOverlay(float deltaTime) {
         return true;
     }
 
+    // 新規にポーズを開く場合は能力ページを先に見せ、ガイドが無ければメニューを直接開く。
     if (IsPauseOpenTriggered()) {
         if (controlsGuideOverlay_) {
             controlsGuideOverlay_->SetPlayer(player_);
@@ -743,6 +779,7 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
         return false;
     }
 
+    // 帰還へ入る前に、クリア記録と今回の取得物を一度だけ確定する。保存失敗時は再試行できる。
     if (!goalSavePerformed_ && goalPresentationState_ != GoalPresentationState::Returning) {
         int currentStage = StageManager::GetInstance()->GetCurrentStageIndex();
         auto* gameData = GameDataManager::GetInstance();
@@ -750,6 +787,7 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
         const int previousCrownCount = gameData->GetClearedStageCount();
         std::vector<int> newStarCoinIndices;
 
+        // ステージ選択で新規取得を見せるため、保存前の記録にないスターコインだけを控える。
         for (int i = 0; i < 3; i++) {
             if (sessionStarCoins_[i] && !gameData->IsStarCoinCollected(currentStage, i)) {
                 newStarCoinIndices.push_back(i);
@@ -772,10 +810,12 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
         } else {
             const int newCrownCount = gameData->GetClearedStageCount();
 
+            // 王冠数が増えた初クリアでだけ解放用の演出を予約する。
             if (!wasStageCleared && newCrownCount > previousCrownCount) {
                 gameData->RequestStageClearRewardPresentation(currentStage, previousCrownCount, newCrownCount);
             }
 
+            // 初回か再クリアかにかかわらず、保存した取得内容をステージ選択の帰還演出へ渡す。
             gameData->RequestStageSelectReturnPresentation(currentStage, previousCrownCount, newCrownCount,
                                                            newStarCoinIndices);
 
@@ -788,6 +828,7 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
         }
     }
 
+    // 通常進行を止めたまま、演出で変更した姿勢や状態をポストエフェクト、粒子、UIへ反映する。
     UpdateGoalPresentation(deltaTime);
     UpdatePostEffectState(deltaTime);
 
@@ -798,6 +839,7 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
     GpuParticleManager::GetInstance()->Update(deltaTime);
     UpdateUi(deltaTime);
 
+    // 本編で保存と演出が終わった後に限り、決定入力または待ち時間の経過で帰還する。
     if (goalSavePerformed_ && !goalEditorPreviewMode_ && goalPresentationState_ == GoalPresentationState::ReadyToReturn) {
         constexpr float kAutomaticReturnDelay = 0.85f;
         const bool confirmPressed = inputManager_ && inputManager_->IsActionTriggered("Jump");
@@ -808,6 +850,7 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
         }
     }
 
+    // 帰還中はフェードの完了を待つ。フェードを開始していない経路ではそのまま遷移を予約する。
     if (goalPresentationState_ == GoalPresentationState::Returning) {
         if (!goalReturnFadeStarted_ || Fade::GetInstance()->IsFinished()) {
             SceneManager::GetInstance()->ChangeSceneAfterFade("SELECT");
@@ -816,6 +859,7 @@ bool GamePlayScene::HandleGoalClear(float& deltaTime) {
         return true;
     }
 
+    // 保存が終わっていなくてもゴール処理がフレームを受け持つため、呼び元には処理済みを返す。
     if (!goalSavePerformed_) {
         deltaTime = 0.0f;
         return true;
@@ -842,6 +886,7 @@ void GamePlayScene::UpdateGoalPresentation(float deltaTime) {
         return;
     }
 
+    // 再生終了フレームを含めて時刻を同期できるよう、更新前に再生中だったかを控える。
     const bool wasTimelinePlaying = goalCinematicTimelineLoaded_ && goalCinematicPlayer_.IsPlaying();
     if (goalCinematicTimelineLoaded_) {
         goalCinematicPlayer_.Update(deltaTime);
@@ -861,12 +906,14 @@ void GamePlayScene::UpdateGoalPresentation(float deltaTime) {
     if (player_) player_->UpdateAttachedEffects(deltaTime);
     UpdateGoalPresentationCamera();
 
+    // タイムラインを準備できなかった時だけC++側から粒子の節目を発火する。
     if (!goalCinematicTimelineLoaded_) {
         EmitGoalPresentationEffects(deltaTime);
     }
 
     UpdateGoalPresentationOverlay();
 
+    // 演出の規定時刻まで進めてから、入力や自動タイマーによる帰還を受け付ける。
     if (goalPresentationState_ == GoalPresentationState::Celebrating &&
         goalPresentationTimer_.Elapsed() >= goalClearPlayerAnimator_.GetTuning().readyTime) {
         goalPresentationState_ = GoalPresentationState::ReadyToReturn;
@@ -888,6 +935,7 @@ void GamePlayScene::UpdateGoalPlayerCelebration(float deltaTime) {
 }
 
 void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
+    // 寸法や初期姿勢を取れない場合は装着補正を行わず、元の表示状態を保つ。
     if (!goalCrownObject_ || !goalCrownObject_->GetModel() || !player_ || !player_->GetModel() || !goalCrownSnapshotValid_ || !goalPlayerSnapshotValid_) {
         return;
     }
@@ -899,6 +947,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
     const engine::Vector3 playerScale = goalClearPlayerAnimator_.GetCurrentScale();
     const engine::Vector3 playerRotation = player_ ? player_->GetRotation() : goalPlayerBaseRotation_;
     const float baseScaleY = std::max(std::abs(goalPlayerBaseScale_.y), 0.001f);
+    // 通常時の縦倍率を分母にし、潰れを正、伸びを負として装着位置へ加える量を制限する。
     const float squashRate = std::clamp((goalPlayerBaseScale_.y - playerScale.y) / baseScaleY, -0.35f, 0.35f);
     // 頭頂と王冠の底面を実モデルから求め、配置倍率や原点の違いを打ち消す。
     const auto bodyMin=player_->GetModel()->GetLocalAabbMin();
@@ -914,16 +963,21 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
     const auto crownParentScale=GoalWorldScale(goalCrownObject_->GetParent());
     const float bodyWidth=(std::max)(0.001f,(bodyMax.x-bodyMin.x)*bodyWorldScale.x);
     const float innerRatio=std::clamp((crownMax.x-crownMin.x)*goalCrownWearScale_.x*crownParentScale.x/bodyWidth*0.9f,0.0f,0.95f);
+    // 頭の横断面を楕円とみなし、王冠の内幅に合う高さまで頭頂から下げる。
     const float surfaceDrop=(bodyMax.y-bodyMin.y)*bodyWorldScale.y*0.5f*(1.0f-std::sqrt(1.0f-innerRatio*innerRatio));
     bodyHead=bodyHead-up*surfaceDrop;
     auto bottomOffset=engine::Math::TransformNormal(bottom,engine::Math::MakeAffineMatrix(goalCrownWearScale_,goalCrownBaseRotation_,{0,0,0}));
+    // 王冠の底面オフセットは位置を持たない方向として親の行列を通し、親の平行移動は加えない。
     if (goalCrownObject_->GetParent()) bottomOffset=engine::Math::TransformNormal(bottomOffset,goalCrownObject_->GetParent()->GetWorldMatrix());
+    // 頭の接触面から王冠底面のワールドオフセットを差し引き、装着時の原点を求める。
     const auto headPosition=bodyHead-up*seatDepth-bottomOffset;
     const auto dropStartPosition=headPosition+engine::Vector3{0,presentation.crownDropHeight,0};
     engine::Vector3 crownPosition=goalCrownStartWorldPosition_;
+    // 王冠を持ち上げてから着地するまでの時刻を、配置倍率から装着倍率へ変える補間率にする。
     const float fit=AnimationInterpolation::ApplyEasing(AnimationInterpolation::SegmentRate(t,presentation.crownMoveStartTime,animation.crownLandTime),AnimationInterpolation::EasingType::SmootherStep);
     engine::Vector3 crownScale=AnimationInterpolation::Lerp(goalCrownBaseScale_,goalCrownWearScale_,fit);
     engine::Vector3 crownRotation=goalCrownBaseRotation_;
+    // 待機中の発光を外し、移動中と装着中は王冠本体の見え方だけを使う。
     if (t>=presentation.crownMoveStartTime) {
         goalCrownObject_->SetMeshEffect1Name("");
         goalCrownObject_->SetMeshEffect2Name("");
@@ -978,6 +1032,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
         // 着地前は積分状態を破棄し、着地したフレームで装着先から初期化する。
         goalCinematicPlayer_.ResetSpringAttachment("goalCrown");
     } else {
+        // 着地後は頭の動きへばねで追従させ、勝利ジャンプの区間だけ揺れを足す。
         engine::Vector3 targetPosition = headPosition + goalMoveForward_ * (squashRate * 0.055f);
         float motionEnergy = 0.0f;
 
@@ -1004,6 +1059,7 @@ void GamePlayScene::UpdateGoalCrownMotion(float deltaTime) {
     if (t>=animation.crownLandTime) {
         // 回転と着地時の潰れが変わっても、王冠の底面を同じ装着位置へ戻す。
         const auto actualBottom=engine::Math::Transform(bottom,goalCrownObject_->GetWorldMatrix());
+        // ばねの揺れを残したまま底面の位置誤差だけを求め、回転や伸縮で冠が頭から離れないようにする。
         const auto desiredBottom=bodyHead-up*seatDepth+(crownPosition-headPosition);
         crownPosition=crownPosition+(desiredBottom-actualBottom);
         goalCrownObject_->SetTranslate(GoalLocalPosition(goalCrownObject_,crownPosition));
@@ -1018,6 +1074,7 @@ void GamePlayScene::EmitGoalPresentationEffects(float deltaTime) {
     const float t = goalPresentationTimer_.Elapsed();
     const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
 
+    // 装着時に王冠の位置と大きさを使って、取得の一度きりの光を出す。
     if (!goalLandingCuePlayed_ && t >= animation.crownLandTime) {
         const float crownScale = std::clamp(std::max({std::abs(goalCrownBaseScale_.x), std::abs(goalCrownBaseScale_.y),
                                                       std::abs(goalCrownBaseScale_.z)}) *
@@ -1028,6 +1085,7 @@ void GamePlayScene::EmitGoalPresentationEffects(float deltaTime) {
         goalLandingCuePlayed_ = true;
     }
 
+    // ジャンプ頂点ではプレイヤーの頭上から結果用の粒子を一度だけ出す。
     if (!goalResultCuePlayed_ && t >= animation.apexTime) {
         engine::Vector3 resultPosition = goalPlayerPosePosition_;
         resultPosition.y += std::max(1.25f, goalClearPlayerAnimator_.GetCurrentScale().y * 0.50f);
@@ -1039,7 +1097,7 @@ void GamePlayScene::EmitGoalPresentationEffects(float deltaTime) {
 
 void GamePlayScene::SetupGoalPresentationCamera() {
     // 通常カメラの姿勢を保存し、ゴール演出用カメラを王冠とプレイヤーへ向ける。
-    Camera* sourceCamera = goalLockedPrimaryCamera_;
+    engine::Camera* sourceCamera = goalLockedPrimaryCamera_;
 
     if (!sourceCamera) {
         sourceCamera = CameraManager::GetInstance()->GetActiveCamera();
@@ -1049,6 +1107,7 @@ void GamePlayScene::SetupGoalPresentationCamera() {
         sourceCamera = CameraManager::GetInstance()->GetMainCamera();
     }
 
+    // 操作を止めた時点の通常視点を補間の始点にする。取得できなければプレイヤー相対の既定視点を使う。
     const GoalPresentationTuning& camera = goalPresentationTuning_;
     const GoalClearPlayerAnimator::Tuning& animation = goalClearPlayerAnimator_.GetTuning();
     goalCameraGameplayEye_ =
@@ -1057,6 +1116,7 @@ void GamePlayScene::SetupGoalPresentationCamera() {
         sourceCamera ? sourceCamera->GetTargetPoint() : goalPlayerBasePosition_ + engine::Vector3{0.0f, 1.0f, 0.0f};
     goalCameraGameplayFov_ = sourceCamera ? sourceCamera->GetFovY() : camera.landingFov;
 
+    // 王冠注視と着地、勝利ジャンプ、リザルトの順に各構図を作る。
     goalCameraFocusTarget_ = goalCrownPosition_ + engine::Vector3{0.0f, 0.18f, 0.0f};
     goalCameraFocusEye_ = goalCameraFocusTarget_ + goalMoveForward_ * camera.crownFocusDistance +
                           goalMoveRight_ * camera.crownFocusSide + engine::Vector3{0.0f, camera.crownFocusHeight, 0.0f};
@@ -1080,12 +1140,13 @@ void GamePlayScene::SetupGoalPresentationCamera() {
     goalCameraResultEye_ = goalCameraResultTarget_ + goalMoveForward_ * camera.resultCameraDistance +
                            goalMoveRight_ * camera.resultCameraSide + engine::Vector3{0.0f, camera.resultCameraHeight, 0.0f};
 
-    goalPresentationCamera_ = std::make_unique<Camera>();
+    // 操作や追従を無効化した固定カメラを開始姿勢へ置き、演出中の描画先にする。
+    goalPresentationCamera_ = std::make_unique<engine::Camera>();
     goalPresentationCamera_->Initialize();
     goalPresentationCamera_->SetInputEnabled(false);
     goalPresentationCamera_->SetFollowTarget(nullptr);
     goalPresentationCamera_->SetLockOnTarget(nullptr);
-    goalPresentationCamera_->SetFollowMode(Camera::FollowMode::FixedPoint);
+    goalPresentationCamera_->SetFollowMode(engine::Camera::FollowMode::FixedPoint);
     goalPresentationCamera_->SetFovY(goalCameraGameplayFov_);
     goalPresentationCamera_->SetEye(goalCameraGameplayEye_);
     goalPresentationCamera_->SetTarget(goalCameraGameplayTarget_);
@@ -1100,7 +1161,8 @@ void GamePlayScene::SetupGoalPresentationCamera() {
 }
 
 void GamePlayScene::UpdateGoalPresentationCamera() {
-    Camera* presentationCamera = goalPresentationCamera_.get();
+    // 王冠とプレイヤーの位置を見ながら、節目ごとの視点と画角を決める。
+    engine::Camera* presentationCamera = goalPresentationCamera_.get();
 
     if (!presentationCamera || !goalCameraSnapshotValid_) {
         return;
@@ -1119,6 +1181,7 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
     engine::Vector3 movingCrownEye = movingCrownTarget + goalMoveForward_ * camera.crownFocusDistance +
                              goalMoveRight_ * camera.crownFocusSide + engine::Vector3{0.0f, camera.crownFocusHeight, 0.0f};
 
+    // 演出開始時は、通常視点から取得前の王冠へなめらかに寄る。
     if (t < camera.crownFocusEndTime) {
         const float p =
             AnimationInterpolation::ApplyEasing(AnimationInterpolation::SegmentRate(t, 0.0f, camera.crownFocusEndTime),
@@ -1139,6 +1202,7 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
         target = AnimationInterpolation::Lerp(movingCrownTarget, goalCameraLandingTarget_, handoff);
         fov = AnimationInterpolation::Lerp(camera.crownFocusFov, camera.landingFov, handoff);
     } else if (t < animation.jumpStartTime) {
+        // 装着後はジャンプに備え、プレイヤーが体を沈める位置へ構図を移す。
         const float p = AnimationInterpolation::ApplyEasing(
             AnimationInterpolation::SegmentRate(t, animation.crownLandTime, animation.jumpStartTime),
             AnimationInterpolation::EasingType::SmootherStep);
@@ -1146,6 +1210,7 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
         target = AnimationInterpolation::Lerp(goalCameraLandingTarget_, goalCameraJumpTarget_, p);
         fov = AnimationInterpolation::Lerp(camera.landingFov, camera.jumpFov, p);
     } else if (t < animation.victoryLandTime) {
+        // 空中はプレイヤーに追従し、最高点を過ぎたら着地後の構図へ移る。
         engine::Vector3 jumpTarget = goalPlayerPosePosition_ +
                              engine::Vector3{0.0f, std::max(0.82f, goalClearPlayerAnimator_.GetCurrentScale().y * 0.46f), 0.0f};
         const float airborneRate =
@@ -1173,6 +1238,7 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
         fov = camera.resultFov;
     }
 
+    // 両モデルのワールド境界箱とリザルトUIに必要な余白を使い、画面からはみ出さない位置に補正する。
     if (player_ && goalCrownObject_) {
         const auto body=GoalWorldCorners(player_);
         const auto crown=GoalWorldCorners(goalCrownObject_);
@@ -1180,8 +1246,10 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
         std::copy(body.begin(), body.end(), points.begin());
         std::copy(crown.begin(), crown.end(), points.begin() + body.size());
         const auto& projection = presentationCamera->GetProjectionMatrix();
+        // 射影行列のXとYの拡大係数からアスペクト比を取り出し、横方向に収まる距離も見積もる。
         const float aspect = std::abs(projection.m[0][0]) > 0.0001f
             ? std::abs(projection.m[1][1] / projection.m[0][0]) : 16.0f / 9.0f;
+        // 結果UIが現れる0.35秒前から余白を足し、構図が突然ずれないようにする。
         const float uiBlend = AnimationInterpolation::ApplyEasing(
             AnimationInterpolation::SegmentRate(t, animation.resultUiTime - 0.35f, animation.resultUiTime),
             AnimationInterpolation::EasingType::SmootherStep);
@@ -1192,6 +1260,7 @@ void GamePlayScene::UpdateGoalPresentationCamera() {
             camera.cameraSafeMargin + (reserved - camera.cameraSafeMargin) * uiBlend,
             goalMoveRight_ * (camera.resultTargetSide * uiBlend), goalMoveForward_, eye, target);
     }
+    // 最終の視点と注視点で固定カメラを更新し、描画へ渡す。
     presentationCamera->SetFovY(fov);
     const engine::Vector3 rotation = MakeLookAtEuler(eye, target);
     presentationCamera->SetEye(eye);
@@ -1263,7 +1332,7 @@ void GamePlayScene::UpdatePostEffectState(float deltaTime) {
     // ポスト効果の時間を進め、深度再構築に使う逆射影行列を現カメラへ合わせる。
     PostEffect::GetInstance()->Update(deltaTime);
 
-    Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* activeCamera = CameraManager::GetInstance()->GetActiveCamera();
 
     if (activeCamera) {
         PostEffect::GetInstance()->GetParams()->projectionInverse = engine::Math::Inverse(activeCamera->GetProjectionMatrix());
@@ -1274,7 +1343,7 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime) {
     // ロックオン対象の変化をカメラへ渡し、通常操作中の視点を更新する。
     LightEditor::GetInstance()->Update();
 
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
     if (!camera) {
         isDrawLockOn_ = false;
@@ -1282,12 +1351,24 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime) {
     }
 
     lockOnSystem_->Update(objectManager_->GetObjects(), camera, player_, deltaTime);
-    CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn());
+    engine::Object3D* framingBoss = nullptr;
+    // 登場・撃破演出は従来の専用経路を優先する。攻撃ロックオンには触れない。
+    if (StageManager::GetInstance()->GetCurrentStage().id == "stage3" && player_ &&
+        !player_->IsDead() && !player_->IsCinematicLocked()) {
+        for (const auto& object : objectManager_->GetObjects()) {
+            auto* boss = dynamic_cast<EnemyFalseKingSlime*>(object.get());
+            if (boss && boss->IsEncounterHudActive() && boss->GetEncounterAppearanceProgress() >= 1.0f) {
+                framingBoss = boss;
+                break;
+            }
+        }
+    }
+    CameraEditor::GetInstance()->Update(player_, lockOnSystem_->IsLockingOn(), framingBoss);
 
     if (!CameraEditor::GetInstance()->IsEditorMode()) {
-        Camera::FollowMode currentMode = camera->GetFollowMode();
+        engine::Camera::FollowMode currentMode = camera->GetFollowMode();
 
-        if (currentMode == Camera::FollowMode::Aimable || currentMode == Camera::FollowMode::FirstPerson) {
+        if (currentMode == engine::Camera::FollowMode::Aimable || currentMode == engine::Camera::FollowMode::FirstPerson) {
             camera->SetRotationSensitivity(GameSettingsManager::GetInstance()->GetCameraSensitivity());
             engine::Vector2 mouseDelta = inputManager_->GetCameraLookDelta(deltaTime);
 
@@ -1298,7 +1379,7 @@ void GamePlayScene::UpdateLockOnAndCamera(float deltaTime) {
     }
 }
 
-void GamePlayScene::UpdateLockOnSprite(Camera* camera, engine::Object3D* target, float deltaTime) {
+void GamePlayScene::UpdateLockOnSprite(engine::Camera* camera, engine::Object3D* target, float deltaTime) {
     isDrawLockOn_ = false;
     if (lockOnSprite_)
         lockOnSprite_->SetVisible(false);
@@ -1315,6 +1396,7 @@ void GamePlayScene::UpdateLockOnSprite(Camera* camera, engine::Object3D* target,
     if (!target->GetIsVisible())
         return;
 
+    // 敵の配置原点ではなく、描画対象に対応する境界箱の中心をマーカーの基準にする。
     const Aabb aabb = target->GetAabb();
     engine::Vector3 targetCenter;
     targetCenter.x = (aabb.min.x + aabb.max.x) * 0.5f;
@@ -1326,6 +1408,7 @@ void GamePlayScene::UpdateLockOnSprite(Camera* camera, engine::Object3D* target,
     const float w = targetCenter.x * viewProj.m[0][3] + targetCenter.y * viewProj.m[1][3] +
                     targetCenter.z * viewProj.m[2][3] + viewProj.m[3][3];
 
+    // 視点の後ろや射影できない位置では除算する前に表示を中止する。
     if (w <= 0.001f) {
         isDrawLockOn_ = false;
         return;
@@ -1345,6 +1428,7 @@ void GamePlayScene::UpdateLockOnSprite(Camera* camera, engine::Object3D* target,
         std::abs(ndc.x) > 1.0f || std::abs(ndc.y) > 1.0f)
         return;
 
+    // NDCをクライアント座標に戻し、Y軸の向きを画面用に反転する。
     const float screenWidth = static_cast<float>(::WinApp::GetClientWidth());
     const float screenHeight = static_cast<float>(::WinApp::GetClientHeight());
     const float screenX = (ndc.x + 1.0f) * 0.5f * screenWidth;
@@ -1388,6 +1472,7 @@ void GamePlayScene::UpdateSceneSystems(float deltaTime) {
         sprite->Update();
     }
 
+    // 弾の位置も今フレームへ進めてから、更新後の物体同士を衝突判定する。
     BulletManager::GetInstance()->Update(deltaTime);
     {
         PROFILE_SCOPE("衝突判定");

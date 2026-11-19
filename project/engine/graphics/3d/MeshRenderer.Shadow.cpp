@@ -12,6 +12,8 @@
 #include <algorithm>
 #include <cmath>
 
+namespace engine {
+
 
 // ========================================================================
 // MeshRenderer 影とローカルフォグ描画
@@ -34,6 +36,7 @@ void MeshRenderer::DrawShadowOnly() {
     Model* drawModel = ResolveDrawModel();
     if (!drawModel || !common_ || !shadowWvpResource_ || !materialResource_ || !materialData_)
         return;
+    // 動くモデルでは、影の輪郭にも通常描画と同じスキニング後の頂点を使えるようにします。
     drawModel->PrepareComputeSkinning();
 
     // Compute実行でルートシグネチャとPSOが変わるため、影描画の状態を復元します。
@@ -55,6 +58,7 @@ void MeshRenderer::DrawLocalFog(uint32_t depthSrvHandle) {
     ID3D12GraphicsCommandList* commandList = common_->GetDxCommon()->GetCommandList();
 
 
+    // 不透明物の深度を読み、フォグの計算で不透明物の奥にある部分を切るために渡します。
     SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, depthSrvHandle);
 
 
@@ -63,3 +67,5 @@ void MeshRenderer::DrawLocalFog(uint32_t depthSrvHandle) {
     // [0] にWVP、[1] にボーンが自動セットされる
     drawModel->DrawShadow(wvpResource_.Get(), meshDrawIndex_);
 }
+
+} // namespace engine

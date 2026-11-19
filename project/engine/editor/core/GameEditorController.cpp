@@ -45,6 +45,7 @@ bool GameEditorController::CanEditScene() const {
 	return !isPlaying;
 }
 
+// 経路編集は選択 Object 自体を操作しないため、複製や削除の共通コマンドを無効にする。
 bool GameEditorController::CanEditSelectedObject() const {
 	return CanEditScene() && debugEditor_->GetSelectedObject() && !debugEditor_->GetIsPathEditMode();
 }
@@ -78,6 +79,16 @@ bool GameEditorController::DrawEditorCommandMenuItem(
 	return ExecuteEditorCommand(command->id.c_str());
 }
 
+namespace {
+// 次フレームの再生成を防ぐため、シーケンスを止めてから各演出を解放する。
+void ClearPlayTransitionEffects() {
+	VfxSequencer::ClearOneShots();
+	MeshEffectManager::GetInstance()->Clear();
+	GpuParticleManager::GetInstance()->ResetSimulation();
+	DebrisEffectManager::GetInstance()->Clear();
+}
+}
+
 void GameEditorController::StopPlay() {
 	if (!activePlayState_ || !*activePlayState_) {
 		return;
@@ -87,9 +98,11 @@ void GameEditorController::StopPlay() {
     DisableDebugHugeHealth(sceneManager_);
 #endif
 	if (playModeChangeTracker_) {
+		// 復元すると実行中の値が消えるため、編集シーンに持ち帰れる候補だけを停止直前に控える。
 		playModeChangeTracker_->CaptureRuntimeChanges();
 	}
 
+	// 同じシーンなら開始前のメモリ状態へ戻す。別シーンへ遷移して元の状態を適用できないときは後続の再読込へ進む。
 	const bool restored = playModeSnapshot_ && playModeSnapshot_->Restore();
 	simulationPaused_ = false;
 	*activePlayState_ = false;
@@ -100,10 +113,7 @@ void GameEditorController::StopPlay() {
 
 	// 停止時に進行途中のシーケンスを残すと、次フレームに0秒更新されて
 	// 消去後のメッシュエフェクトを再生成し、編集画面へ張り付いたように残ります。
-	VfxSequencer::ClearOneShots();
-	MeshEffectManager::GetInstance()->Clear();
-	GpuParticleManager::GetInstance()->ResetSimulation();
-	DebrisEffectManager::GetInstance()->Clear();
+	ClearPlayTransitionEffects();
 	ClearSceneBoundEditorState();
 
 	if (playModeChangeTracker_) {
@@ -157,7 +167,7 @@ void GameEditorController::ReloadPlayOriginScene() {
 	playOriginSceneGeneration_ = 0;
 }
 
-void GameEditorController::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon) {
+void GameEditorController::Initialize(SceneManager* sceneManager, engine::DirectXCommon* dxCommon) {
 	// 各ツールへ同じシーン管理者を渡し、選択状態とプレビュー対象を共有する。
 	sceneManager_ = sceneManager;
 	postEffectEditor_ = std::make_unique<PostEffectEditor>();
@@ -202,6 +212,7 @@ void GameEditorController::Initialize(SceneManager* sceneManager, DirectXCommon*
 	LightEditor::GetInstance()->Initialize();
 	DebugConsole::GetInstance()->Initialize();
 
+	// Director の初期化は、参照先の DebugEditor と演出ツールを作った後に行う。
 	ghostDirector_ = std::make_unique<GhostDirector>();
 	ghostDirector_->Initialize(sceneManager, debugEditor_.get());
 
@@ -250,6 +261,7 @@ void GameEditorController::Initialize(SceneManager* sceneManager, DirectXCommon*
             RequestPlayFromPosition(position, label);
         });
 
+	// 対象とコールバックをそろえた後でメニューの操作を公開する。ツール設定の読み込みも登録の後で行う。
 	RegisterEditorCommands();
     RegisterEditorTools();
 }
@@ -260,6 +272,7 @@ void GameEditorController::Finalize() {
     actorSession_.reset();
 
     // 各種エディタツールを逆順に解放し、DebugConsoleを終了する。
+    // ツールへのポインターや this を捕捉したコマンドを解除してから、各ツールを破棄する。
     EditorToolSettings::Get().Clear();
 	EditorCommandRegistry::GetInstance()->UnregisterOwner(this);
 	activePlayState_ = nullptr;
@@ -339,6 +352,7 @@ void GameEditorController::BeginFrame() {
     const bool wantsEffect = selectedObject == particleEditor_.get() || selectedObject == gpuParticleEditor_.get() ||
         selectedObject == vfxSequencerEditor_.get() || selectedObject == meshEffectEditor_.get() ||
         selectedObject == debrisEffectEditor_.get() || selectedObject == trailEmitterEditor_.get();
+    // 共有のプレビュー空間は選択が切り替わったときだけ変更し、対象を切り替える前に動作確認を停止する。
     if (wantsEffect != showEffectPreviewTimeline_) {
         if (actorSession_) actorSession_->Stop();
         if (wantsEffect) EffectPreviewStage::GetInstance()->EnableForToolPreview();
@@ -347,8 +361,12 @@ void GameEditorController::BeginFrame() {
         dockspaceInitialized_ = false;
     }
     const bool wantsCinematic = selectedObject == ghostDirector_.get();
+    // 演出編集から別のツールへ移る際に、Studio が一時的に変えたカメラや表示を戻す。
     if (showCinematicTimeline_ && !wantsCinematic) ghostDirector_->EndStudio();
-    showCinematicTimeline_ = wantsCinematic;
+    if (wantsCinematic != showCinematicTimeline_) {
+        showCinematicTimeline_ = wantsCinematic;
+        dockspaceInitialized_ = false;
+    }
     showEnemyAttackTimeline_ = showAnimationTimeline_ = false;
     if (actorSession_ && debugEditor_) actorSession_->SetTarget(debugEditor_->GetSelectedObject());
     if (debugEditor_) {
@@ -379,7 +397,7 @@ void GameEditorController::SetPortfolioCaptureMode(bool enabled) {
 
 
 void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isPlaying, const std::string& currentSceneName) {
-    // 初回起動時にHierarchy、Inspector、Project、GameViewなどの既定ドック配置を作る。
+    // メニュー操作の入口として、現在のシーンと Game 側の Play 状態を参照する。
 	sceneManager_ = sceneManager;
 	activePlayState_ = &isPlaying;
 	activeSceneName_ = currentSceneName;
@@ -523,6 +541,7 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 	}
 
 	if (ImGui::BeginMenu("シーン切り替え")) {
+		// 現在のシーンを使用中の Play や遷移では切替を停止し、メニュー項目だけは参照できる状態にしておく。
 		const bool canSwitchScene = sceneManager && !sceneManager->IsTransitioning() && !isPlaying;
 		ImGui::BeginDisabled(!canSwitchScene);
 		ImGui::TextDisabled("C++ Scene");
@@ -550,6 +569,7 @@ void GameEditorController::DrawMainMenuBar(SceneManager* sceneManager, bool& isP
 		}
 
 		ImGui::Separator();
+		// Asset 選択は実行クラスに加えて配置 JSON と環境を切り替えるため、未保存確認を持つ DebugEditor の入口へ渡す。
 		ImGui::TextDisabled("Scene Asset");
 
 		if (debugEditor_) {
@@ -628,14 +648,12 @@ void GameEditorController::StartPlay(SceneManager* sceneManager, bool& isPlaying
 			"Play In Editor Warning: 編集状態を保持できなかったため、停止時はScene再ロードを使用します。");
 	}
 
+	// 指定スタート地点を使う場合も、停止時に開始位置を戻せるようスナップショットを先に取得する。
 	ApplyPendingPlayStartPosition();
 
 	// エディターのプレビューや直前のPlayから残った一時演出を、再生開始前に破棄します。
 	// シーケンスを先に止めることで、消去済みエフェクトが後から再生成されるのを防ぎます。
-	VfxSequencer::ClearOneShots();
-	MeshEffectManager::GetInstance()->Clear();
-	GpuParticleManager::GetInstance()->ResetSimulation();
-	DebrisEffectManager::GetInstance()->Clear();
+	ClearPlayTransitionEffects();
 	isPlaying = true;
 
 	if (sceneManager) {
@@ -649,7 +667,7 @@ void GameEditorController::StartPlay(SceneManager* sceneManager, bool& isPlaying
 
 
 void GameEditorController::RequestPlayFromPosition(const engine::Vector3& position, const std::string& label) {
-	// Play開始後のPlayer生成を待って位置を適用するため、要求を保持する。
+	// 指定座標を予約し、StartPlay が編集状態を退避した後で既存の Player に反映する。
 	if (!activePlayState_ || *activePlayState_ || !sceneManager_ || sceneManager_->IsTransitioning()) {
 		return;
 	}
@@ -784,6 +802,7 @@ void GameEditorController::UpdateTools(float deltaTime, bool isPlaying, float ti
 
 	if (!sceneTransitioning && !simulationPaused) {
 		if (ghostDirector_) {
+			// ゲーム再生中は時間倍率を合わせ、編集プレビューの時計は通常の経過秒で進める。
 			ghostDirector_->Update(isPlaying ? deltaTime * timeScale : deltaTime);
 		}
 
@@ -815,6 +834,7 @@ void GameEditorController::UpdateTools(float deltaTime, bool isPlaying, float ti
 	}
 
 	if (debugEditor_ && debugEditor_->GetCaptureToolWindow()) {
+		// 録画・撮影操作の入力はシミュレーション停止中にも確認できるよう、演出の更新条件から外している。
 		debugEditor_->GetCaptureToolWindow()->SetForceGameViewClientCapture(portfolioCaptureMode_);
 		debugEditor_->GetCaptureToolWindow()->UpdateHotkeys();
 	}
@@ -893,7 +913,8 @@ void GameEditorController::DrawToolWindows(
 		DebugConsole::GetInstance()->DrawImGui();
 	}
 
-    if (!expandedBottomWorkspace && showTimeController_ && EditorToolSettings::Get().IsVisible("diagnosticWindows")) {
+    // 下部をタイムラインに切り替えても、負荷の計測結果は表示できるようにする。
+    if (showTimeController_ && EditorToolSettings::Get().IsVisible("diagnosticWindows")) {
 		DrawStatusWindow(timeScale, sceneUpdateTimeMs, cpuCmdTimeMs, drawTimeMs, updateTimeHistory, drawTimeHistory, timeHistoryIndex);
 	}
 
@@ -972,7 +993,7 @@ void GameEditorController::DrawStatusWindow(
 	ImGui::Separator();
 	ImGui::Text("--- GPU パフォーマンス ---");
 	// GPU計測値はCPU待機時間とは別に示し、律速箇所を混同しないようにする。
-	float gpuTotalMs = DirectXCommon::GetInstance()->GetGpuDrawTimeMs();
+	float gpuTotalMs = engine::DirectXCommon::GetInstance()->GetGpuDrawTimeMs();
 	ImGui::Text("GPU 描画時間: %.3f ms (60fps予算比 %.0f%%)", gpuTotalMs, gpuTotalMs / 16.66f * 100.0f);
 	ImGui::ProgressBar(gpuTotalMs / 16.66f, ImVec2(0.0f, 0.0f));
 
@@ -1078,14 +1099,14 @@ void GameEditorController::DrawStatusWindow(
 			ImGui::Text(
 				"有効ライト: Point %u / %zu  Spot %u / %zu",
 				frame.activePointLights,
-				LightManager::GetInstance()->GetPointLights().size(),
+				engine::LightManager::GetInstance()->GetPointLights().size(),
 				frame.activeSpotLights,
-				LightManager::GetInstance()->GetSpotLights().size());
+				engine::LightManager::GetInstance()->GetSpotLights().size());
 			ImGui::Text(
 				"Shadow Map: %d x %d / 範囲 %.0f",
-				DirectXCommon::GetInstance()->GetShadowMapResolution(),
-				DirectXCommon::GetInstance()->GetShadowMapResolution(),
-				LightManager::GetInstance()->GetShadowAreaSize());
+				engine::DirectXCommon::GetInstance()->GetShadowMapResolution(),
+				engine::DirectXCommon::GetInstance()->GetShadowMapResolution(),
+				engine::LightManager::GetInstance()->GetShadowAreaSize());
 			ImGui::Text(
 				"GPU Particle: %u systems / System容量合計 %llu",
 				frame.gpuParticleSystems,
@@ -1205,7 +1226,7 @@ void GameEditorController::EndFrame() {
 
 void GameEditorController::ApplyCameraInputState(const EditorFrameState& frameState, bool isPlaying) {
     // ギズモやSprite編集中はカメラ入力を止め、操作の競合を防ぐ。
-	if (Camera* mainCamera = CameraManager::GetInstance()->GetActiveCamera()) {
+	if (engine::Camera* mainCamera = CameraManager::GetInstance()->GetActiveCamera()) {
 		mainCamera->SetInputEnabled(isPlaying || !(frameState.spriteEditorBusy || frameState.gizmoBusy));
 	}
 }
@@ -1235,6 +1256,7 @@ void GameEditorController::SaveAllEditors() {
 }
 
 void GameEditorController::UpdateActorTools(float deltaTime) {
+    // 選択対象の動作確認を優先する。同じ実体をアニメーションクリップのプレビューからも進めない。
     if (actorSession_ && actorSession_->IsActive() && debugEditor_)
         debugEditor_->GetAnimationClipEditor()->StopPreview();
     if (actorSession_) actorSession_->Update(deltaTime);

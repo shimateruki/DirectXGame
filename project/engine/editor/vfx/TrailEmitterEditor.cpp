@@ -63,6 +63,7 @@ void TrailEmitterEditor::StepDummyPreview(float deltaTime, bool allowLoop) {
         origin = previewStage->GetPreviewPosition();
     }
 
+    // 正規化時刻の1周をサイン波の1周期に対応させ、中心からX方向へ往復する。
     const float t = previewTime_ / duration;
     dummyPos_ = origin;
     dummyPos_.x += sinf(t * std::numbers::pi_v<float> * 2.0f) * previewRange_;
@@ -83,6 +84,7 @@ void TrailEmitterEditor::StepDummyPreview(float deltaTime, bool allowLoop) {
         return;
     }
 
+    // 前回の発生点から今回の位置への向きを求め、+Zを基準にしたY回転へ変換する。
     engine::Vector3 dir = engine::Math::Normalize(diff);
     const float rotY = atan2f(dir.x, dir.z);
     engine::Vector3 spawnPos = {
@@ -136,6 +138,7 @@ void TrailEmitterEditor::Update(float deltaTime) {
     // ゲームが止まっているときも更新を代行
     if (!isGamePlaying) {
         meshManager->Update(previewDelta);
+        // 粒子はマネージャー側で時間倍率が掛かるため、手動更新にも未補正の秒数を渡す。
         gpuManager->Update(deltaTime);
     }
 
@@ -174,6 +177,7 @@ void TrailEmitterEditor::Update(float deltaTime) {
         return;
     }
 
+    // 発生履歴も巻き戻し、ダミー位置と両方のエフェクトを同じ刻みで進め直す。
     auto seekDummyPreview = [&](float seekTime) {
         ResetDummyPreview(true);
         const float targetTime = std::clamp(seekTime, 0.0f, (std::max)(previewDuration_, 0.01f));
@@ -550,6 +554,7 @@ bool TrailEmitterEditor::Load(const fs::path& path) {
     f.close();
 
     if (!j.is_object()) return false;
+    // 旧ファイルにない項目は現在値を維持し、読み取った項目だけ一時設定に上書きする。
     auto cfg = emitter_.GetConfig();
     if (j.contains("meshEffectPreset"))
         cfg.meshEffectPreset  = j["meshEffectPreset"];

@@ -17,7 +17,7 @@
 namespace {
 // 球とリングだけを形状・UV・ModelCommon別に共有し、色や再生状態は個体側へ残します。
 using MeshCacheKey = std::pair<uintptr_t, std::array<uint32_t, 7>>;
-std::map<MeshCacheKey, std::shared_ptr<Model>> proceduralMeshCache;
+std::map<MeshCacheKey, std::shared_ptr<engine::Model>> proceduralMeshCache;
 std::mutex proceduralMeshCacheMutex;
 constexpr size_t kMaxCachedProceduralMeshes = 32;
 constexpr const char* kDefaultWhiteTexture = "Resources/sprite/common/white.png";
@@ -125,6 +125,7 @@ bool EffectObject3D::CreateMaterialBuffer(ID3D12Device* device) {
     }
 
     // 256バイトアラインメント
+    // 255を足して下位8ビットを落とすことで、必要バイト数を次の256バイト境界へ切り上げます。
     UINT sizeAligned = (sizeof(EffectMaterial) + 0xff) & ~0xff;
 
     D3D12_HEAP_PROPERTIES heapProps{};
@@ -180,11 +181,13 @@ void EffectObject3D::ResetForReuse() {
     noiseTextureHandle_ = rampTextureHandle_ = 0;
     SetTranslate({}); SetRotation({}); SetScale({1.0f, 1.0f, 1.0f}); SetIsVisible(true);
     if (GetMeshRenderer()) {
-        GetMeshRenderer()->SetModel(static_cast<Model*>(nullptr));
+        GetMeshRenderer()->SetModel(static_cast<engine::Model*>(nullptr));
         GetMeshRenderer()->SetTexture(kDefaultWhiteTexture);
     }
+    // 描画側の借用モデル参照を外した後で、生成メッシュの所有参照を解放します。
     dynamicModel_.reset();
     proceduralVertices_.clear(); proceduralIndices_.clear();
+    // モデルや再生状態の初期化はここまでで完了。GPU定数バッファがなければ初期値を書き込めない。
     if (!materialData_) return;
     *materialData_ = {};
     materialData_->color = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -212,6 +215,7 @@ void EffectObject3D::Update(float deltaTime) {
     materialData_->time += deltaTime; // UVスクロール用
 
     // 進行度 (0.0f ～ 1.0f) を計算
+    // 秒で保持している再生時刻を寿命で割り、色・形・消失が共有する無次元の進捗に直す。
     float progress = std::clamp(currentTime_ / lifetime_, 0.0f, 1.0f);
 
     // Editor指定のイージングを、軌跡の出現と消滅、色・大きさへ共通で使う。
@@ -254,6 +258,7 @@ void EffectObject3D::Update(float deltaTime) {
 
     // 寿命到達時は自動ループなら時間を戻し、単発なら再生を止める。
     if (progress >= 1.0f) {
+        // 寿命を超えると形状と色の進行は先頭へ戻ります。UV用の経過秒はこの分岐では戻しません。
         if (isAutoLoop_) {
             currentTime_ = 0.0f; // 経過時間をリセットしてループ
         } else {
@@ -278,11 +283,12 @@ void EffectObject3D::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* sp
     DrawWithWvp(GetMeshRenderer() ? GetMeshRenderer()->GetWvpResource() : nullptr);
 }
 
-void EffectObject3D::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+void EffectObject3D::DrawForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource,
                                    ID3D12Resource* spotLightResource, int previewBufferIndex) {
     (void)pointLightResource;
     (void)spotLightResource;
     if (!camera || !GetIsRenderVisible() || !GetMeshRenderer()) return;
+    // 通常画面の行列を上書きせず、指定カメラの専用枠に書いたWVPを使います。
     ID3D12Resource* previewWvpResource = nullptr;
     ID3D12Resource* previewCameraResource = nullptr;
     if (!GetMeshRenderer()->PreparePreviewCameraData(camera, previewBufferIndex, previewWvpResource,
@@ -294,7 +300,7 @@ void EffectObject3D::DrawWithWvp(ID3D12Resource* wvpResource) {
 
     if (!GetObjectCommon() || !GetMeshRenderer() || !wvpResource)
         return;
-    Model* model = GetMeshRenderer()->GetModel();
+    engine::Model* model = GetMeshRenderer()->GetModel();
     if (!model)
     {
         // モデルなしのままGPUへ描画要求を出さない。
@@ -356,6 +362,7 @@ void EffectObject3D::GenerateSlashVertices(float angleDeg, float inRad, float ou
     proceduralVertices_.clear();
     proceduralIndices_.clear();
 
+    // 保存した弧の角度は度です。ラジアンへ直した後に半分ずらし、正面を中心に左右へ同じ角度だけ広げます。
     float angleRad = angleDeg * (std::numbers::pi_v<float> / 180.0f);
     float startAngle = -angleRad / 2.0f;
     float angleStep = angleRad / segments;
@@ -368,6 +375,7 @@ void EffectObject3D::GenerateSlashVertices(float angleDeg, float inRad, float ou
         float c = cosf(currentAngle);
         float u = (float)i / segments;
 
+        // 螺旋の全上昇量を断面数で割り、Yの中央が0になるよう両端へ振り分けます。
         float currentY = pitchStep * i - (spiralPitch / 2.0f);
 
         // 三日月形では弧の両端で内径を外径に寄せ、厚みもゼロへ絞る。
@@ -388,24 +396,24 @@ void EffectObject3D::GenerateSlashVertices(float angleDeg, float inRad, float ou
         float halfThick = currentThick / 2.0f;
 
         // 内縁はUVのV=1側に置く。
-        Model::VertexData vIn;
+        engine::Model::VertexData vIn;
         vIn.position = { s * currentInRad, currentY, c * currentInRad, 1.0f };
         vIn.texcoord = { u, 1.0f };
         vIn.normal = { 0.0f, 1.0f, 0.0f };
 
         // 中央上面と下面は厚み分だけY座標を分ける。
-        Model::VertexData vTop;
+        engine::Model::VertexData vTop;
         vTop.position = { s * midRad, currentY + halfThick, c * midRad, 1.0f };
         vTop.texcoord = { u, 0.5f };
         vTop.normal = { s, 1.0f, c };
 
-        Model::VertexData vBottom;
+        engine::Model::VertexData vBottom;
         vBottom.position = { s * midRad, currentY - halfThick, c * midRad, 1.0f };
         vBottom.texcoord = { u, 0.5f };
         vBottom.normal = { s, -1.0f, c };
 
         // 外縁はUVのV=0側に置く。
-        Model::VertexData vOut;
+        engine::Model::VertexData vOut;
         vOut.position = { s * currentOutRad, currentY, c * currentOutRad, 1.0f };
         vOut.texcoord = { u, 0.0f };
         vOut.normal = { 0.0f, 1.0f, 0.0f };
@@ -455,14 +463,14 @@ void EffectObject3D::GenerateThrustVertices(float length, float radius, int segm
     float angleStep = (2.0f * std::numbers::pi_v<float>) / segments;
 
     // 0: 先端 (Z軸の奥)
-    Model::VertexData tip;
+    engine::Model::VertexData tip;
     tip.position = { 0.0f, 0.0f, length, 1.0f };
     tip.texcoord = { 0.5f, 0.0f };
     tip.normal = { 0.0f, 0.0f, 1.0f };
     proceduralVertices_.push_back(tip);
 
     // 1: 底面の中心 (フタ用)
-    Model::VertexData baseCenter;
+    engine::Model::VertexData baseCenter;
     baseCenter.position = { 0.0f, 0.0f, 0.0f, 1.0f };
     baseCenter.texcoord = { 0.5f, 1.0f };
     baseCenter.normal = { 0.0f, 0.0f, -1.0f };
@@ -477,7 +485,7 @@ void EffectObject3D::GenerateThrustVertices(float length, float radius, int segm
         float c = cosf(angle);
         float u = (float)i / segments;
 
-        Model::VertexData v;
+        engine::Model::VertexData v;
         v.position = { c * radius, s * radius, 0.0f, 1.0f };
         v.texcoord = { u, 1.0f };
         v.normal = { c, s, 0.0f };
@@ -508,6 +516,7 @@ void EffectObject3D::GenerateThrustVertices(float length, float radius, int segm
 }
 
 #include <fstream>
+// 生成済みの頂点と三角形をOBJに書き出し、UVの上下方向と添字の基準を変換する。
 void EffectObject3D::ExportToObj(const std::string& filePath) const {
     std::ofstream file(filePath);
     if (!file.is_open())
@@ -546,6 +555,7 @@ void EffectObject3D::GenerateSphereVertices(float radius, int segments, int ring
 
     for (int r = 0; r <= rings; ++r) {
         float v = (float)r / rings;
+        // 極から反対側の極までを0～πラジアンで進めます。緯度で変わる横半径の上に、経度の一周分の頂点を置きます。
         float phi = v * std::numbers::pi_v<float>;
         float y = cosf(phi) * radius;
         float ringRad = sinf(phi) * radius;
@@ -556,7 +566,7 @@ void EffectObject3D::GenerateSphereVertices(float radius, int segments, int ring
             float x = sinf(theta) * ringRad;
             float z = cosf(theta) * ringRad;
 
-            Model::VertexData vertex;
+            engine::Model::VertexData vertex;
             vertex.position = {x, y, z, 1.0f};
             vertex.texcoord = {u, v};
             engine::Vector3 norm = {x, y, z};
@@ -608,7 +618,7 @@ void EffectObject3D::GenerateCylinderVertices(float radius, float height, int se
             float x = sinf(theta) * radius;
             float z = cosf(theta) * radius;
 
-            Model::VertexData vertex;
+            engine::Model::VertexData vertex;
             vertex.position = {x, y, z, 1.0f};
             vertex.texcoord = {u, v};
             vertex.normal = {sinf(theta), 0.0f, cosf(theta)};
@@ -629,7 +639,8 @@ void EffectObject3D::GenerateCylinderVertices(float radius, float height, int se
 
     // 2. 上面のフタ
     offset = (uint32_t)proceduralVertices_.size();
-    Model::VertexData topCenter;
+    // 側面の頂点と共有すると法線やUVが混ざるため、上面専用の中心と円周を追加します。
+    engine::Model::VertexData topCenter;
     topCenter.position = {0, halfH, 0, 1.0f};
     topCenter.texcoord = {0.5f, 0.5f};
     topCenter.normal = {0, 1, 0};
@@ -637,7 +648,7 @@ void EffectObject3D::GenerateCylinderVertices(float radius, float height, int se
 
     for (int s = 0; s <= segments; ++s) {
         float theta = ((float)s / segments) * 2.0f * std::numbers::pi_v<float>;
-        Model::VertexData v;
+        engine::Model::VertexData v;
         v.position = {sinf(theta) * radius, halfH, cosf(theta) * radius, 1.0f};
         v.texcoord = {0.5f + sinf(theta)*0.5f, 0.5f + cosf(theta)*0.5f}; // UVは円形にマッピング
         v.normal = {0, 1, 0};
@@ -652,7 +663,8 @@ void EffectObject3D::GenerateCylinderVertices(float radius, float height, int se
 
     // 3. 下面のフタ
     offset = (uint32_t)proceduralVertices_.size();
-    Model::VertexData botCenter;
+    // 下面では法線を下向きにして、三角形の頂点順を上面とは逆にします。
+    engine::Model::VertexData botCenter;
     botCenter.position = {0, -halfH, 0, 1.0f};
     botCenter.texcoord = {0.5f, 0.5f};
     botCenter.normal = {0, -1, 0};
@@ -660,7 +672,7 @@ void EffectObject3D::GenerateCylinderVertices(float radius, float height, int se
 
     for (int s = 0; s <= segments; ++s) {
         float theta = ((float)s / segments) * 2.0f * std::numbers::pi_v<float>;
-        Model::VertexData v;
+        engine::Model::VertexData v;
         v.position = {sinf(theta) * radius, -halfH, cosf(theta) * radius, 1.0f};
         v.texcoord = {0.5f + sinf(theta)*0.5f, 0.5f - cosf(theta)*0.5f};
         v.normal = {0, -1, 0};
@@ -690,7 +702,7 @@ void EffectObject3D::GenerateBoxVertices(const engine::Vector3& size) {
         uint32_t base = i * 4;
 
         for(int j=0; j<4; ++j) {
-            Model::VertexData v;
+            engine::Model::VertexData v;
             v.position = {p[faces[i][j]].x, p[faces[i][j]].y, p[faces[i][j]].z, 1.0f};
             v.normal = n[i];
             v.texcoord = uv[j];
@@ -722,7 +734,7 @@ void EffectObject3D::GeneratePlaneVertices(const engine::Vector2& size, int subd
         for(int x=0; x<=xSegments; ++x) {
             float u = (float)x / xSegments;
             float px = -hw + (size.x * u);
-            Model::VertexData vert;
+            engine::Model::VertexData vert;
             vert.position = {px, 0.0f, pz, 1.0f};
             vert.normal = {0,1,0};
             vert.texcoord = {u, v};
@@ -760,10 +772,11 @@ void EffectObject3D::GenerateTorusVertices(float majorRad, float minorRad, int s
             float theta = u * 2.0f * std::numbers::pi_v<float>;
             float cosTheta = cosf(theta);
             float sinTheta = sinf(theta);
+            // 小円の水平成分を大円の半径へ足してから一周させます。小円の中心からの差が表面法線の向きになります。
             float x = (majorRad + minorRad * cosPhi) * cosTheta;
             float y = minorRad * sinPhi;
             float z = (majorRad + minorRad * cosPhi) * sinTheta;
-            Model::VertexData vert;
+            engine::Model::VertexData vert;
             vert.position = {x, y, z, 1.0f};
             vert.texcoord = {u, v};
             engine::Vector3 center = {majorRad * cosTheta, 0, majorRad * sinTheta};
@@ -801,7 +814,7 @@ void EffectObject3D::GenerateConeVertices(float radius, float height, int segmen
     uint32_t offset = 0;
 
     // Tip
-    Model::VertexData tip;
+    engine::Model::VertexData tip;
     tip.position = {0, halfH, 0, 1.0f};
     tip.texcoord = {0.5f, 0.0f};
     tip.normal = {0,1,0};
@@ -812,9 +825,10 @@ void EffectObject3D::GenerateConeVertices(float radius, float height, int segmen
         float theta = u * 2.0f * std::numbers::pi_v<float>;
         float x = sinf(theta) * radius;
         float z = cosf(theta) * radius;
-        Model::VertexData v;
+        engine::Model::VertexData v;
         v.position = {x, -halfH, z, 1.0f};
         v.texcoord = {u, 1.0f};
+        // 円錐側面の傾きは半径と高さの比です。外向きの水平成分にこの勾配を足して法線を作ります。
         engine::Vector3 norm = {sinf(theta), radius/height, cosf(theta)};
         float vectorLength = sqrtf(norm.x*norm.x+norm.y*norm.y+norm.z*norm.z);
 
@@ -835,7 +849,7 @@ void EffectObject3D::GenerateConeVertices(float radius, float height, int segmen
 
     // Bottom
     offset = (uint32_t)proceduralVertices_.size();
-    Model::VertexData bot;
+    engine::Model::VertexData bot;
     bot.position = {0, -halfH, 0, 1.0f};
     bot.texcoord = {0.5f, 0.5f};
     bot.normal = {0,-1,0};
@@ -843,7 +857,7 @@ void EffectObject3D::GenerateConeVertices(float radius, float height, int segmen
 
     for (int s = 0; s <= segments; ++s) {
         float theta = ((float)s / segments) * 2.0f * std::numbers::pi_v<float>;
-        Model::VertexData v;
+        engine::Model::VertexData v;
         v.position = {sinf(theta) * radius, -halfH, cosf(theta) * radius, 1.0f};
         v.texcoord = {0.5f + sinf(theta)*0.5f, 0.5f - cosf(theta)*0.5f};
         v.normal = {0,-1,0};
@@ -862,13 +876,14 @@ void EffectObject3D::GenerateRingVertices(float outerRad, float innerRad, int se
     proceduralIndices_.clear();
 
     for(int i=0; i<=1; ++i) { // 0=inner, 1=outer
+        // 内周をUVのV=0、外周をV=1にします。円周の境界は同じ位置にU=0と1の頂点を置きます。
         float r = (i==0) ? innerRad : outerRad;
         float v = (float)i;
 
         for(int s=0; s<=segments; ++s) {
             float u = (float)s / segments;
             float theta = u * 2.0f * std::numbers::pi_v<float>;
-            Model::VertexData vert;
+            engine::Model::VertexData vert;
             vert.position = {sinf(theta)*r, 0, cosf(theta)*r, 1.0f};
             vert.texcoord = {u, v};
             vert.normal = {0,1,0};
@@ -892,8 +907,9 @@ void EffectObject3D::GenerateTriangleVertices(float size) {
     // 重心が原点に来る正三角形をXZ平面へ作り、法線を上向きに揃える。
     proceduralVertices_.clear();
     proceduralIndices_.clear();
+    // 一辺の長さから外接円半径を求め、三頂点を重心が0になるよう配置します。
     float r = size / sqrtf(3.0f);
-    Model::VertexData v0, v1, v2;
+    engine::Model::VertexData v0, v1, v2;
     v0.position = {0, 0, r, 1.0f};
     v0.texcoord = {0.5f, 0.0f};
     v0.normal = {0,1,0};
@@ -930,11 +946,12 @@ void EffectObject3D::GenerateLanceVertices(float radius, float height, int segme
         for (int side = 0; side <= sideCount; ++side) {
             const float angle = static_cast<float>(side) * 2.0f * std::numbers::pi_v<float> /
                 static_cast<float>(sideCount);
+            // 円周の半径を交互に縮め、滑らかな円柱とは異なる面の凹凸を付けます。
             const float facet = (side % 2 == 0) ? 1.0f : 0.78f;
             const float radial = radius * kProfile[ring][1] * facet;
             const float cosine = std::cos(angle);
             const float sine = std::sin(angle);
-            Model::VertexData vertex{};
+            engine::Model::VertexData vertex{};
             vertex.position = { cosine * radial, kProfile[ring][0] * height,
                 sine * radial, 1.0f };
             vertex.texcoord = { static_cast<float>(side) / static_cast<float>(sideCount),
@@ -965,6 +982,7 @@ void EffectObject3D::ClearProceduralMeshCache() {
 // 形状番号とUVから生成し、球・リングは同じ形状を再利用します。
 void EffectObject3D::UpdateProceduralMesh() {
     const int type = materialData_ ? materialData_->proceduralType : 0;
+    // 球とリングに限り、同じ描画基盤・形状寸法・UV設定なら生成済みのモデルを共有します。
     const bool cacheable = type == 4 || type == 10;
     MeshCacheKey key{};
     if (cacheable) {
@@ -983,7 +1001,7 @@ void EffectObject3D::UpdateProceduralMesh() {
         }
     }
     // 共有済みModelを上書きせず、編集した個体だけを新しい形状へ切り替えます。
-    dynamicModel_ = std::make_shared<Model>();
+    dynamicModel_ = std::make_shared<engine::Model>();
     if (GetMeshRenderer()) GetMeshRenderer()->SetModel(dynamicModel_.get());
 
     // 材質の形状番号に対応する頂点生成器を選ぶ。1と2だけ同じ生成器の形を切り替える。
@@ -1037,6 +1055,61 @@ void EffectObject3D::UpdateProceduralMesh() {
         // Editorで多数の寸法を試しても無制限にGPU資源を保持しません。
         if (proceduralMeshCache.size() >= kMaxCachedProceduralMeshes) proceduralMeshCache.clear();
         proceduralMeshCache[key] = dynamicModel_;
+    }
+}
+
+// 生成器が扱う形状寸法だけを読み取る。キーを省略した値とGPUメッシュの更新は呼び出し側が扱う。
+void EffectObject3D::ReadProceduralMeshSettings(const nlohmann::json& j) {
+    if (j.contains("SlashAngle"))
+        meshSettings_.slashAngle = j["SlashAngle"];
+    if (j.contains("InnerRadius"))
+        meshSettings_.innerRadius = j["InnerRadius"];
+    if (j.contains("OuterRadius"))
+        meshSettings_.outerRadius = j["OuterRadius"];
+    if (j.contains("Thickness"))
+        meshSettings_.thickness = j["Thickness"];
+    if (j.contains("SpiralPitch"))
+        meshSettings_.spiralPitch = j["SpiralPitch"];
+    if (j.contains("ThrustLength"))
+        meshSettings_.thrustLength = j["ThrustLength"];
+    if (j.contains("ThrustRadius"))
+        meshSettings_.thrustRadius = j["ThrustRadius"];
+    if (j.contains("SphereRadius"))
+        meshSettings_.sphereRadius = j["SphereRadius"];
+    if (j.contains("SphereRings"))
+        meshSettings_.sphereRings = j["SphereRings"];
+    if (j.contains("CylinderRadius"))
+        meshSettings_.cylinderRadius = j["CylinderRadius"];
+    if (j.contains("CylinderHeight"))
+        meshSettings_.cylinderHeight = j["CylinderHeight"];
+    if (j.contains("BoxSize")) {
+        meshSettings_.boxSize.x = j["BoxSize"].at(0);
+        meshSettings_.boxSize.y = j["BoxSize"].at(1);
+        meshSettings_.boxSize.z = j["BoxSize"].at(2);
+    }
+    if (j.contains("PlaneSize")) {
+        meshSettings_.planeSize.x = j["PlaneSize"].at(0);
+        meshSettings_.planeSize.y = j["PlaneSize"].at(1);
+    }
+    if (j.contains("TorusMajorRadius"))
+        meshSettings_.torusMajorRadius = j["TorusMajorRadius"];
+    if (j.contains("TorusMinorRadius"))
+        meshSettings_.torusMinorRadius = j["TorusMinorRadius"];
+    if (j.contains("ConeRadius"))
+        meshSettings_.coneRadius = j["ConeRadius"];
+    if (j.contains("ConeHeight"))
+        meshSettings_.coneHeight = j["ConeHeight"];
+    if (j.contains("RingOuterRadius"))
+        meshSettings_.ringOuterRadius = j["RingOuterRadius"];
+    if (j.contains("RingInnerRadius"))
+        meshSettings_.ringInnerRadius = j["RingInnerRadius"];
+    if (j.contains("TriangleSize"))
+        meshSettings_.triangleSize = j["TriangleSize"];
+    if (j.contains("MeshSegments"))
+        meshSettings_.meshSegments = j["MeshSegments"];
+    if (j.contains("UvTiling")) {
+        meshSettings_.uvTiling.x = j["UvTiling"].at(0);
+        meshSettings_.uvTiling.y = j["UvTiling"].at(1);
     }
 }
 
@@ -1174,6 +1247,7 @@ bool EffectObject3D::LoadFromJson(const std::string& jsonFilePath) {
         SetEnableDistortion(j["EnableDistortion"].get<bool>());
     }
 
+    // 色の合成と出現の進め方を復元する。古い素材ではアルファしきい値にゼロを使う。
     if (j.contains("BlendMode")) {
         SetBlendMode(static_cast<BlendMode>(j["BlendMode"].get<int>()));
     }
@@ -1206,57 +1280,8 @@ bool EffectObject3D::LoadFromJson(const std::string& jsonFilePath) {
         SetProceduralType(procType);
 
         if (procType >= 1) {
-            if (j.contains("SlashAngle"))
-                meshSettings_.slashAngle      = j["SlashAngle"];
-            if (j.contains("InnerRadius"))
-                meshSettings_.innerRadius     = j["InnerRadius"];
-            if (j.contains("OuterRadius"))
-                meshSettings_.outerRadius     = j["OuterRadius"];
-            if (j.contains("Thickness"))
-                meshSettings_.thickness       = j["Thickness"];
-            if (j.contains("SpiralPitch"))
-                meshSettings_.spiralPitch     = j["SpiralPitch"];
-            if (j.contains("ThrustLength"))
-                meshSettings_.thrustLength    = j["ThrustLength"];
-            if (j.contains("ThrustRadius"))
-                meshSettings_.thrustRadius    = j["ThrustRadius"];
-            if (j.contains("SphereRadius"))
-                meshSettings_.sphereRadius    = j["SphereRadius"];
-            if (j.contains("SphereRings"))
-                meshSettings_.sphereRings     = j["SphereRings"];
-            if (j.contains("CylinderRadius"))
-                meshSettings_.cylinderRadius  = j["CylinderRadius"];
-            if (j.contains("CylinderHeight"))
-                meshSettings_.cylinderHeight  = j["CylinderHeight"];
-            if (j.contains("BoxSize"))    {
-                meshSettings_.boxSize.x = j["BoxSize"][0];
-                meshSettings_.boxSize.y = j["BoxSize"][1];
-                meshSettings_.boxSize.z = j["BoxSize"][2];
-            }
-            if (j.contains("PlaneSize"))  {
-                meshSettings_.planeSize.x = j["PlaneSize"][0];
-                meshSettings_.planeSize.y = j["PlaneSize"][1];
-            }
-            if (j.contains("TorusMajorRadius"))
-                meshSettings_.torusMajorRadius = j["TorusMajorRadius"];
-            if (j.contains("TorusMinorRadius"))
-                meshSettings_.torusMinorRadius = j["TorusMinorRadius"];
-            if (j.contains("ConeRadius"))
-                meshSettings_.coneRadius  = j["ConeRadius"];
-            if (j.contains("ConeHeight"))
-                meshSettings_.coneHeight  = j["ConeHeight"];
-            if (j.contains("RingOuterRadius"))
-                meshSettings_.ringOuterRadius = j["RingOuterRadius"];
-            if (j.contains("RingInnerRadius"))
-                meshSettings_.ringInnerRadius = j["RingInnerRadius"];
-            if (j.contains("TriangleSize"))
-                meshSettings_.triangleSize = j["TriangleSize"];
-            if (j.contains("MeshSegments"))
-                meshSettings_.meshSegments = j["MeshSegments"];
-            if (j.contains("UvTiling"))        {
-                meshSettings_.uvTiling.x = j["UvTiling"][0];
-                meshSettings_.uvTiling.y = j["UvTiling"][1];
-            }
+            ReadProceduralMeshSettings(j);
+            // 旧形式の螺旋は一周以上を前提とするため、この読み込み経路では小さい弧度を400度へ補正します。
             if (procType == 2 && meshSettings_.slashAngle < 360.0f) {
                 meshSettings_.slashAngle = 400.0f;
             }
@@ -1303,6 +1328,7 @@ bool EffectObject3D::LoadFromJson(const std::string& jsonFilePath) {
         SetRotation(offsetRot);
     }
 
+    // 開始直後から描画できるよう、すべての設定を反映してから再生し、時刻を進めずに初期姿勢を計算する。
     Play(lifetime);
     
     // 一旦更新して行列を最新にする

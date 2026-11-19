@@ -143,7 +143,7 @@ private:
     /// <summary>飛散中の破片一個の物理状態と描画用リソース。</summary>
     // 関連：DebrisEffectManager（この型を使う機能の本体）
     struct DebrisPiece {
-        Model* model = nullptr;
+        engine::Model* model = nullptr;
         engine::Vector3 position = engine::Vector3::ZERO;
         engine::Vector3 rotation = engine::Vector3::ZERO;
 
@@ -151,9 +151,9 @@ private:
         Microsoft::WRL::ComPtr<ID3D12Resource> shadowWvpResource;
         Microsoft::WRL::ComPtr<ID3D12Resource> materialResource;
 
-        MeshRenderer::TransformationMatrix* wvpData = nullptr;
-        MeshRenderer::TransformationMatrix* shadowWvpData = nullptr;
-        MeshRenderer::MaterialData* materialData = nullptr;
+        engine::MeshRenderer::TransformationMatrix* wvpData = nullptr;
+        engine::MeshRenderer::TransformationMatrix* shadowWvpData = nullptr;
+        engine::MeshRenderer::MaterialData* materialData = nullptr;
 
         engine::Vector3 velocity = engine::Vector3::ZERO; // 破片の移動速度（ワールド単位/秒）。
         engine::Vector3 angularVelocity = engine::Vector3::ZERO; // 破片の角速度（ラジアン/秒）。
@@ -210,7 +210,7 @@ private:
 
     engine::Object3DCommon* common_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Resource> cameraResource_;
-    MeshRenderer::CameraForGpu* cameraData_ = nullptr;
+    engine::MeshRenderer::CameraForGpu* cameraData_ = nullptr;
     std::vector<DebrisPiece> activePieces_;
     std::vector<DebrisPiece> pooledPieces_;
     std::map<std::string, DebrisEffectConfig> presets_;

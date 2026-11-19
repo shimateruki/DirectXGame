@@ -24,6 +24,7 @@ void CinematicPlayer::RestoreSpringState(const std::string& name, const SpringSt
 
 CinematicTransformKey CinematicPlayer::UpdateSpringAttachment(const std::string& name, const SpringInput& input, float deltaTime) {
     const CinematicSpringSettings defaults;
+    // 素材に部品名がなければ内蔵の係数を使います。積分済みの位置と速度は係数とは別に名前ごとに保持します。
     const auto* settings = &defaults;
     if (sequence_) {
         const auto found = sequence_->presentation.springs.find(name);
@@ -50,11 +51,13 @@ CinematicTransformKey CinematicPlayer::UpdateSpringAttachment(const std::string&
 
     // 長いフレームを制限し、必要なら小刻みに積分して追従部品の揺れを安定させる。
     const float frameDeltaTime = std::clamp(deltaTime, 0.0f, 1.0f / 30.0f);
+    // 1フレームで扱う時間は最大1/30秒とし、分割後の積分幅が1/120秒を越えない分割数を選びます。
     const int substepCount = std::max(1, static_cast<int>(std::ceil(frameDeltaTime / (1.0f / 120.0f))));
     const float substep = frameDeltaTime / static_cast<float>(substepCount);
 
     for (int step = 0; step < substepCount; ++step) {
         const engine::Vector3 springDelta = targetPosition - state.position;
+        // 目標までの距離にばねの係数を掛け、速度に比例する減衰を引きます。速度を先に更新してから位置を進めます。
         const engine::Vector3 acceleration = springDelta * (physics.positionStiffness + motionEnergy * 8.0f) -
                                      state.velocity * physics.positionDamping;
         state.velocity = state.velocity + acceleration * substep;
@@ -67,6 +70,7 @@ CinematicTransformKey CinematicPlayer::UpdateSpringAttachment(const std::string&
     const float planarLength = std::sqrt(offset.x * offset.x + offset.z * offset.z);
 
     if (planarLength > maxPlanarOffset && planarLength > 0.0001f) {
+        // 上限と現在距離の比をXZ両軸に掛け、向きを保ったまま円の境界へ戻します。
         const float rate = maxPlanarOffset / planarLength;
         offset.x *= rate;
         offset.z *= rate;
@@ -77,6 +81,7 @@ CinematicTransformKey CinematicPlayer::UpdateSpringAttachment(const std::string&
     const float unclampedY = offset.y;
     offset.y = std::clamp(offset.y, -physics.maxSink, physics.maxLift + motionEnergy * 0.04f);
 
+    // 上下限で位置を切り詰めたときだけ鉛直速度を減衰させ、次の更新で同じ向きに飛び出しにくくします。
     if (offset.y != unclampedY) {
         state.velocity.y *= 0.32f;
     }
@@ -87,6 +92,7 @@ CinematicTransformKey CinematicPlayer::UpdateSpringAttachment(const std::string&
     // 追従部品の位置ずれと速度から前後・左右の傾きを求め、基準対象の傾きも加える。
     const float forwardOffset = engine::Math::Dot(offset, input.forward);
     const float rightOffset = engine::Math::Dot(offset, input.right);
+    // 位置差はワールド距離、速度はワールド距離毎秒です。それぞれ前後・左右の軸へ射影して傾きへ換算します。
     const float forwardSpeed = engine::Math::Dot(state.velocity, input.forward);
     const float rightSpeed = engine::Math::Dot(state.velocity, input.right);
     engine::Vector3 targetRotation = input.baseRotation;
@@ -98,6 +104,7 @@ CinematicTransformKey CinematicPlayer::UpdateSpringAttachment(const std::string&
         std::clamp(targetRotation.x, input.baseRotation.x - 0.52f, input.baseRotation.x + 0.52f);
     targetRotation.z =
         std::clamp(targetRotation.z, input.baseRotation.z - 0.52f, input.baseRotation.z + 0.52f);
+    // ラジアンのヨー差を±πの範囲へ畳み、角度の境界で一周近く戻らないようにします。
     const float targetYaw = input.baseRotation.y + NormalizeYaw(input.sourceRotationDelta.y);
     targetRotation.y = state.rotation.y + NormalizeYaw(targetYaw - state.rotation.y);
 
@@ -128,6 +135,7 @@ void CinematicPlayer::FitCameraToPoints(std::span<const engine::Vector3> points,
     if (points.empty() || !std::isfinite(fov) || !std::isfinite(aspect) || fov <= 0 || aspect <= 0) return;
     margin = std::clamp(margin, 0.0f, 0.45f);
     topMargin = std::clamp(topMargin, margin, 0.95f - margin);
+    // 全点のワールド座標の最小・最大から、構図の基準にする包囲箱の中心を求めます。
     auto low=points.front(),high=points.front();
     for (const auto& p:points) {
         low={(std::min)(low.x,p.x),(std::min)(low.y,p.y),(std::min)(low.z,p.z)};
@@ -137,12 +145,15 @@ void CinematicPlayer::FitCameraToPoints(std::span<const engine::Vector3> points,
     if (engine::Math::Length(direction)<0.001f) direction=fallbackForward*-1.0f+engine::Vector3{0,-0.25f,0};
     auto forward=engine::Math::Normalize(direction);
     if (std::abs(forward.y)>0.95f) forward=engine::Math::Normalize(fallbackForward*-0.5f+engine::Vector3{0,forward.y,0});
+    // ほぼ真上・真下を向くと外積が小さくなるため、直前で向きを補正してカメラの右・上軸を作ります。
     const auto right=engine::Math::Normalize(engine::Math::Cross({0,1,0},forward));
     const auto up=engine::Math::Cross(forward,right);
     auto center=(low+high)*0.5f;
+    // 垂直画角はラジアンです。半画角の正接は奥行き1あたりの縦の半幅です。横の半幅はアスペクト比を掛けて求めます。
     const float tanY=std::tan(fov*0.5f);
     const float tanX=tanY*aspect;
     center=center+centerOffset;
+    // 画面に対する余白の割合を、中心0、上下端±1の正規化座標に置き換えます。
     const float top=1.0f-2.0f*topMargin;
     const float bottom=-1.0f+2.0f*margin;
     const float middle=(top+bottom)*0.5f;
@@ -151,6 +162,7 @@ void CinematicPlayer::FitCameraToPoints(std::span<const engine::Vector3> points,
     for (const auto& p:points) {
         const auto delta=p-center;
         const float x=engine::Math::Dot(delta,right),y=engine::Math::Dot(delta,up),z=engine::Math::Dot(delta,forward);
+        // 各点について最小の前方距離と左右・上下の画角条件を逆算し、全条件を満たす最大値を採用します。
         distance=(std::max)({distance,0.25f-z,
             std::abs(x)/(tanX*horizontal)-z,
             (y-top*tanY*z)/(tanY*(top-middle)),
@@ -171,6 +183,7 @@ engine::Vector3 Rotate(const engine::Vector3& v, float yaw) { return CinematicAn
 CinematicViewKey ViewAt(const std::vector<CinematicViewKey>& keys, float time) {
     return SampleCinematicKeys(keys, time, [](const auto& a, const auto& b, float t) {
         auto k=a;
+        // 演出時刻の秒を前後のキー間の割合へ変えます。数値項目は滑らかに補間し、参照名は先頭キーの設定を保持します。
         t = std::clamp((t-a.time)/std::max(0.000001f,b.time-a.time),0.0f,1.0f);
         k.focusMix=engine::Math::Lerp(a.focusMix,b.focusMix,t); k.focusOffset=engine::Math::Lerp(a.focusOffset,b.focusOffset,t);
         k.scaledFocusOffset=engine::Math::Lerp(a.scaledFocusOffset,b.scaledFocusOffset,t);
@@ -182,9 +195,11 @@ CinematicViewKey ViewAt(const std::vector<CinematicViewKey>& keys, float time) {
 template<class State> engine::Vector3 PositionAt(const State& s, const CinematicObjectClip& clip, const CinematicVisualKey& k) {
     const auto pivot=Rotate(Product(clip.pivot,s.scale),s.rotation.y);
     auto offset=k.position;
+    // モデル基準の距離は対象倍率とヨーを反映します。放射方向の指定では X を水平方向への距離、Y を高さとして扱います。
     if (clip.positionSpace=="model") offset=Rotate(Product(offset,s.scale),s.rotation.y);
     if (clip.positionSpace=="radial") offset=s.radial*k.position.x+engine::Vector3{0,k.position.y,0};
     auto position=s.origin+pivot+offset;
+    // 基準点からの床の高さに達した場合は、その位置にキーの跳ね返り量を足して接地後の高さを決めます。
     if (position.y <= s.origin.y+clip.floorHeight+0.001f)
         position.y=s.origin.y+clip.floorHeight+k.bounce;
     return position;
@@ -220,6 +235,7 @@ void CinematicPlayer::PreparePresentation() {
     for (const auto& clip:sequence_->presentation.objects) {
         PresentationObject s;
         s.source=ResolveTarget({clip.source,-1});
+        // 生成指定なら演出専用の見た目を所有し、配置済みの対象を使う設定ではシーンから借ります。
         if (clip.spawn && s.source && boundScene_->GetObject3DCommon()) {
             s.owned=std::make_unique<engine::Object3D>();
             s.owned->Initialize(boundScene_->GetObject3DCommon());
@@ -264,6 +280,7 @@ void CinematicPlayer::AddPresentationIssues(std::vector<std::string>& issues) co
         for (const auto& motion : clip.motions) {
             const float begin=motion.startSignal.empty()?motion.startTime:sequence_->GetSignalTime(motion.startSignal,-1) + motion.startSignalOffset;
             const float end=motion.endSignal.empty()?motion.endTime:sequence_->GetSignalTime(motion.endSignal,-1) + motion.endSignalOffset;
+            // 区間はシグナルの時刻と秒のオフセットを解決した後で、順序と重なりを判定します。
             const bool missingSignal = (!motion.startSignal.empty() && sequence_->GetSignalTime(motion.startSignal,-1)<0) ||
                 (!motion.endSignal.empty() && sequence_->GetSignalTime(motion.endSignal,-1)<0);
             if (missingSignal || begin<0 || end<=begin || begin<previousEnd)
@@ -323,6 +340,7 @@ bool CinematicPlayer::ApplyPresentationTransform(size_t index, float time,
     const auto& clip = sequence_->presentation.objects[index];
     auto& state = presentationObjects_[index];
     const auto key = SampleCinematicVisual(clip, time, sequence_);
+    // 追従指定の成分は対象の現在値を使い、それ以外は再生開始前の採取値を使います。
     const auto rotation = clip.followRotation ? state.source->GetRotation() : state.rotation;
     const auto scale = clip.followScale ? state.source->GetScale() : state.scale;
     state.target->SetTranslate(*position);
@@ -384,6 +402,7 @@ void CinematicPlayer::CapturePresentation() {
         s.origin=s.source->GetTranslate(); s.rotation=s.source->GetRotation(); s.scale=s.source->GetScale();
         const auto pivot=Rotate(Product(clip.pivot,s.scale),s.rotation.y);
         const float length=std::sqrt(pivot.x*pivot.x+pivot.z*pivot.z);
+        // 基準からの水平距離で割って放射方向を単位化します。ピボットがほぼ真上なら +X を既定方向にします。
         s.radial=length>0.01f ? engine::Vector3{pivot.x/length,0,pivot.z/length} : engine::Vector3{1,0,0};
         s.before.position=s.target->GetTranslate(); s.before.rotation=s.target->GetRotation();
         s.before.scale=s.target->GetScale(); s.before.visible=s.target->GetIsVisible();
@@ -391,6 +410,7 @@ void CinematicPlayer::CapturePresentation() {
     }
     for (const auto& name:p.hideObjects)
         if (auto* object=ResolveTarget({name,-1})) {
+            // 一時的に隠す対象は、終了時に元の表示状態へ戻せるよう、変更する前に可視フラグを保存します。
             presentationHidden_.push_back({object,object->GetIsVisible()}); object->SetIsVisible(false);
         }
     if (p.view.empty()) return;
@@ -399,9 +419,11 @@ void CinematicPlayer::CapturePresentation() {
     presentationOrigin_=reference->GetTranslate(); presentationScale_=reference->GetScale();
     presentationLookAt_=toward->GetTranslate();
     const auto direction=presentationLookAt_-presentationOrigin_;
+    // ワールドの +Z を正面として、注視先へ向く水平角をラジアンで求めます。高さの差はここで使いません。
     presentationYaw_=std::atan2(direction.x,direction.z);
+    // 上書き先を確保する前に旧カメラを保持して、終了時に元の参照へ戻せるようにします。
     presentationPreviousCamera_=CameraManager::GetInstance()->GetActiveCameraOverride();
-    presentationCamera_=std::make_unique<Camera>(); presentationCamera_->Initialize();
+    presentationCamera_=std::make_unique<engine::Camera>(); presentationCamera_->Initialize();
     if (auto* camera=CameraManager::GetInstance()->GetActiveCamera())
         presentationCamera_->SetClipRange(camera->GetNearClip(),camera->GetFarClip());
     presentationCamera_->SetInputEnabled(false);
@@ -412,6 +434,7 @@ void CinematicPlayer::ReleasePresentation(bool restore) {
     bindingsReady_=false;
     if (restore && presentationCaptured_) {
         const auto live=GetLiveTargets();
+        // 借用した実体は生存を確かめて元の姿勢と材質へ戻します。専用に生成した実体は末尾の所有リスト破棄へ任せます。
         for (auto& s:presentationObjects_)
             if (!s.owned && live.contains(s.target)) {
                 s.target->SetTranslate(s.before.position); s.target->SetRotation(s.before.rotation);
@@ -424,6 +447,7 @@ void CinematicPlayer::ReleasePresentation(bool restore) {
         if (presentationCamera_ && sceneManager_ && sceneManager_->GetCurrentScene()==boundScene_)
             if (auto* params=PostEffect::GetInstance()->GetParams()) params->cinemaBarHeight=presentationBars_;
     }
+    // 自分が設定したカメラがまだ使用中の場合だけ差し替え、参照を外してから専用カメラを破棄します。
     if (presentationCamera_ && CameraManager::GetInstance()->GetActiveCameraOverride()==presentationCamera_.get())
         CameraManager::GetInstance()->SetActiveCamera(restore && sceneManager_ && sceneManager_->GetCurrentScene()==boundScene_ ? presentationPreviousCamera_ : nullptr);
     presentationCamera_.reset(); presentationObjects_.clear(); presentationHidden_.clear(); presentationCaptured_=false;
@@ -436,6 +460,7 @@ void CinematicPlayer::EvaluatePresentation(float time, float previous, bool disp
     for (size_t i=0;i<p.objects.size() && i<presentationObjects_.size();++i) {
         const auto& clip=p.objects[i]; auto& s=presentationObjects_[i];
         if (!clip.enabled || (clip.keys.empty() && clip.motions.empty())) continue;
+        // 対象や基準がシーンから消えた時点で評価を中断します。残った対象とカメラの復元は ReleasePresentation に任せます。
         if (!live.contains(s.source) || !live.contains(s.target)) {
             playbackTimer_.Pause(); isPreviewing_=false; finished_=false;
             ReleasePresentation(true);
@@ -453,6 +478,7 @@ void CinematicPlayer::EvaluatePresentation(float time, float previous, bool disp
         {
             engine::Object3D::PortalClipSettings clipSettings;
             clipSettings.enabled=k.clipEnabled; clipSettings.progress=0;
+            // 切断面の高さを必要に応じてモデルの縦倍率で調整し、対象のワールド位置からのオフセットに変換します。
             clipSettings.center=position+engine::Vector3{0,k.clipHeight*(clip.clipScaleHeight?scale.y:1.0f)+clip.clipCenterOffset,0};
             clipSettings.normal={0,1,0}; clipSettings.edgeWidth=clip.clipEdgeWidth;
             clipSettings.dissolve=clip.clipDissolve; clipSettings.color=clip.clipColor;
@@ -467,9 +493,11 @@ void CinematicPlayer::EvaluatePresentation(float time, float previous, bool disp
             while (i<p.objects.size() && p.objects[i].name!=clip.target) ++i;
             if (i>=presentationObjects_.size() || (p.objects[i].keys.empty() && p.objects[i].motions.empty())) continue;
             const auto& s=presentationObjects_[i];
+            // 発生間隔は秒です。前回時刻の発生番号は済んでいるので次から始め、今回はクリップの終了時刻までに制限します。
             const int first=std::max(0,static_cast<int>(std::floor((previous-clip.startTime)/clip.interval))+1);
             const int last=static_cast<int>(std::floor((std::min(time,clip.endTime)-clip.startTime)/clip.interval));
             for (int tick=first;tick<=last;++tick) {
+                // 遅延して複数回発生する場合も、現在時刻の位置へまとめず、それぞれの発生時刻の位置を再評価します。
                 const float tickTime = clip.startTime + tick * clip.interval;
                 const auto& objectClip = p.objects[i];
                 const bool hasReferences = !objectClip.motions.empty() || std::any_of(objectClip.keys.begin(), objectClip.keys.end(),
@@ -481,6 +509,7 @@ void CinematicPlayer::EvaluatePresentation(float time, float previous, bool disp
                 const auto position = *sampled;
                 auto direction=clip.direction;
                 if (clip.directionMode=="radialIn") {
+                    // 中心へ向かう水平ベクトルを単位化し、保存された鉛直方向の成分を残します。
                     const auto d=s.origin-position; const float length=std::sqrt(d.x*d.x+d.z*d.z);
                     if (length>0.001f) direction={d.x/length,clip.direction.y,d.z/length};
                 }
@@ -500,6 +529,7 @@ void CinematicPlayer::EvaluatePresentation(float time, float previous, bool disp
             Product(k.scaledFocusOffset,presentationScale_)+Rotate(k.focusOffset,yaw);
         const auto eye=(k.eyeReference.empty()?target:*eyeAnchor)+Rotate(k.eyeOffset,yaw)+k.jitter;
         const auto d=target-eye;
+        // 注視点との差からピッチとヨーをラジアンで求め、ロールは0とします。
         const engine::Vector3 rotation{-std::atan2(d.y,std::sqrt(d.x*d.x+d.z*d.z)),std::atan2(d.x,d.z),0};
         presentationCamera_->ConfigFixedPoint(eye,rotation);
         presentationCamera_->ApplyReplayView(eye,target,rotation,k.fov,presentationCamera_->GetNearClip(),presentationCamera_->GetFarClip());
@@ -510,6 +540,7 @@ void CinematicPlayer::EvaluatePresentation(float time, float previous, bool disp
 
 void CinematicPlayer::DrawPresentation(ID3D12Resource* pointLight, ID3D12Resource* spotLight) {
     if (!presentationCaptured_ || !sequence_) return;
+    // 演出が所有する表示モデルを通常材質、加算材質の順で描きます。シーン所有の対象は通常の描画経路へ任せます。
     for (int transparent=0;transparent<2;++transparent)
         for (size_t i=0;i<presentationObjects_.size() && i<sequence_->presentation.objects.size();++i) {
             auto& s=presentationObjects_[i]; const auto& clip=sequence_->presentation.objects[i];

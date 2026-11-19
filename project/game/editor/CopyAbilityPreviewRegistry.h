@@ -69,15 +69,18 @@ public:
         for (const auto& entry : entries) {
             if (entry.type.empty() || entry.displayName.empty() || entry.profileType.empty() ||
                 entry.actions.empty() || !types.insert(entry.type).second) return false;
+            // 入力を開始する時刻と動作IDを先に検証し、同じ形態に同名の動作ができないようにします。
             std::unordered_set<std::string> ids;
             for (const auto& action : entry.actions)
                 if (action.id.empty() || action.displayName.empty() || !std::isfinite(action.startTime) ||
                     action.startTime < 0.0f || !ids.insert(action.id).second) return false;
+            // 設定画面の既定動作とジャンプ先の動作IDも、実際の候補一覧に存在するか確認します。
             if (!entry.profileActionId.empty() && !entry.FindAction(entry.profileActionId)) return false;
             for (const auto& bookmark : entry.bookmarks)
                 if (!entry.FindAction(bookmark.actionId) || !std::isfinite(bookmark.time) || bookmark.time < 0.0f)
                     return false;
         }
+        // 他の候補を壊さないよう、不正な項目が一件も無い場合だけまとめて登録します。
         for (auto& entry : entries) Entries().push_back(std::move(entry));
         return true;
     }

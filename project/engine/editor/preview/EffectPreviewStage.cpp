@@ -92,7 +92,7 @@ EffectPreviewStage* EffectPreviewStage::GetInstance() {
     return &instance;
 }
 
-void EffectPreviewStage::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon) {
+void EffectPreviewStage::Initialize(SceneManager* sceneManager, engine::DirectXCommon* dxCommon) {
     // Scene と描画クリア色の変更先は外部所有として参照だけ保持する。
     sceneManager_ = sceneManager;
     dxCommon_ = dxCommon;
@@ -120,6 +120,7 @@ void EffectPreviewStage::EnableForToolPreview() {
 
 void EffectPreviewStage::ReturnToScene() {
     enabled_ = false;
+    // 共有ライトと通常視点を先に復元し、その後に一時的な視点保護を解除する。
     RestoreStudioLighting();
     RestoreCameraState();
     hasPlacedCamera_ = false;
@@ -134,8 +135,9 @@ void EffectPreviewStage::ReturnToScene() {
         }
     }
 
+    // 背景は退避済みの色ではなく、復元後のシーン設定が示すクリア色で描き直す。
     if (dxCommon_) {
-        const engine::Vector4& sceneClearColor = LightManager::GetInstance()->GetSceneClearColor();
+        const engine::Vector4& sceneClearColor = engine::LightManager::GetInstance()->GetSceneClearColor();
         dxCommon_->SetRenderClearColor(
             sceneClearColor.x,
             sceneClearColor.y,
@@ -178,6 +180,7 @@ void EffectPreviewStage::ReportToolState(
         lastSeekDispatchTimestamp_ = -1.0;
     }
 
+    // ドラッグ中はツールが返す時刻で入力位置を上書きしない。別ツールへの切り替え時だけ新しい時刻へそろえる。
     if (changedTool || !timelineScrubbing_) {
         timelineScrubTime_ = std::clamp(reportedCurrentTime_, 0.0f, reportedDuration_);
     }
@@ -196,6 +199,7 @@ void EffectPreviewStage::UpdatePerformanceMeasurement(const PerformanceMetrics& 
         return;
     }
 
+    // CPUとGPUはミリ秒のまま個別に集計する。FPSはフレームの秒数の合計から求める。
     performanceCpuTimeAccumMs_ += performance.cpuTimeMs;
     performanceGpuTimeAccumMs_ += performance.gpuTimeMs;
     performanceParticleCountAccum_ += static_cast<double>(performance.particleCount);
@@ -219,6 +223,7 @@ void EffectPreviewStage::UpdatePerformanceMeasurement(const PerformanceMetrics& 
     measuredPerformance_.gpuTimeMs = static_cast<float>(performanceGpuTimeAccumMs_ / sampleCount);
     measuredPerformance_.fps = performanceElapsedSeconds_ > 0.0 ?
         static_cast<float>(sampleCount / performanceElapsedSeconds_) : 0.0f;
+    // メモリは各フレームの平均ではなく、最後の計測で受け取った構成の値を表示する。
     measuredPerformance_.memoryBytes = performance.memoryBytes;
     performanceMeasurementRunning_ = false;
     performanceMeasurementValid_ = true;
@@ -296,6 +301,7 @@ void EffectPreviewStage::DrawTimelineWindow() {
         ++stopRequestSerial_;
     }
 
+    // 1 フレームの基準は 1/60 秒。停止してから求めた移動先を各ツールへシーク要求として渡す。
     const auto requestStep = [this](float seconds) {
         transportPlaying_ = false;
         seekTargetTime_ = std::clamp(reportedCurrentTime_ + seconds, 0.0f, reportedDuration_);
@@ -384,6 +390,7 @@ void EffectPreviewStage::DrawTimelineWindow() {
     constexpr float kHeaderHeight = 24.0f;
     constexpr float kLaneHeight = 28.0f;
     const int laneCount = (std::max)(1, static_cast<int>(reportedEvents_.size()));
+    // 時間軸の幅は秒数と 1 秒あたりのピクセル数の積。ラベル幅を足して長い素材も横スクロールで扱う。
     const float contentWidth = (std::max)(
         ImGui::GetContentRegionAvail().x,
         kLabelWidth + reportedDuration_ * timelinePixelsPerSecond_ + 24.0f);
@@ -426,6 +433,7 @@ void EffectPreviewStage::DrawTimelineWindow() {
             const TimelineEvent& event = reportedEvents_[index];
             const float laneY = origin.y + kHeaderHeight + static_cast<float>(index) * kLaneHeight;
             const float startX = origin.x + kLabelWidth + std::clamp(event.startTime, 0.0f, reportedDuration_) * timelinePixelsPerSecond_;
+            // 短いイベントは棒が消えないよう、時間軸上の最小長さと表示の最小幅を持たせる。
             const float endX = origin.x + kLabelWidth + std::clamp((std::max)(event.endTime, event.startTime + 0.02f), 0.0f, reportedDuration_) * timelinePixelsPerSecond_;
             drawList->AddText(ImVec2(origin.x + 8.0f, laneY + 7.0f), IM_COL32(220, 224, 232, 255), event.label.c_str());
             drawList->AddRectFilled(
@@ -448,6 +456,7 @@ void EffectPreviewStage::DrawTimelineWindow() {
     if ((ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) || timelinePointerActive) {
         const float mouseX = ImGui::GetIO().MousePos.x;
         timelineScrubbing_ = true;
+        // マウスの画面座標からラベル列とキャンバス原点を引き、横倍率で割って秒へ戻す。
         dispatchSeek((mouseX - origin.x - kLabelWidth) / timelinePixelsPerSecond_, false);
     }
 
@@ -465,34 +474,43 @@ void EffectPreviewStage::DrawTimelineWindow() {
             "選択中の%sだけを計測します。CPU/GPUの自動比較や設定変更は行いません。",
             activeToolKind_ == ToolKind::CpuParticle ? "通常Particle" : "GPU Particle");
 
+        // 現在値と計測結果は同じ列・単位で描き、先頭セルだけ表示内容を切り替える。
+        const auto drawPerformanceTable = [](const char* id, const char* heading,
+            const auto& values, float fps, const auto& drawRowLabel) {
+            if (ImGui::BeginTable(
+                id, 6,
+                ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame)) {
+                ImGui::TableSetupColumn(heading);
+                ImGui::TableSetupColumn("粒子数");
+                ImGui::TableSetupColumn("CPU時間");
+                ImGui::TableSetupColumn("GPU時間");
+                ImGui::TableSetupColumn("FPS");
+                ImGui::TableSetupColumn("使用メモリ");
+                ImGui::TableHeadersRow();
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                drawRowLabel();
+                ImGui::TableNextColumn();
+                ImGui::Text("%d", values.particleCount);
+                ImGui::TableNextColumn();
+                ImGui::Text("%.3f ms", values.cpuTimeMs);
+                ImGui::TableNextColumn();
+                ImGui::Text("%.3f ms", values.gpuTimeMs);
+                ImGui::TableNextColumn();
+                ImGui::Text("%.1f", fps);
+                ImGui::TableNextColumn();
+                ImGui::Text(
+                    "%.2f MB",
+                    static_cast<double>(values.memoryBytes) / (1024.0 * 1024.0));
+                ImGui::EndTable();
+            }
+        };
+
         const float liveFps = reportedPerformance_.frameDeltaSeconds > 0.0f ?
             1.0f / reportedPerformance_.frameDeltaSeconds : 0.0f;
-        if (ImGui::BeginTable(
-            "EffectPerformanceLive", 6,
-            ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame)) {
-            ImGui::TableSetupColumn("表示");
-            ImGui::TableSetupColumn("粒子数");
-            ImGui::TableSetupColumn("CPU時間");
-            ImGui::TableSetupColumn("GPU時間");
-            ImGui::TableSetupColumn("FPS");
-            ImGui::TableSetupColumn("使用メモリ");
-            ImGui::TableHeadersRow();
-            ImGui::TableNextRow();
-            ImGui::TableNextColumn();
+        drawPerformanceTable("EffectPerformanceLive", "表示", reportedPerformance_, liveFps, [] {
             ImGui::TextUnformatted("現在値");
-            ImGui::TableNextColumn();
-            ImGui::Text("%d", reportedPerformance_.particleCount);
-            ImGui::TableNextColumn();
-            ImGui::Text("%.3f ms", reportedPerformance_.cpuTimeMs);
-            ImGui::TableNextColumn();
-            ImGui::Text("%.3f ms", reportedPerformance_.gpuTimeMs);
-            ImGui::TableNextColumn();
-            ImGui::Text("%.1f", liveFps);
-            ImGui::TableNextColumn(); ImGui::Text(
-                "%.2f MB",
-                static_cast<double>(reportedPerformance_.memoryBytes) / (1024.0 * 1024.0));
-            ImGui::EndTable();
-        }
+        });
 
         ImGui::BeginDisabled(performanceMeasurementRunning_);
         ImGui::SetNextItemWidth(150.0f);
@@ -531,32 +549,9 @@ void EffectPreviewStage::DrawTimelineWindow() {
         }
 
         if (performanceMeasurementValid_) {
-            if (ImGui::BeginTable(
-                "EffectPerformanceMeasured", 6,
-                ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchSame)) {
-                ImGui::TableSetupColumn("計測結果");
-                ImGui::TableSetupColumn("粒子数");
-                ImGui::TableSetupColumn("CPU時間");
-                ImGui::TableSetupColumn("GPU時間");
-                ImGui::TableSetupColumn("FPS");
-                ImGui::TableSetupColumn("使用メモリ");
-                ImGui::TableHeadersRow();
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
+            drawPerformanceTable("EffectPerformanceMeasured", "計測結果", measuredPerformance_, measuredPerformance_.fps, [&] {
                 ImGui::Text("%dF平均", performanceSampleFrames_);
-                ImGui::TableNextColumn();
-                ImGui::Text("%d", measuredPerformance_.particleCount);
-                ImGui::TableNextColumn();
-                ImGui::Text("%.3f ms", measuredPerformance_.cpuTimeMs);
-                ImGui::TableNextColumn();
-                ImGui::Text("%.3f ms", measuredPerformance_.gpuTimeMs);
-                ImGui::TableNextColumn();
-                ImGui::Text("%.1f", measuredPerformance_.fps);
-                ImGui::TableNextColumn(); ImGui::Text(
-                    "%.2f MB",
-                    static_cast<double>(measuredPerformance_.memoryBytes) / (1024.0 * 1024.0));
-                ImGui::EndTable();
-            }
+            });
 
             const char* methodLabel = activeToolKind_ == ToolKind::CpuParticle ? "CPU更新" : "GPU更新";
             // 表示中の確定結果だけを資料へ貼れるよう、MarkdownとTSVの両形式にする。
@@ -624,7 +619,7 @@ void EffectPreviewStage::Update() {
         RestoreCameraState();
         hasPlacedCamera_ = false;
         recenterCameraRequested_ = false;
-        const engine::Vector4& sceneClearColor = LightManager::GetInstance()->GetSceneClearColor();
+        const engine::Vector4& sceneClearColor = engine::LightManager::GetInstance()->GetSceneClearColor();
         dxCommon_->SetRenderClearColor(sceneClearColor.x, sceneClearColor.y, sceneClearColor.z, sceneClearColor.w);
     }
 
@@ -649,6 +644,7 @@ void EffectPreviewStage::Update() {
             floor = FindFloor();
         }
 
+        // 中央グリッドの端より 2 ワールド単位外に床の端を置く。床とグリッドの高さは少し離し、重なりを避ける。
         stageRadius_ = (std::max)(stageRadius_, gridSpacing_ * static_cast<float>(kGridCenterIndex) + 2.0f);
         floorSize_ = stageRadius_ * 2.0f;
         const float half = stageRadius_;
@@ -681,6 +677,7 @@ void EffectPreviewStage::Update() {
         for (int i = -kOuterMajorHalfCount; i <= kOuterMajorHalfCount; ++i) {
             const int nameIndex = i + kOuterMajorHalfCount;
             const float offset = static_cast<float>(i) * 5.0f * gridSpacing_;
+            // 外周の太線は 5 区画刻み。中心の細線と重なる区間や床の外は描かない。
             const bool overlapsFineGrid = std::abs(offset) <= gridSpacing_ * static_cast<float>(kGridCenterIndex) + 0.001f;
             const bool withinStage = std::abs(offset) <= stageRadius_ + 0.001f;
 
@@ -870,7 +867,7 @@ void EffectPreviewStage::ApplyCameraOverride() {
 
 void EffectPreviewStage::PlaceCameraAtPreview() {
     // 方位角と距離から視点を作り、プレビュー中心を注視する。
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!camera)
         return;
 
@@ -878,12 +875,14 @@ void EffectPreviewStage::PlaceCameraAtPreview() {
     target.y += cameraTargetHeight_;
     constexpr float kDegreesToRadians = std::numbers::pi_v<float> / 180.0f;
     const float azimuth = cameraAzimuthDegrees_ * kDegreesToRadians;
+    // 水平距離をXZへ分解して視点を置き、高さだけY方向に加える。方位角0度は注視点の-Z側。
     engine::Vector3 eye = {
         target.x + std::sin(azimuth) * cameraDistance_,
         target.y + cameraHeight_,
         target.z - std::cos(azimuth) * cameraDistance_
     };
 
+    // 高さと水平距離から俯角をラジアンで作り、視点と注視点が同じ方向を向くようにする。
     float pitch = std::atan2(cameraHeight_, cameraDistance_);
     camera->SetFollowTarget(nullptr);
     camera->SetEye(eye);
@@ -1025,6 +1024,7 @@ void EffectPreviewStage::ApplyStudioPreset(int presetIndex) {
     studioPresetIndex_ = std::clamp(presetIndex, 0, 2);
 
     switch (studioPresetIndex_) {
+    // 明るい床と背景で、黒煙など暗色の輪郭を確認する。
     case 1:
         backgroundColor_ = { 0.42f, 0.45f, 0.50f, 1.0f };
         floorColor_ = { 0.54f, 0.56f, 0.60f, 1.0f };
@@ -1032,6 +1032,7 @@ void EffectPreviewStage::ApplyStudioPreset(int presetIndex) {
         majorGridColor_ = { 0.25f, 0.27f, 0.31f, 1.0f };
         break;
 
+    // 発光・Bloom と半透明の境界を見やすい黒背景にする。
     case 2:
         backgroundColor_ = { 0.005f, 0.006f, 0.008f, 1.0f };
         floorColor_ = { 0.025f, 0.028f, 0.035f, 1.0f };
@@ -1039,6 +1040,7 @@ void EffectPreviewStage::ApplyStudioPreset(int presetIndex) {
         majorGridColor_ = { 0.16f, 0.18f, 0.22f, 1.0f };
         break;
 
+    // 普段の比較に使う暗めの基準色。範囲外の選択もこの配色へ戻す。
     case 0:
     default:
         backgroundColor_ = { 0.095f, 0.105f, 0.125f, 1.0f };
@@ -1051,7 +1053,7 @@ void EffectPreviewStage::ApplyStudioPreset(int presetIndex) {
 
 void EffectPreviewStage::ApplyStudioLighting() {
     // 最初の適用時に Scene 側の光・Fog・Skybox を退避し、プレビュー中だけ上書きする。
-    LightManager* lightManager = LightManager::GetInstance();
+    engine::LightManager* lightManager = engine::LightManager::GetInstance();
     if (!lightManager)
         return;
 
@@ -1073,6 +1075,7 @@ void EffectPreviewStage::ApplyStudioLighting() {
         studioLightDirection_.x * studioLightDirection_.x +
         studioLightDirection_.y * studioLightDirection_.y +
         studioLightDirection_.z * studioLightDirection_.z);
+    // 光の向きだけを正規化する。ゼロに近い入力では除算せず、変更直前の向きを保つ。
     if (directionLength > 0.0001f) {
         light.direction = {
             studioLightDirection_.x / directionLength,
@@ -1099,7 +1102,7 @@ void EffectPreviewStage::RestoreStudioLighting() {
     if (!studioLightingApplied_ || !hasCapturedLighting_)
         return;
 
-    LightManager* lightManager = LightManager::GetInstance();
+    engine::LightManager* lightManager = engine::LightManager::GetInstance();
 
     if (lightManager) {
         DirectionalLight& light = lightManager->GetDirectionalLight();
@@ -1128,7 +1131,7 @@ void EffectPreviewStage::CaptureCameraState() {
     if (hasCapturedCamera_)
         return;
 
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!camera)
         return;
 
@@ -1144,7 +1147,7 @@ void EffectPreviewStage::RestoreCameraState() {
     if (!hasCapturedCamera_)
         return;
 
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
     if (camera) {
         camera->SetFollowTarget(nullptr);

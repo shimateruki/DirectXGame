@@ -24,6 +24,7 @@ struct CrownMeleeSettings {
         auto clamp = [](float& v, float lo, float hi, float fallback) {
             v = std::clamp(std::isfinite(v) ? v : fallback, lo, hi);
         };
+        // 三段で共通する範囲を使いつつ、非有限値は段ごとの既定値へ戻す。
         const CrownMeleeSettings defaults;
         for (int i = 0; i < 3; ++i) {
             clamp(duration[i], 0.30f, 1.2f, defaults.duration[i]);
@@ -31,13 +32,14 @@ struct CrownMeleeSettings {
             clamp(damage[i], 1.0f, 100.0f, defaults.damage[i]);
             clamp(hitStop[i], 0.0f, 0.09f, defaults.hitStop[i]);
         }
+        // 段をまたいで使う判定、入力受付、残光の調整値を補正する。
         clamp(radius, 0.12f, 0.65f, 0.36f);
         clamp(stepDistance, 0.0f, 0.9f, 0.45f);
         clamp(queueStart, 0.02f, 0.25f, 0.08f);
         clamp(trailWidth, 0.15f, 1.2f, 0.64f);
         clamp(trailLife, 0.06f, 0.25f, 0.14f);
     }
-    // 設定JSONを読み込む。成功可否を返し、ゲーム中のActor生成や再生は開始しない。
+    // 設定JSONを読み込む。全項目を読み取れたときだけ、補正済みの設定に差し替える。
     void Load() {
         try {
             std::ifstream in(kConfigPath);
@@ -79,6 +81,7 @@ struct CrownMeleeSettings {
 #ifdef USE_IMGUI
     void DrawEditor() {
         if (!ImGui::CollapsingHeader("覇王・近接3段コンボの設定", ImGuiTreeNodeFlags_DefaultOpen)) return;
+        // 段ごとに同じラベルを使うので、PushIDで別々の入力欄として登録する。
         const char* names[]{"1段目・横薙ぎ", "2段目・斬り上げ", "3段目・叩きつけ"};
         for (int i = 0; i < 3; ++i) {
             ImGui::PushID(i);

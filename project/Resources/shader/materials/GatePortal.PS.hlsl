@@ -131,6 +131,7 @@ float4 main(VSOutput input) : SV_TARGET
         float3 barrierNormal = normalize(input.normal);
         float cameraPlaneDistance = abs(dot(cameraWorldPosition - input.worldPos, barrierNormal));
         float cameraSurfaceFade = smoothstep(1.25f, 4.50f, cameraPlaneDistance);
+        float angleOpacity = 1.0f;
         if (mode > 3.5f)
         {
             // Distance fade is independent of the viewing angle on the curved wall.
@@ -138,8 +139,9 @@ float4 main(VSOutput input) : SV_TARGET
             float barrierRadius = length(input.worldPos.xz - barrierCenter.xz);
             bool cameraOutside = length(cameraWorldPosition.xz - barrierCenter.xz) >= barrierRadius;
             float facing = dot(barrierNormal, normalize(cameraWorldPosition - input.worldPos));
-            if (cameraOutside ? facing <= 0.0f : facing >= 0.0f)
-                discard;
+            // Soften the transition at grazing angles while keeping the opposite side hidden.
+            float visibleFacing = cameraOutside ? facing : -facing;
+            angleOpacity = smoothstep(0.0f, 0.15f, visibleFacing);
             cameraSurfaceFade = smoothstep(1.25f, 4.50f,
                 length(cameraWorldPosition - input.worldPos));
         }
@@ -170,7 +172,7 @@ float4 main(VSOutput input) : SV_TARGET
         }
         float subjectOpacity = 1.0f - CameraVisibilityMask(input.worldPos, normalize(input.normal),
             cameraWorldPosition, visibilityCenterRadius, visibilityParameters);
-        float viewOpacity = arenaOpacity * subjectOpacity;
+        float viewOpacity = arenaOpacity * subjectOpacity * angleOpacity;
 
         float2 barrierUV = p * float2(mode > 3.5f ? 20.0f : 8.0f + detail * 0.11f,
             4.2f + detail * 0.045f);

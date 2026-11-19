@@ -1,0 +1,8 @@
+{
+  "assetType": "ShaderMaterial",
+  "version": 1,
+  "id": "dash_panel_stop",
+  "displayName": "ダッシュ解除床（青）",
+  "renderPass": "opaque",
+  "pixelShader": "Resources/shader/object3d/Object3d.DashPanelStop.PS.hlsl"
+}

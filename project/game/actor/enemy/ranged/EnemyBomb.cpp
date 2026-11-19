@@ -115,6 +115,7 @@ void EnemyBomb::Update(float deltaTime) {
 
     if (!std::isfinite(deltaTime) || deltaTime < 0.0f)
         return;
+    // 休眠や撃破演出が優先される間は、追跡と導火線を共通の敵処理へ譲る。
     if (ShouldHandleDefeatEffect() || IsDormant()) {
         BaseEnemy::Update(deltaTime);
         return;
@@ -128,10 +129,12 @@ void EnemyBomb::Update(float deltaTime) {
         return;
     }
 
+    // 設置中は追跡を進め、着火後は爆発までの処理へ渡す。
     if (state_ == State::Chase)
         UpdateChase(deltaTime);
     else
         UpdateIgnited(deltaTime);
+    // 今回の更新で爆発した場合は、通常の移動や共通更新をそのフレームで止める。
     if (state_ == State::Exploded)
         return;
 
@@ -167,6 +170,7 @@ void EnemyBomb::Update(float deltaTime) {
 void EnemyBomb::UpdateBombPhysics(float deltaTime) {
     if (deltaTime <= 0.0f)
         return;
+    // 通常の敵設定を読みつつ、転がる爆弾には段差登りを適用せず、経路に沿った衝突と接地を有効にします。
     SyncCharacterMotorSettings();
     auto& motor = GetCharacterMotor();
     auto settings = motor.GetSettings();
@@ -181,6 +185,7 @@ void EnemyBomb::UpdateBombPhysics(float deltaTime) {
     const int steps = std::clamp(static_cast<int>(std::ceil(std::min(deltaTime, 0.25f) * 120.0f)), 1, 32);
     const float step = std::min(deltaTime, 0.25f) / static_cast<float>(steps);
     for (int i = 0; i < steps; ++i) {
+        // 接地中の点火済み爆弾だけ抵抗を掛け、水平速度が小さくなったら投擲中フラグを外します。
         if (IsGrounded() && state_ == State::Ignited) {
             const float keep = std::exp(-kGroundDragPerSecond * step);
             SetVelocityX(GetVelocity().x * (keep));
@@ -195,6 +200,7 @@ void EnemyBomb::UpdateBombPhysics(float deltaTime) {
                           GetParameters() ? GetParameters()->maxFallSpeed : 60.0f, step);
         SetTranslate(position);
         UpdateWorldMatrix(false);
+        // 地上の移動量を半径で割って回転角に換算し、滑るだけでなく転がって見えるようにします。
         if (IsGrounded()) {
             const float radius = std::max(0.05f, GetCollider()->GetRadius());
             auto rotation = GetRotation();
@@ -225,6 +231,7 @@ void EnemyBomb::UpdateChase(float deltaTime) {
 
     float distance = std::sqrt(toPlayer.x * toPlayer.x + toPlayer.z * toPlayer.z);
 
+    // 気付いた直後はプレイヤーへ向き直る時間を優先し、点火や追跡は次の更新へ送ります。
     if (UpdateNoticeReaction(deltaTime, distance, GetDetectionRange(), toPlayer)) {
         SetVelocityX(0.0f);
         SetVelocityZ(0.0f);
@@ -236,6 +243,7 @@ void EnemyBomb::UpdateChase(float deltaTime) {
         return;
     }
 
+    // 検知範囲を外れると徘徊に戻り、進む方向に合わせて爆弾も向きを変えます。
     if (distance > GetDetectionRange()) {
         const float wanderSpeed = GetParameters().has_value() ? (std::max)(0.35f, GetParameters().value().speed * 4.0f) : 0.55f;
         engine::Vector3 wanderVelocity = CalculateWanderVelocity(deltaTime, wanderSpeed, 0.65f);

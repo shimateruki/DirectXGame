@@ -32,6 +32,7 @@ class GimmickBlinkBlock : public BaseGimmick {
     void ApplyFlipPairAppearance();
     bool IsFlipPairModel() const;
 
+
     bool isActive_ = true;
     int colorType_ = 0; // 0: Blue, 1: Red
     bool flipPairInitialized_ = false;
@@ -44,6 +45,6 @@ class GimmickBlinkBlock : public BaseGimmick {
     float flipDuration_ = 0.48f;
     int flipFrame_ = -1;
     // 左手座標系へ変換済みの端点モデルから求めた、青・赤それぞれの床判定。
-    ColliderConfig flipPairColliders_[2]{};
+    engine::ColliderConfig flipPairColliders_[2]{};
     EventManager::SubscriptionId jumpSubscription_ = EventManager::kInvalidSubscriptionId;
 };

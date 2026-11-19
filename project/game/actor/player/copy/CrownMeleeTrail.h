@@ -13,23 +13,24 @@ class CrownMeleeTrail {
     // 帯の内外の点と経過秒数、途切れを識別する区間番号。別区間同士は接続しない。
     struct Sample { Vec inner, outer; float age; unsigned segment; };
     static constexpr size_t kCapacity = 256;
-    std::unique_ptr<Model> model_;
+    std::unique_ptr<engine::Model> model_;
     std::unique_ptr<EffectObject3D> visual_;
     std::deque<Sample> samples_;
-    std::vector<Model::VertexData> vertices_;
+    std::vector<engine::Model::VertexData> vertices_;
     float lifetime_ = 0.22f; // 一標本を残す秒数。経過した標本はTickで捨てる。
     unsigned segment_ = 0; // Breakごとに進む区間番号。技の段をまたいで帯を接続しない。
 public:
     // 能力専用の帯モデルと表示物を一度だけ生成する。common未指定なら生成しない。
     void Initialize(engine::Object3DCommon* common) {
         if (visual_ || !common) return;
+        // 連続する標本をつなぐ四角形の頂点と三角形を、最大数分だけ先に確保する。
         vertices_.resize((kCapacity - 1) * 4);
         std::vector<uint32_t> indices;
         for (uint32_t i = 0; i < kCapacity - 1; ++i) {
             const uint32_t n = i * 4;
             for (auto v : {n, n + 1, n + 2, n + 2, n + 1, n + 3}) indices.push_back(v);
         }
-        model_ = std::make_unique<Model>();
+        model_ = std::make_unique<engine::Model>();
         model_->CreateFromVertices(ModelManager::GetInstance()->GetModelCommon(), vertices_, indices);
         visual_ = std::make_unique<EffectObject3D>();
         visual_->Initialize(common);
@@ -54,15 +55,18 @@ public:
     // ワールド空間の穂先・軸・幅から一標本を追加する。ageはフレーム内で既に経過した秒数。
     void Add(Vec tip, Vec axis, float width, float age) {
         if (age >= lifetime_) return;
+        // 同じ区間で穂先がほとんど動いていなければ、重なった帯を増やさない。
         if (!samples_.empty() && samples_.back().segment == segment_ && engine::Math::Length(tip - samples_.back().outer) < 0.015f) return;
         samples_.push_back({tip - axis * width, tip, age, segment_});
         if (samples_.size() > kCapacity) samples_.pop_front();
     }
-    void Draw(ID3D12Resource* point, ID3D12Resource* spot, Camera* camera, int index) {
+    void Draw(ID3D12Resource* point, ID3D12Resource* spot, engine::Camera* camera, int index) {
         if (!visual_ || samples_.size() < 2) return;
-        Model::VertexData collapsed{};
+        // 使わなくなった区間に前フレームの帯が残らないよう、頂点を一度つぶす。
+        engine::Model::VertexData collapsed{};
         collapsed.position.w = 1.0f;
         std::fill(vertices_.begin(), vertices_.end(), collapsed);
+        // 同じ区間の連続サンプルだけを接続し、別段の攻撃を一枚の帯で繋がない。
         for (size_t i = 0; i + 1 < samples_.size(); ++i) {
             const auto& a = samples_[i];
             const auto& b = samples_[i + 1];
@@ -73,17 +77,20 @@ public:
                 const auto& pos = positions[j];
                 v.position = {pos.x, pos.y, pos.z, 1.0f};
                 v.normal = {0, 1, 0};
+                // 経過時間の割合をUVへ渡し、材質側で古い端ほど薄くできるようにする。
                 v.texcoord = {(j < 2 ? a.age : b.age) / lifetime_, float(j % 2)};
             }
         }
+        // できた帯の頂点を描画用バッファへ転送してから表示する。
         const auto& meshes = model_->GetModelData().meshes;
         if (meshes.empty() || !meshes[0].vertexResource) return;
         void* mapped = nullptr;
         const D3D12_RANGE read{0, 0};
         if (FAILED(meshes[0].vertexResource->Map(0, &read, &mapped))) return;
-        std::memcpy(mapped, vertices_.data(), vertices_.size() * sizeof(Model::VertexData));
+        std::memcpy(mapped, vertices_.data(), vertices_.size() * sizeof(engine::Model::VertexData));
         meshes[0].vertexResource->Unmap(0, nullptr);
         visual_->UpdateWorldMatrix(true);
+        // 個別の確認用カメラがある場合はその描画先を使い、通常時は現在の描画視点を再取得する。
         if (camera) visual_->DrawForCamera(camera, point, spot, index);
         else { visual_->RefreshRenderCameraData(); visual_->Draw(point, spot); }
     }

@@ -20,6 +20,7 @@ void GraphicsPipelineBuilder::SetInputLayout(const D3D12_INPUT_ELEMENT_DESC* inp
     desc_.InputLayout = { inputElements, count };
 }
 
+// シェーダーのバイト列は借用するため、呼び出し元はPSOの生成が終わるまでBlobを保持する。
 void GraphicsPipelineBuilder::SetShaders(IDxcBlob* vsBlob, IDxcBlob* psBlob) {
     // 頂点シェーダーとピクセルシェーダーのバイナリをPSOへ設定する。
     if (vsBlob)
@@ -73,11 +74,13 @@ void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
     blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
     switch (mode) {
+    // 不透明描画として背後の色を合成せず、深度も書き込みます。
     case BlendMode::None:
         blendDesc.RenderTarget[0].BlendEnable = FALSE;
         desc_.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
         break;
 
+    // 新しい色に自身のα、背景色に1−αを掛けて足します。この既定経路では深度も書き込みます。
     case BlendMode::Normal:
         blendDesc.RenderTarget[0].BlendEnable = TRUE;
         blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
@@ -89,6 +92,7 @@ void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
         desc_.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
         break;
 
+    // 背景色にαで重み付けした描画色を足し、光の重なりを表現します。
     case BlendMode::Add:
         blendDesc.RenderTarget[0].BlendEnable = TRUE;
         blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
@@ -100,6 +104,7 @@ void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
         desc_.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO; // 深度書き込みOFF
         break;
 
+    // 背景色からαで重み付けした描画色を引きます。
     case BlendMode::Subtract:
         blendDesc.RenderTarget[0].BlendEnable = TRUE;
         blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_SRC_ALPHA;
@@ -111,6 +116,7 @@ void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
         desc_.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
         break;
 
+    // 背景色へ描画色を掛けます。描画色が白なら背景はそのままです。
     case BlendMode::Multiply:
         blendDesc.RenderTarget[0].BlendEnable = TRUE;
         blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_ZERO;
@@ -122,6 +128,7 @@ void GraphicsPipelineBuilder::SetBlendMode(BlendMode mode) {
         desc_.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
         break;
 
+    // 背景の1−色を描画色に掛けて足し、明るい背景では加算を弱めます。
     case BlendMode::Screen:
         blendDesc.RenderTarget[0].BlendEnable = TRUE;
         blendDesc.RenderTarget[0].SrcBlend = D3D12_BLEND_INV_DEST_COLOR;
@@ -143,6 +150,7 @@ void GraphicsPipelineBuilder::Build(ID3D12Device* device, ID3D12PipelineState** 
     assert(SUCCEEDED(hr));
 }
 
+// PSO作成失敗を呼び出し元で扱える入口。生成を試す前に出力先を空にし、HRESULTを返す。
 HRESULT GraphicsPipelineBuilder::TryBuild(ID3D12Device* device, ID3D12PipelineState** outPipelineState) {
     if (!device || !outPipelineState)
         return E_INVALIDARG;

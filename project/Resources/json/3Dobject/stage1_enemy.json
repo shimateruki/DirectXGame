@@ -91,7 +91,7 @@
             "position": [
                 240.82467651367188,
                 12.926969528198242,
-                -42.0
+                -3.4866790771484375
             ],
             "quaternion": [
                 0.0,
@@ -204,17 +204,17 @@
             "ormMapPath": "",
             "param": {
                 "enemyType": "RingBurner",
-                "interval": 3.0,
-                "moveAmount": 10.0,
-                "ringWaveSpeed": 3.0,
-                "shakeDuration": 1.0
+                "interval": 2.299999952316284,
+                "moveAmount": 17.0,
+                "ringWaveSpeed": 2.5,
+                "shakeDuration": 0.7799999713897705
             },
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                76.0,
-                8.0,
+                84.0,
+                8.399999618530273,
                 0.0
             ],
             "quaternion": [
@@ -340,9 +340,9 @@
             ],
             "quaternion": [
                 0.0,
-                0.8042075634002686,
+                -0.7910788655281067,
                 0.0,
-                0.5943484902381897
+                -0.6117141842842102
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -351,7 +351,7 @@
             },
             "rotation": [
                 0.0,
-                1.8686820268630981,
+                -4.458044052124023,
                 0.0
             ],
             "roughness": 0.5,
@@ -458,7 +458,7 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                679.0,
+                1204.0,
                 2.0999999046325684,
                 10.5
             ],
@@ -582,7 +582,7 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                718.0,
+                1243.0,
                 0.10000000149011612,
                 -26.5
             ],
@@ -698,17 +698,17 @@
             "param": {
                 "enemyType": "RingBurner",
                 "interval": 3.0,
-                "moveAmount": 10.0,
-                "ringWaveSpeed": 3.0,
-                "shakeDuration": 1.0
+                "moveAmount": 20.0,
+                "ringWaveSpeed": 2.200000047683716,
+                "shakeDuration": 1.149999976158142
             },
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                62.240394592285156,
-                8.208473205566406,
-                -24.04391860961914
+                54.0,
+                9.0,
+                -6.0
             ],
             "quaternion": [
                 0.0,
@@ -821,18 +821,18 @@
             "ormMapPath": "",
             "param": {
                 "enemyType": "RingBurner",
-                "interval": 3.0,
-                "moveAmount": 10.0,
-                "ringWaveSpeed": 3.0,
-                "shakeDuration": 1.0
+                "interval": 2.799999952316284,
+                "moveAmount": 12.5,
+                "ringWaveSpeed": 2.4000000953674316,
+                "shakeDuration": 0.800000011920929
             },
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                28.575279235839844,
-                8.250540733337402,
-                -18.13249397277832
+                17.0,
+                8.0,
+                -17.0
             ],
             "quaternion": [
                 0.0,
@@ -945,18 +945,18 @@
             "ormMapPath": "",
             "param": {
                 "enemyType": "RingBurner",
-                "interval": 3.0,
-                "moveAmount": 10.0,
-                "ringWaveSpeed": 3.0,
-                "shakeDuration": 1.0
+                "interval": 2.0999999046325684,
+                "moveAmount": 18.0,
+                "ringWaveSpeed": 2.4000000953674316,
+                "shakeDuration": 0.8500000238418579
             },
             "parentGuid": "",
             "parentName": "",
             "particleName": "",
             "position": [
-                34.48298645019531,
-                8.269510269165039,
-                -1.8616864681243896
+                44.0,
+                9.0,
+                -17.0
             ],
             "quaternion": [
                 0.0,
@@ -1078,7 +1078,7 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                758.0,
+                1283.0,
                 1.100000023841858,
                 10.5
             ],
@@ -1202,7 +1202,7 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                758.0,
+                1283.0,
                 1.100000023841858,
                 -26.5
             ],
@@ -1326,7 +1326,7 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                798.0,
+                1323.0,
                 2.0999999046325684,
                 16.75
             ],
@@ -1450,7 +1450,7 @@
             "parentName": "",
             "particleName": "",
             "position": [
-                798.0,
+                1323.0,
                 2.0999999046325684,
                 -26.5
             ],

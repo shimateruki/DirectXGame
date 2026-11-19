@@ -75,6 +75,7 @@ void DispatchDamage(Player& player, engine::Object3D* target, float damage, cons
 // 通常形態の攻撃状態を管理します。入力受理、攻撃判定、終了時の操作復帰を別の段階として扱います。
 
 void PlayerBaseCombatController::ProcessInput(Player& player, bool attackTriggered) {
+    // 通常形態で操作できる場面だけ受け付け、敵を運搬中は投げなどの入力処理に任せます。
     if (!attackTriggered || player.IsDead() || player.IsCinematicLocked() || player.IsEnemyMorphed() ||
         player.GetCarriedEnemy()) {
         return;
@@ -86,6 +87,7 @@ void PlayerBaseCombatController::ProcessInput(Player& player, bool attackTrigger
         return;
     }
 
+    // 同じ攻撃ボタンから、接地中は体当たり、空中では踏みつけを開始します。
     if (player.IsGrounded()) {
         BeginBash(player);
     } else {
@@ -181,6 +183,7 @@ void PlayerBaseCombatController::UpdateBash(Player& player, float deltaTime) {
     player.SetIsControlActive(false);
     player.SetMoveYaw(std::atan2(direction_.x, direction_.z));
 
+    // 予備動作中は横移動を止め、満了したフレームで突進速度と開始演出を与えます。
     if (phase_ == Phase::BashWindup) {
         player.SetVelocity({0.0f, player.GetVelocity().y, 0.0f});
 
@@ -201,6 +204,7 @@ void PlayerBaseCombatController::UpdateBash(Player& player, float deltaTime) {
         return;
     }
 
+    // 突進中は時間に応じて減速しながら、前方への命中判定を毎フレーム行います。
     if (phase_ == Phase::BashActive) {
         engine::Vector3 velocity = player.GetVelocity();
         velocity.x = direction_.x * std::max(8.0f, 22.0f * (timer_ / kBashActiveDuration));
@@ -208,6 +212,7 @@ void PlayerBaseCombatController::UpdateBash(Player& player, float deltaTime) {
         player.SetVelocity(velocity);
         player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Dash, direction_);
         DamageBash(player);
+        // 突進中のしずくは命中とは別の時計で間引き、移動の軌跡を見せます。
         effectTimer_ -= deltaTime;
 
         if (effectTimer_ <= 0.0f) {
@@ -217,6 +222,7 @@ void PlayerBaseCombatController::UpdateBash(Player& player, float deltaTime) {
             effectTimer_ = 0.085f;
         }
 
+        // 突進が終わったら前進の勢いを減らし、判定を出さない復帰時間に切り替えます。
         if (timer_ <= 0.0f) {
             phase_ = Phase::BashRecovery;
             timer_ = kBashRecoveryDuration;
@@ -228,6 +234,7 @@ void PlayerBaseCombatController::UpdateBash(Player& player, float deltaTime) {
         return;
     }
 
+    // 復帰時間の満了後に、操作と次の入力処理を Finish() に渡します。
     if (timer_ <= 0.0f) {
         Finish(player);
     }
@@ -238,6 +245,7 @@ void PlayerBaseCombatController::UpdatePress(Player& player, float deltaTime) {
     timer_ -= deltaTime;
     player.SetIsControlActive(false);
 
+    // 予備動作が終わった瞬間に落下速度へ切り替え、落下区間の上限時間を設定します。
     if (phase_ == Phase::PressWindup) {
         if (timer_ <= 0.0f) {
             phase_ = Phase::PressFall;
@@ -249,6 +257,7 @@ void PlayerBaseCombatController::UpdatePress(Player& player, float deltaTime) {
         return;
     }
 
+    // 下向きの速度を保ち、着地処理より先に直接踏んだ敵を判定します。
     if (phase_ == Phase::PressFall) {
         engine::Vector3 velocity = player.GetVelocity();
         velocity.y = std::min(velocity.y, -25.0f);
@@ -258,12 +267,14 @@ void PlayerBaseCombatController::UpdatePress(Player& player, float deltaTime) {
         DamagePress(player, false);
 
         if (pressHitEnemy_) {
+            // 空中で敵に当てた場合は高く跳ね返るので、着地衝撃は発生させません。
             phase_ = Phase::PressRecovery;
             timer_ = kPressRecoveryDuration;
             player.SetVelocity({direction_.x * 2.0f, 14.0f, direction_.z * 2.0f});
             player.PlaySlimeAbilityMotion("player_base_press_land", false, 1.0f, 0.02f, 0.05f);
             player.TriggerSlimeImpulse({1.55f, 0.68f, 1.55f}, 0.14f);
         } else if (player.IsGrounded() || timer_ <= 0.0f) {
+            // 直接命中せず落下を終えた場合は広い衝撃判定を出し、低い反発で硬直へ移ります。
             DamagePress(player, true);
             VfxSequencer::PlayOneShot("player/base/player_base_press_land_cue",
                                       player.GetWorldPosition() + engine::Vector3{0.0f, 0.06f, 0.0f});
@@ -277,6 +288,7 @@ void PlayerBaseCombatController::UpdatePress(Player& player, float deltaTime) {
         return;
     }
 
+    // 復帰時間が尽きたら、入力猶予を確認する Finish() へ渡します。
     if (timer_ <= 0.0f) {
         Finish(player);
     }
@@ -338,6 +350,7 @@ void PlayerBaseCombatController::Finish(Player& player) {
         player.SetIsControlActive(true);
     }
 
+    // 今の攻撃の命中履歴とタイマーを先に消し、次の攻撃に持ち越さないようにします。
     phase_ = Phase::Idle;
     timer_ = 0.0f;
     effectTimer_ = 0.0f;

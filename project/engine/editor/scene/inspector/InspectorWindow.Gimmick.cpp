@@ -17,6 +17,7 @@ void InspectorWindow::DrawGimmickTypeSelector() {
         return type.id == object->GetGimmickType();
     });
     const std::string preview = current != types.end() ? current->displayName : object->GetGimmickType();
+    // ゲームの実行中は既存インスタンスが使われているため、型交換の操作を停止中に限ります。
     ImGui::BeginDisabled(editor_->GetSceneManager()->IsPlaying());
     if (current != types.end() && current->matches && !current->matches(*object)) {
         ImGui::TextDisabled("種類名と実クラスが一致していません。");

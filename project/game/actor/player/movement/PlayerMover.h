@@ -75,6 +75,10 @@ class PlayerMover {
     // 連続してパネルを踏んでも効果時間は短縮せず、速度だけ不足分を補う。
     void ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier);
 
+    // パネルの加速時間が残っている間だけ、疾走演出の強度を計算できる。
+    bool IsDashPanelBoostActive() const { return dashPanelTimer_ > 0.0f; }
+    void CancelDashPanelBoost();
+
   private:
 #ifdef USE_IMGUI
     friend struct PlayerLocomotionRuntimeProbe::Access;

@@ -77,7 +77,9 @@ void ProfilerManager::RecordCpuTime(const std::string& name, float timeMs) {
 
     auto& data = cpuDataMap_[name];
     data.current = timeMs;
+    // 時間はミリ秒です。現在のサンプルを10％混ぜ、グラフに残る短時間の変動を抑えます。
     data.smoothed = data.smoothed * 0.9f + timeMs * 0.1f;
+    // 要素数を増やさず、末尾の次は先頭へ戻って最も古い値を上書きします。
     data.history[data.historyIndex] = timeMs;
     data.historyIndex = (data.historyIndex + 1) % kHistorySize;
 }
@@ -151,6 +153,7 @@ void ProfilerManager::DrawImGui() {
                         ImGui::TableSetupColumn("グラフ", ImGuiTableColumnFlags_WidthStretch);
                         ImGui::TableHeadersRow();
 
+                        // カテゴリ内で最も長いロードをバーの全長にして、同じカテゴリ内の待ち時間を比べます。
                         float maxTime = 0.0f;
 
                         for (auto& record : records)
@@ -328,6 +331,7 @@ void ProfilerManager::DrawImGui() {
                     isGpuSampling_ = false;
 
                     // 平均計算
+                    // 期間内の総フレーム数ではなく、その項目を計測できた回数で割って1サンプルあたりのミリ秒を出します。
                     gpuSampleResult_.clear();
 
                     for (auto& pair : gpuSampleAccum_) {
@@ -337,7 +341,7 @@ void ProfilerManager::DrawImGui() {
             }
             else {
                 if (ImGui::Button(ICON_FA_PLAY " GPU詳細サンプリング開始 (60フレーム)", ImVec2(-1, 30))) {
-                    DirectXCommon::GetInstance()->ResetGpuProfiles(); // クエリ上限対策でリセット
+                    engine::DirectXCommon::GetInstance()->ResetGpuProfiles(); // クエリ上限対策でリセット
                     StartGpuSampling();
                 }
             }
@@ -400,6 +404,7 @@ void ProfilerManager::DrawImGui() {
                     ImGui::TableHeadersRow();
 
                     auto& objects = *currentObjects_;
+                    // 表の並び替えは借用ポインタの配列で行い、シーンの所有配列と更新順は維持します。
                     std::vector<engine::Object3D*> sortedList;
 
                     for (auto& obj : objects)
@@ -484,7 +489,7 @@ void ProfilerManager::DrawImGui() {
                             ImGui::Spacing();
                             
                             // モデル情報の取得
-                            Model* model = obj->GetModel();
+                            engine::Model* model = obj->GetModel();
                             
                             ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), ICON_FA_CUBE " モデルスペック (GPU負荷要因)");
 

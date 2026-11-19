@@ -95,6 +95,7 @@ bool OpenShellPath(const fs::path& path) {
     const fs::path normalized = fs::absolute(path).lexically_normal();
     const std::wstring widePath = normalized.wstring();
     HINSTANCE result = ShellExecuteW(nullptr, L"open", widePath.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+    // ShellExecuteW は 32 以下をエラーコードとして返す。
     return reinterpret_cast<std::intptr_t>(result) > 32;
 }
 
@@ -299,6 +300,7 @@ bool IsPathInside(const fs::path& child, const fs::path& parent) {
 }
 
 // キャッシュ・ゴミ箱・toolsなど、エディタから削除してはいけないパスを保護する。
+// 通常アセットだけを削除候補にし、キャッシュや退避領域をペア探索からも除外する。
 bool IsProtectedAssetPath(const std::string& relativePath) {
     const std::string lower = ToLowerAscii(NormalizeSlash(relativePath));
     if (lower.empty())
@@ -750,6 +752,7 @@ void AssetAuditWindow::DrawImGui() {
         ImGui::EndTabBar();
     }
 
+    // 一覧の行で受けた削除要求を、タブの内容を描き終えてから確認ダイアログへ渡す。
     if (pendingDeletePopupRequested_) {
         pendingDeletePopupRequested_ = false;
         ImGui::OpenPopup("AssetAuditDeleteConfirm");
@@ -775,6 +778,7 @@ void AssetAuditWindow::UpdateAuditProcess() {
         return;
     }
 
+    // ワーカーの起動失敗とスクリプトの異常終了を区別し、正常終了時だけ生成結果を読む。
     const std::uint32_t exitCode = auditFuture_.get();
     auditRunning_ = false;
 
@@ -935,6 +939,22 @@ void AssetAuditWindow::DrawCategorySummary() {
 #endif
 }
 
+#ifdef USE_IMGUI
+namespace {
+// 横スクロール表では省略表示、幅に合わせる表ではパスを折り返す。サイズ欄は両表で共通。
+void DrawAssetPathAndSize(const nlohmann::json& item, const std::string& path, bool wrapPath) {
+    ImGui::TableSetColumnIndex(1);
+    if (wrapPath) {
+        ImGui::TextWrapped("%s", path.c_str());
+    } else {
+        DrawSingleLineCellText(path);
+    }
+    ImGui::TableSetColumnIndex(2);
+    ImGui::TextUnformatted(JsonString(item, "sizeText").c_str());
+}
+}
+#endif
+
 // 容量や解像度が大きいアセットを一覧表示し、最適化候補を探しやすくする。
 void AssetAuditWindow::DrawHeavyAssets() {
 #ifdef USE_IMGUI
@@ -982,10 +1002,7 @@ void AssetAuditWindow::DrawHeavyAssets() {
                 ImGui::TextUnformatted(GetCategoryLabel(JsonString(item, "category")).c_str());
             }
 
-            ImGui::TableSetColumnIndex(1);
-            DrawSingleLineCellText(JsonString(item, "path"));
-            ImGui::TableSetColumnIndex(2);
-            ImGui::TextUnformatted(JsonString(item, "sizeText").c_str());
+            DrawAssetPathAndSize(item, JsonString(item, "path"), false);
             ImGui::TableSetColumnIndex(3);
             ImGui::TextUnformatted(BuildHeavyAssetDetailText(item).c_str());
             ImGui::TableSetColumnIndex(4);
@@ -1036,16 +1053,14 @@ void AssetAuditWindow::DrawUnusedAssets() {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
             DrawAssetCategoryBadge(item);
-            ImGui::TableSetColumnIndex(1);
-            ImGui::TextWrapped("%s", path.c_str());
-            ImGui::TableSetColumnIndex(2);
-            ImGui::TextUnformatted(JsonString(item, "sizeText").c_str());
+            DrawAssetPathAndSize(item, path, true);
             ImGui::TableSetColumnIndex(3);
             ImGui::TextWrapped("%s", JsonString(item, "reason").c_str());
             ImGui::TableSetColumnIndex(4);
             ImGui::PushID(path.c_str());
 
             if (ImGui::Button(ICON_FA_TRASH_ALT " 削除", ImVec2(-1.0f, 0.0f))) {
+                // 行のボタンでは対象を記録し、実際の削除は確認ダイアログで承認されるまで待つ。
                 pendingDeletePath_ = path;
                 pendingDeletePopupRequested_ = true;
             }
@@ -1267,6 +1282,7 @@ void AssetAuditWindow::CreateModelPreview(const std::string& relativePath) {
         return;
     }
 
+    // 独立プレビューを使えるときは、その空間に配置してカメラを合わせる。
     engine::Vector3 origin = { 0.0f, 2.0f, 0.0f };
     EffectPreviewStage* stage = EffectPreviewStage::GetInstance();
 
@@ -1289,6 +1305,7 @@ void AssetAuditWindow::CreateModelPreview(const std::string& relativePath) {
     object->SetCollisionAttribute(0);
     object->SetCollisionMask(0);
     object->SetModel(modelName);
+    // すでに確認中のモデルと重ねず、ワールド X 方向に一体あたり 3 単位ずらす。
     object->SetTranslate({
         origin.x + static_cast<float>(previewIndex) * 3.0f,
         origin.y,
@@ -1299,6 +1316,7 @@ void AssetAuditWindow::CreateModelPreview(const std::string& relativePath) {
     object->UpdateWorldMatrix();
 
     engine::Object3D* rawObject = object.get();
+    // シーンへ所有権を移し、直後に配置済みObjectをエディターの選択対象にする。
     scene->AddObjectImmediate(std::move(object));
     editor_->SetSelectedObject(rawObject);
     EditorManager::GetInstance()->SetSelectedObject(editor_);
@@ -1369,6 +1387,7 @@ void AssetAuditWindow::DrawAssetPreview(const nlohmann::json& item, float size) 
             return;
         }
 
+        // 一覧サイズと拡大ツールチップは同じGPUディスクリプターを参照する。
         uint32_t handle = GetPreviewTextureHandle(path);
 
         if (handle != 0) {
@@ -1385,6 +1404,7 @@ void AssetAuditWindow::DrawAssetPreview(const nlohmann::json& item, float size) 
             ImGui::TextDisabled("画像なし");
         }
     } else if (IsAudioAssetPath(path)) {
+        // カテゴリとパスからBGMを判別し、単発のSEとは別の試聴操作を表示する。
         const bool isBgm = IsBgmCategory(category, path);
 
         if (ImGui::Button(isBgm ? "BGM試聴" : "SE試聴", ImVec2(-1.0f, 0.0f))) {
@@ -1397,6 +1417,7 @@ void AssetAuditWindow::DrawAssetPreview(const nlohmann::json& item, float size) 
             }
         }
     } else if (IsModelAssetPath(path)) {
+        // 3Dモデルは画像として読み込まず、一時Objectを配置してGame Viewで確認する。
         if (ImGui::Button("3D確認", ImVec2(-1.0f, 0.0f))) {
             CreateModelPreview(path);
         }
@@ -1419,7 +1440,7 @@ void AssetAuditWindow::DrawAssetPreview(const nlohmann::json& item, float size) 
 
 // 保護パスとResources配下を確認したうえで、本体と相方ファイルを完全削除する。
 bool AssetAuditWindow::DeleteAssetFiles(const std::string& relativePath, std::vector<std::string>& deletedPaths, std::string& errorMessage) {
-    // 相対パスと実体の両方を検査し、Resources 外のファイルを削除しない。
+    // 相対パスの保護条件、通常ファイルの存在、正規化したパスの Resources 境界を順に検査する。
     deletedPaths.clear();
     errorMessage.clear();
 
@@ -1456,6 +1477,7 @@ bool AssetAuditWindow::DeleteAssetFiles(const std::string& relativePath, std::ve
         for (const fs::path& target : targets) {
             const std::string deletedPath = RelativeToProjectSlash(target);
 
+            // 削除が成立したパスだけを一覧の更新対象にする。途中で例外が出た場合、削除済みのファイルは復元しない。
             if (fs::remove(target)) {
                 deletedPaths.push_back(deletedPath);
             }
@@ -1493,6 +1515,7 @@ void AssetAuditWindow::RemoveDeletedAssetsFromReport(const std::vector<std::stri
         }), array.end());
     };
 
+    // 未使用一覧と容量警告一覧から実際に削除した項目を除き、未使用の件数と容量を計算し直す。
     removeFromArray("unusedAssets");
     removeFromArray("heavyAssets");
 

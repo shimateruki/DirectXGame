@@ -136,6 +136,7 @@ bool SaveCategories(const std::vector<CollisionCategoryDefinition>& definitions)
     root["categories"] = nlohmann::json::array();
 
     for (const auto& definition : definitions) {
+        // 実行時の1ビットのマスクを、保存形式が持つ0～31の位置に戻す。
         unsigned index = 0;
         while ((definition.bit >> index) != 1u)
             ++index;
@@ -166,6 +167,7 @@ bool SaveCategories(const std::vector<CollisionCategoryDefinition>& definitions)
 
 uint32_t CollisionCategories::Get(std::string_view id) {
     const auto& lookup = Categories().bitsById;
+    // 登録がないIDはマスク値0を返す。どのビットも立たないため、呼び出し元がORで合成しても結果を変えない。
     const auto it = lookup.find(id);
     return it == lookup.end() ? 0 : it->second;
 }
@@ -210,6 +212,7 @@ bool CollisionCategories::Add(const std::string& id, const std::string& displayN
 
     if (freeBit == 0)
         return fail("32個の衝突カテゴリを使い切っています。");
+    // 保存が失敗した場合に既存マスクを変えないよう、追加を適用したコピーだけを保存へ渡す。
     auto updated = definitions;
     updated.push_back({id, displayName, freeBit});
     if (!SaveCategories(updated))
@@ -343,6 +346,7 @@ CollisionInfo CheckSphereCollision(
         info.isColliding = true;
         info.penetration = penetration;
 
+        // 中心がほぼ一致すると法線を正規化できないため、押し出し方向を +X に固定する。
         if (distance > 0.001f) {
             info.normal = (vecAtoB / distance) * -1.0f;
         } else {
@@ -368,6 +372,7 @@ CollisionInfo CheckSphereAabbCollision(
         math.Clamp(spherePos.z, aabb.min.z, aabb.max.z)
     };
 
+    // 距離二乗と半径二乗を先に比較し、軸方向が必要な接触時だけ平方根を求める。
     const engine::Vector3 difference = spherePos - closestPoint;
     const float distanceSq = math.Dot(difference, difference);
 
@@ -379,6 +384,7 @@ CollisionInfo CheckSphereAabbCollision(
             info.penetration = sphereRadius - distance;
             info.normal = (spherePos - closestPoint) / distance;
         } else {
+            // 最近接点との差が微小なときは、箱の中心から球の中心へ向かう方向を使う。
             engine::Vector3 aabbCenter = (aabb.min + aabb.max) * 0.5f;
             engine::Vector3 vecToCenter = aabbCenter - spherePos;
 
@@ -505,6 +511,7 @@ CollisionInfo CheckObbCollision(const Obb& a, const Obb& b) {
         }
     }
 
+    // 中心の差をAの座標系へ移し、B軸や外積軸へ射影するときも使い回す。
     engine::Vector3 tVec = b.center - a.center;
     float tA[3] = {
         math.Dot(tVec, a.orientations[0]),
@@ -570,6 +577,7 @@ CollisionInfo CheckObbCollision(const Obb& a, const Obb& b) {
             if (overlap <= 0.0f)
                 return info;
 
+            // 外積軸の投影値を軸の長さで割り、箱の各軸で求めたワールド距離と比較できるようにする。
             overlap /= axisLen; // 実際の長さに補正
 
             if (overlap < minOverlap) {
@@ -634,6 +642,7 @@ CollisionInfo CheckRingSphereCollision(const Ring& ring, const engine::Vector3& 
         closestPointOnAnnulus = ring.center;
 
         if (ring.innerRadius > 0.0f) {
+            // 球の中心がリングの軸上にある場合、穴の内周へ向かう任意の接線方向を選ぶ。
             engine::Vector3 axis = { 1, 0, 0 };
 
             if (std::abs(math.Dot(axis, ring.normal)) > 0.99f)
@@ -678,6 +687,7 @@ CollisionInfo CheckRingObbCollision(const Ring& ring, const Obb& obb) {
     // あるいは、球としての判定に飛ばす（OBBのサイズを考慮した球として）
     // ここでは一番シンプルな「中心点への最短距離」ベース
     engine::Math math;
+    // OBBの半寸法ベクトルの長さは中心から隅までの距離。これを半径にした外接球で近似する。
     return CheckRingSphereCollision(ring, obb.center, math.Length(obb.size)); 
 }
 
@@ -700,6 +710,7 @@ CollisionInfo CheckCylinderSphereCollision(const Cylinder& cyl, const engine::Ve
     engine::Vector3 diff = spherePos - P;
     float distanceValue = math.Length(diff);
 
+    // 切り詰めた軸上の線分に半径を持たせるため、端付近は平面より丸い接触範囲になる。
     if (distanceValue <= cyl.radius + sphereRadius) {
         info.isColliding = true;
         info.penetration = (cyl.radius + sphereRadius) - distanceValue;
@@ -728,6 +739,7 @@ CollisionInfo CheckCylinderObbCollision(const Cylinder& cyl, const Obb& obb) {
     // axisと直交する2軸を作る
     engine::Vector3 axisX = { 1, 0, 0 };
 
+    // 基準Xと円柱軸がほぼ平行ならZを選び、外積がゼロに近づくのを防ぐ。
     if (std::abs(math.Dot(axisX, cyl.axis)) > 0.99f)
         axisX = { 0, 0, 1 };
     cylObb.orientations[0] = math.Normalize(math.Cross(cyl.axis, axisX));

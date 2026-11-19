@@ -42,6 +42,7 @@ void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
 
     targetSystem_->SetEditorPreviewOffset(previewStage->GetPreviewPosition());
     const auto& params = targetSystem_->GetEmitterParams();
+    // プレビューは短い粒子でも最低 3 秒確保し、長い素材では粒子寿命の後にも消滅を見られる余白を足す。
     const float duration = (std::max)(3.0f, params.particleLifetime + 0.75f);
 
     const auto restartPreview = [&](float seekTime) {
@@ -87,6 +88,7 @@ void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
     const float effectiveSpeed = previewStage->GetPlaybackSpeed();
     targetSystem_->SetSimulationTimeScale(effectiveSpeed);
 
+    // ゲーム実行時はシーンが粒子を更新する。エディターから二重に更新するのは避ける。
     if (!sceneIsPlaying && effectiveSpeed > 0.0f) {
         targetSystem_->Update(deltaTime);
     }
@@ -94,6 +96,7 @@ void ParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
     if (effectiveSpeed > 0.0f) {
         previewTime_ += deltaTime * effectiveSpeed;
 
+        // ループ終端では粒子実体もリセットして先頭へ戻し、シーク再計算で一時的に変えた倍率を戻す。
         if (previewStage->IsLoopEnabled() && previewTime_ >= duration) {
             restartPreview(0.0f);
             targetSystem_->SetSimulationTimeScale(effectiveSpeed);
@@ -163,7 +166,7 @@ void EditCurve(const char* label, float* values, int count, float minVal, float 
             // マウスのY位置から値を計算
             float mouseY = io.MousePos.y - ImGui::GetItemRectMin().y;
 
-            // Y軸は上がMin、下がMaxになっていることが多いので反転して正規化
+            // 画面の Y は下向き。上端を最大値、下端を最小値へ対応させるため割合を反転する。
             float normalizedY = 1.0f - (mouseY / graphSize.y);
 
             // 値を更新
@@ -295,6 +298,7 @@ void ParticleEditor::DrawImGui() {
         ImGui::SeparatorText("共通Curve / Gradient");
         const engine::ParticleSystem::EmitterParams beforeAuthoringToggle = params;
 
+        // 旧カーブから新形式へ切り替えた初回だけ、空のキーを既存の 10 点と始終色から補う。既に作った新キーは残す。
         if (ImGui::Checkbox("Authoring Curveを使用", &params.useAuthoringCurves)) {
             if (params.useAuthoringCurves) {
                 if (params.sizeOverLife.keys.empty()) {
@@ -352,6 +356,7 @@ void ParticleEditor::DrawImGui() {
                     continue;
                 }
 
+                // 一覧は素材ルート相対で表示する。旧保存の相対表記も現在選択として認識し、新しく選ぶときはルートを含むパスを設定する。
                 std::string relativePath = fs::relative(entry.path(), directoryPath).generic_string();
                 files.push_back(relativePath);
             }
@@ -400,6 +405,7 @@ void ParticleEditor::DrawImGui() {
 
     files_.Draw("パーティクルJSONファイル", "Resources/json/particle",
         [&](const fs::path& path) {
+            // 読み込んだパラメーターのうち GPU に使う画像は先にシステムへ適用し、残りは関数末尾で反映する。
             if (!ParticleManager::ReadParamFile(path, params)) return false;
             targetSystem->SetTexture(params.textureName);
             return true;
@@ -412,6 +418,7 @@ void ParticleEditor::DrawImGui() {
         [&](const fs::path& relative) {
             auto stem = relative;
             const auto key = stem.replace_extension().generic_u8string();
+            // 保存後のキャッシュも更新する。別パネルが同じ相対キーを参照しても古い発生設定が残らない。
             ParticleManager::GetInstance()->GetParam(std::string(key.begin(), key.end())) = params;
         });
 

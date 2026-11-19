@@ -490,6 +490,7 @@ bool EditorPropertyRegistry::Register(EditorPropertyDescriptor descriptor) {
         descriptor.ui = ResolveUiHints(descriptor.path, descriptor.type);
     }
 
+    // 所属先があることを確認してから登録する。Inspector が所属 Component ごとに項目を取り出せるようにする。
     if (!FindComponent(descriptor.componentTypeId)) {
         return false;
     }
@@ -536,6 +537,7 @@ std::vector<const EditorComponentDescriptor*> EditorPropertyRegistry::GetApplica
         }
     }
 
+    // 表示順が同じ Component は登録順を維持し、Inspector 内の並びを安定させる。
     std::stable_sort(result.begin(), result.end(), [](const auto* left, const auto* right) {
         return left->displayOrder < right->displayOrder;
     });
@@ -546,6 +548,7 @@ std::vector<const EditorComponentDescriptor*> EditorPropertyRegistry::GetCompone
     const engine::Object3D* object) const {
     std::vector<const EditorComponentDescriptor*> result;
 
+    // 追加候補にもなり得る適用可能一覧から、対象 Object に実際に存在する Component だけを抜き出す。
     for (const EditorComponentDescriptor* component : GetApplicableComponentsForObject(object)) {
         if (component && (!component->present || component->present(*object))) {
             result.push_back(component);
@@ -557,6 +560,7 @@ std::vector<const EditorComponentDescriptor*> EditorPropertyRegistry::GetCompone
 
 std::vector<const EditorPropertyDescriptor*> EditorPropertyRegistry::GetPropertiesForComponent(
     const std::string& typeId) const {
+    // 登録順に抽出する。Inspector の入力欄はこの順を使い、取得結果は台帳内の定義を借用する。
     std::vector<const EditorPropertyDescriptor*> result;
 
     for (const EditorPropertyDescriptor& property : properties_) {
@@ -603,6 +607,7 @@ bool EditorPropertyRegistry::SetComponentPresent(
         return false;
     }
 
+    // 編集データの存在マーカーと、その形式が必要とする関連フィールドを更新する。既に生成済みの実体を変更する処理は AddComponent または RemoveComponent が担当する。
     component->setSerializedPresent(serializedObject, present);
     return true;
 }

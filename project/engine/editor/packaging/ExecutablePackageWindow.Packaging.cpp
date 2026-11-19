@@ -588,6 +588,7 @@ bool LoadUnusedResourcePaths(
         return false;
     }
 
+    // 監査レポートのパスを、コピー時に照合するResources相対の小文字表記へ変換します。
     auto registerPath = [&unusedPaths](const std::string& utf8Path) {
         fs::path path = PathFromUtf8(utf8Path);
         std::wstring normalized = ToLowerWide(path.generic_wstring());
@@ -604,6 +605,7 @@ bool LoadUnusedResourcePaths(
         }
 
         unusedPaths.insert(normalized);
+        // 本体を配布対象から外すときは、対応する.metaも除外候補に含めます。
         unusedPaths.insert(normalized + L".meta");
     };
 
@@ -748,6 +750,7 @@ bool CopyDirectoryFiltered(
         const std::wstring extension = ToLowerWide(file.relative.extension().wstring());
         const auto pairIt = texturePairs.find(GetTexturePairKey(file.relative));
         const uint8_t pairFlags = pairIt == texturePairs.end() ? 0 : pairIt->second;
+        // 同じ相対フォルダーに両拡張子が揃う場合だけ軽量化します。片方しかない素材は実行時に必要なので保持します。
         const bool hasPair = (pairFlags & kHasDds) != 0 && (pairFlags & kHasPng) != 0;
         const bool omitForCompact = textureMode == TexturePackageMode::CompactPng && extension == L".dds" && hasPair;
         const bool omitForFast = textureMode == TexturePackageMode::FastDds && extension == L".png" && hasPair;
@@ -1190,6 +1193,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
         }
 
         if (fs::exists(previous, ec)) {
+            // 正式版がない場合は前回の退避を戻します。正式版が残っていれば退避分だけを整理します。
             if (!fs::exists(destination, ec)) {
                 fs::rename(previous, destination, ec);
             } else {
@@ -1207,6 +1211,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
             return makeResult(false, "一時出力先を作成できません: " + PathToUtf8(staging));
         }
 
+        // 途中で失敗したら作業用フォルダーだけを片付けます。正式名へ移し終えた場合はその削除予約を解除します。
         ScopedDirectoryCleanup stagingCleanup(staging);
 
         const fs::path runtimeDestination = request.includeProject
@@ -1335,6 +1340,7 @@ ExecutablePackageWindow::PackageResult ExecutablePackageWindow::RunPackageTask(c
 
         if (ec) {
             if (hadPreviousSet) {
+                // 新しいフォルダーを正式名へ移せなかった場合に、退避済みの旧版を元の名前へ戻します。
                 std::error_code restoreError;
                 fs::rename(previous, destination, restoreError);
             }

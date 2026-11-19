@@ -10,6 +10,9 @@
 // 主な入口：Get / Load / Save / HandleShortcuts / DrawToolsMenu
 class EditorToolSettings {
 public:
+    // 補助表示の分類。保存時は従来どおり項目のIDだけを使う。
+    enum class VisibilityGroup { CollisionEvents, SceneEditing, Camera, AnimationEffects, Diagnostics };
+
     static EditorToolSettings& Get();
 
     // 登録したEditorツールと表示状態の管理情報を初期化する。
@@ -20,10 +23,10 @@ public:
         std::function<void()> open, std::function<bool()> available);
 
     // value は登録中ずっと有効である必要がある。所有先が短命ならポインタなし版を使う。
-    void AddVisibility(const std::string& id, const std::string& name, bool* value);
+    void AddVisibility(VisibilityGroup group, const std::string& id, const std::string& name, bool* value);
 
     // 可視性フラグをこの設定オブジェクト内で所有する。
-    void AddVisibility(const std::string& id, const std::string& name);
+    void AddVisibility(VisibilityGroup group, const std::string& id, const std::string& name);
 
     // 描画時にも確認し、別パネルからの変更で一時非表示が解除されるのを防ぎます。
     bool IsVisible(const std::string& id) const;
@@ -63,6 +66,7 @@ private:
     // 外部の表示フラグを借用し、一括非表示の解除時に beforeHide へ戻す。
     // 関連：EditorToolSettings（この型を使う機能の本体）
     struct Visibility {
+        VisibilityGroup group;
         std::string id, name;
         bool* value;
         bool beforeHide = false;

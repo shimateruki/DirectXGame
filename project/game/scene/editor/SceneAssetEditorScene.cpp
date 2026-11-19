@@ -55,9 +55,10 @@ SceneLoadManifest SceneAssetEditorScene::BuildAsyncLoadManifest() const {
 
 void SceneAssetEditorScene::Initialize() {
     // シーン資産を単独で編集できるよう、ゲーム本編と同じ表示基盤をこの場で初期化します。
-    dxCommon_ = DirectXCommon::GetInstance();
+    dxCommon_ = engine::DirectXCommon::GetInstance();
     inputManager_ = engine::InputManager::GetInstance();
 
+    // カメラと粒子の共通管理へシーンの入力・描画基盤を接続します。
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);
 
@@ -67,6 +68,7 @@ void SceneAssetEditorScene::Initialize() {
     ParticleManager::GetInstance()->Initialize(particleSystem_.get());
     LightEditor::GetInstance()->SetObject3DCommon(GetObject3DCommon());
 
+    // オブジェクトと配置ファイルの管理を用意し、編集シーンで使う弾の衝突管理も接続します。
     objectManager_ = std::make_unique<ObjectManager>();
     levelLoader_ = std::make_unique<LevelLoader>();
     BulletManager::GetInstance()->Initialize(GetObject3DCommon(), CollisionManager::GetInstance());
@@ -82,6 +84,7 @@ void SceneAssetEditorScene::Initialize() {
     const std::string objectLayoutPath = GetSceneManager() ? GetSceneManager()->GetEditorSceneAssetObjectPath() : std::string();
     const std::string spriteLayoutPath = GetSceneManager() ? GetSceneManager()->GetEditorSceneAssetSpritePath() : std::string();
 
+    // 配置元がない新規シーンにも保存用の仮ファイル名を持たせます。
     if (!objectLayoutPath.empty() && fs::exists(objectLayoutPath)) {
         levelLoader_->LoadObjectLayout(this, objectLayoutPath);
     } else {
@@ -92,7 +95,8 @@ void SceneAssetEditorScene::Initialize() {
         levelLoader_->LoadSpriteLayout(this, spriteLayoutPath);
     }
 
-    LightManager::GetInstance()->LoadState(ResolveSceneLightPath("Resources/json/light/light_layout.json"));
+    // 配置を展開した後でライトとカメラの設定を読み、ゲーム用操作から編集用カメラへ切り替えます。
+    engine::LightManager::GetInstance()->LoadState(ResolveSceneLightPath("Resources/json/light/light_layout.json"));
     CameraEditor::GetInstance()->Initialize();
     CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("game_camera.json"));
     CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Editor);
@@ -117,6 +121,7 @@ void SceneAssetEditorScene::Update(float deltaTime) {
     CameraEditor::GetInstance()->Update(player_, false);
     CameraManager::GetInstance()->Update(deltaTime);
 
+    // ビューの設定を反映した後に、配置物・CPU粒子・GPU粒子・Spriteを順に更新します。
     if (objectManager_) {
         objectManager_->Update(deltaTime);
     }
@@ -133,6 +138,7 @@ void SceneAssetEditorScene::Update(float deltaTime) {
         }
     }
 
+    // 弾の位置を進めた後で、このフレームの接触を計算します。
     BulletManager::GetInstance()->Update(deltaTime);
     CollisionManager::GetInstance()->Update();
 }
@@ -143,15 +149,17 @@ void SceneAssetEditorScene::Draw() {
         return;
     }
 
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
-    if (skybox_ && camera && LightManager::GetInstance()->IsSkyboxEnabled()) {
-        skybox_->SetTextureHandle(LightManager::GetInstance()->GetSkyboxTextureHandle());
+    // 有効な空だけ先に描き、以降の配置物の背後へ置きます。
+    if (skybox_ && camera && engine::LightManager::GetInstance()->IsSkyboxEnabled()) {
+        skybox_->SetTextureHandle(engine::LightManager::GetInstance()->GetSkyboxTextureHandle());
         skybox_->Draw(camera->GetConstantBuffer());
     }
 
-    ID3D12Resource* pointLight = LightManager::GetInstance()->GetPointLightResource();
-    ID3D12Resource* spotLight = LightManager::GetInstance()->GetSpotLightResource();
+    // 通常の3Dパスでライト付きの配置物・予兆・弾を描き、ライトの編集表示も重ねます。
+    ID3D12Resource* pointLight = engine::LightManager::GetInstance()->GetPointLightResource();
+    ID3D12Resource* spotLight = engine::LightManager::GetInstance()->GetSpotLightResource();
     GetObject3DCommon()->SetGraphicsCommand();
     objectManager_->Draw(pointLight, spotLight);
     DrawEnemyTelegraphs(*this, pointLight, spotLight);
@@ -162,6 +170,7 @@ void SceneAssetEditorScene::Draw() {
         particleSystem_->Draw();
     }
 
+    // 霧、特殊材質、GPU粒子の順に描き、背景を使う後段へ画面コピーの状態を渡します。
     auto& objects = objectManager_->GetObjects();
     DrawLocalFogObjects(objects, player_, false);
     bool grabUpdated = DrawSpecialMaterialObjects(objects, BulletManager::GetInstance(), player_, false);
@@ -176,6 +185,7 @@ void SceneAssetEditorScene::Draw() {
         }
     }
 
+    // カメラのプレビュー外で、付属エフェクトが必要なフレームだけ画面コピーを補います。
     if (!dxCommon_->IsCameraPreviewRendering() && hasAttachedEffects) {
         if (!grabUpdated) {
             dxCommon_->UpdateGrabTexture();

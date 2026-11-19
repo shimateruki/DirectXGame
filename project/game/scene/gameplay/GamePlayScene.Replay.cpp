@@ -29,6 +29,7 @@ std::unique_ptr<engine::Object3D> GamePlayScene::CreateReplayObject(const json& 
     const std::string itemType = descriptor.value("itemType", std::string{});
     std::unique_ptr<engine::Object3D> object;
 
+    // 型ごとの生成器を使います。敵とアイテムで記録と違う代替品になった場合は復元を中止します。
     if (!enemyType.empty()) {
         object = EnemyFactory::GetInstance()->CreateEnemy(enemyType, common);
 
@@ -48,6 +49,7 @@ std::unique_ptr<engine::Object3D> GamePlayScene::CreateReplayObject(const json& 
         object->Initialize(common);
     }
 
+    // 対応する実体を用意できた場合だけ、再識別に使う名前や保存区分を記録から戻します。
     if (!object) {
         return nullptr;
     }
@@ -78,6 +80,7 @@ void GamePlayScene::CollectReplaySprites(std::vector<engine::Sprite*>& replaySpr
         }
     };
 
+    // シーンが直接持つロックオン表示とゴール演出を追加します。
     add(lockOnSprite_.get());
     add(goalOverlayFlash_.get());
     add(goalOverlayReturnText_.get());
@@ -90,6 +93,7 @@ void GamePlayScene::CollectReplaySprites(std::vector<engine::Sprite*>& replaySpr
         add(sparkle.get());
     }
 
+    // 各オーバーレイが持つ要素は、そのオーバーレイ自身に列挙を任せます。
     if (pauseMenuOverlay_) {
         pauseMenuOverlay_->CollectReplaySprites(replaySprites);
     }
@@ -123,6 +127,7 @@ void GamePlayScene::CaptureReplaySceneState(json& state) const {
     if (saveIndicatorOverlay_)
         saveIndicatorOverlay_->CaptureReplayState(saveIndicatorState);
 
+    // 冠の位置だけでなくばねの速度、ゴールの再生時刻、HUDの残り時間を保ち、シーク後の動きを揃えます。
     const auto spring = goalCinematicPlayer_.GetSpringState("goalCrown");
     state = {
         {"goal",
@@ -178,6 +183,7 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
         return;
     }
 
+    // 欠けたばね成分をゼロで上書きしないよう、記録が三成分を持つときだけベクトルを戻します。
     auto restoreVector3 = [](const json& object, const char* key, engine::Vector3& value) {
         const auto found = object.find(key);
 
@@ -192,6 +198,7 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
         // 冠のばね位置だけでなく速度も戻し、シーク直後の跳ね方を記録時と揃える。
         isGoal_ = goal.value("active", isGoal_);
         goalWasStageCleared_ = goal.value("wasStageCleared", goalWasStageCleared_);
+        // 記録の数値を有効な列挙値に収めてから、ゴール演出の経過秒を時計に戻す。
         const int stateValue = std::clamp(goal.value("state", static_cast<int>(goalPresentationState_)), 0, 3);
         goalPresentationState_ = static_cast<GoalPresentationState>(stateValue);
         goalPresentationTimer_.Seek(goal.value("timer", goalPresentationTimer_.Elapsed()));
@@ -212,6 +219,7 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
         if (goalCinematicTimelineLoaded_ && isGoal_ && goalPresentationState_ != GoalPresentationState::Inactive) {
             // 演出の時刻と再生/停止を別々に復元し、停止中のフレームへも戻せるようにする。
             const bool shouldPlay = goal.value("cinematicPlaying", goalCinematicPlayer_.IsPlaying());
+            // 復元した秒数へ移動するときのfalseは、通過したイベントをもう一度発火させないために使う。
             goalCinematicPlayer_.SetTime(goalPresentationTimer_.Elapsed(), false);
 
             if (shouldPlay && !goalCinematicPlayer_.IsPlaying()) {
@@ -220,9 +228,11 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
                 goalCinematicPlayer_.Pause();
             }
         }
+        // 再生器の時刻と動作状態を合わせた後、ばねの位置・速度を戻して次の更新へ渡す。
         goalCinematicPlayer_.RestoreSpringState("goalCrown", spring);
     }
 
+    // スター表示は配列の重なる範囲だけ更新し、旧記録や表示個数の違いを許容します。
     if (const auto found = state.find("hud"); found != state.end() && found->is_object()) {
         const json& hud = *found;
 
@@ -242,6 +252,7 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
         hudCoinPulseTimer_ = hud.value("coinPulseTimer", hudCoinPulseTimer_);
         hudPreviousLives_ = hud.value("previousLives", hudPreviousLives_);
         hudPreviousCoins_ = hud.value("previousCoins", hudPreviousCoins_);
+        // 直前HPと遅延帯、肖像の被弾タイマーを揃え、再開直後に差分を被弾と取り違えないようにする。
         healthHud_.State().previousHp = hud.value("previousHp", healthHud_.State().previousHp);
         healthHud_.State().damagePulseTimer = hud.value("damagePulseTimer", healthHud_.State().damagePulseTimer);
         healthHud_.State().hurtIconTimer = hud.value("hurtIconTimer", healthHud_.State().hurtIconTimer);
@@ -267,6 +278,7 @@ void GamePlayScene::RestoreReplaySceneState(const json& state) {
             controlsGuideOverlay_->RestoreReplayState(overlays["controlsGuide"]);
         }
 
+        // 両画面の開閉を先に戻した後、スライドの向きと0〜0.34秒の位置を再現する。
         pausePageSliding_ = overlays.value("pausePageSliding", false);
         pausePageToMenu_ = overlays.value("pausePageToMenu", true);
         pausePageSlideTime_ = std::clamp(overlays.value("pausePageSlideTime", 0.0f), 0.0f, 0.34f);

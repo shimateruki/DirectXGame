@@ -7,6 +7,7 @@
 #include "DebugConsole.h"
 #include "DebugEditor.h"
 #include "EditorManager.h"
+#include "engine/editor/core/history/EditorTransactionManager.h"
 #include "EditorCommandRegistry.h"
 #include "VfxSequencerEditor.h"
 #include "GhostRecorder.h"
@@ -27,6 +28,7 @@ namespace {
 constexpr const char* kScenarioDirectory = "Resources/json/scenario/";
 constexpr const char* kAnimationDirectory = "Resources/json/animation/";
 constexpr const char* kVfxDirectory = "Resources/json/vfx_sequence/";
+constexpr const char* kTimelineVfxPayload = "CINEMATIC_VFX_SEQUENCE";
 
 void AddDebugLog(const std::string& text) {
     // デバッグ表示が使えない環境でも演出処理自体は続ける。
@@ -74,8 +76,10 @@ void GhostDirector::Initialize(SceneManager* sceneManager, DebugEditor* editor) 
     // 再生器へ現在シーンから対象を探す解決関数を渡し、編集選択を初期化する。
     sceneManager_ = sceneManager;
     editor_ = editor;
+    ResetTimelineInteraction();
     sequence_.Clear();
     sequence_.name = "boss_attack_1";
+    CaptureSavedDocument();
     player_.Initialize(sceneManager_);
     player_.SetBindingResolver([this](const CinematicObjectBinding& binding) { return ResolveTrackTarget(binding); });
     player_.SetSequence(&sequence_);
@@ -93,6 +97,7 @@ void GhostDirector::Update(float deltaTime) {
     const bool wasPlaying = player_.IsPlaying();
     player_.Update(deltaTime);
 
+    // 末尾に到達したフレームは更新後に再生が止まっていても、最後の再生時刻を画面へ反映する。
     if (wasPlaying || player_.IsPlaying()) {
         currentScrubTime_ = player_.GetCurrentTime();
     }
@@ -261,6 +266,7 @@ void GhostDirector::DrawAnchorTemplateEditor() {
     ImGui::DragFloat("ゲートから進む距離", &templateDistance_, 0.1f, 0.1f, 50.0f, "%.2f m",
                      ImGuiSliderFlags_AlwaysClamp);
     ImGui::DragFloat("跳び出す高さ", &templateHeight_, 0.1f, 0.0f, 20.0f, "%.2f m", ImGuiSliderFlags_AlwaysClamp);
+    // 雛形が既存トラックやカメラ設定と競合しないことを確認してから、追加ボタンを有効にする。
     auto* anchor = ResolveTrackTarget(sequence_.anchor);
     auto* actor = ResolveTrackTarget(templateActor_);
     auto* camera = ResolveTrackTarget(templateCamera_);
@@ -310,6 +316,7 @@ void GhostDirector::DrawAnchorTemplateEditor() {
         cameraMove.anchorRelative = true;
 
         for (int index = 0; index < 4; ++index) {
+            // 演出尺の一定割合で役者の跳躍を作り、同じ時刻のカメラを役者の少し上へ向ける。
             const float rates[] = {0.0f, 0.35f, 0.70f, 1.0f};
             const float progress[] = {0.0f, 0.45f, 1.0f, 1.0f};
             CinematicTransformKey key;
@@ -401,6 +408,7 @@ void GhostDirector::DrawPreview(const engine::Matrix4x4& viewProjection, const e
         drawList->AddText(ImVec2(panelMin.x + 12.0f, panelMin.y + 27.0f), IM_COL32(175, 188, 210, 255), detail);
     };
 
+    // 対象を解決できないときは軌跡を描かず、Game View内に原因だけを表示する。
     if (!target) {
         drawList->PushClipRect(clipMin, clipMax, true);
         drawHeader("Target Objectが現在シーンに見つかりません", IM_COL32(235, 80, 80, 255));
@@ -436,6 +444,7 @@ void GhostDirector::DrawPreview(const engine::Matrix4x4& viewProjection, const e
     engine::Vector3 baseScale = target->GetScale();
     player_.GetBasePose(target, basePosition, baseRotation, baseScale);
 
+    // 保存したキーを再生時と同じ基準で復元し、親行列を掛ける前の姿勢にする。
     auto resolveLocalPose = [&](const CinematicTransformKey& key) {
         CinematicTransformKey pose = key;
 
@@ -474,6 +483,7 @@ void GhostDirector::DrawPreview(const engine::Matrix4x4& viewProjection, const e
         return engine::Math::Transform(localPosition, target->GetParent()->GetWorldMatrix());
     };
 
+    // ビュー射影後の座標を Game View 内のピクセルへ変換し、深度範囲の外は描画から除く。
     auto worldToScreen = [&](const engine::Vector3& worldPosition, ImVec2& screenPosition) {
         const engine::Vector3 ndc = engine::Math::Transform(worldPosition, viewProjection);
 
@@ -495,6 +505,7 @@ void GhostDirector::DrawPreview(const engine::Matrix4x4& viewProjection, const e
             return;
         }
 
+        // 線の進行方向と直交する単位ベクトルを作り、先端からのピクセル距離で矢印形状を決める。
         const float dirX = dx / length;
         const float dirY = dy / length;
         const float sideX = -dirY;
@@ -504,6 +515,7 @@ void GhostDirector::DrawPreview(const engine::Matrix4x4& viewProjection, const e
                                     ImVec2(back.x - sideX * 4.5f, back.y - sideY * 4.5f), color);
     };
 
+    // モデル形状に依存せず、単位箱の8頂点に姿勢を掛けて位置・回転・倍率を示す。
     auto drawWirePose = [&](const CinematicTransformKey& localPose, ImU32 color, float thickness) {
         const engine::Matrix4x4 world = makePoseWorldMatrix(localPose);
         const engine::Vector3 corners[8] = {
@@ -539,6 +551,7 @@ void GhostDirector::DrawPreview(const engine::Matrix4x4& viewProjection, const e
             return;
         }
 
+        // 親やオブジェクトの倍率による長さの差を除き、+Zの向きだけを一定寸法の矢印にする。
         forward = {forward.x / length, forward.y / length, forward.z / length};
         const engine::Vector3 tip = {
             origin.x + forward.x * 1.8f,
@@ -564,6 +577,7 @@ void GhostDirector::DrawPreview(const engine::Matrix4x4& viewProjection, const e
         bool visible = false;
     };
 
+    // キー間を補間して経路を描く。サンプル数には上限を設け、長いトラックでも描画量を抑える。
     const float firstTime = track.keys.front().time;
     const float lastTime = track.keys.back().time;
     const float pathDuration = std::max(lastTime - firstTime, 0.0f);
@@ -642,6 +656,7 @@ void GhostDirector::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 
         drawList->AddCircleFilled(screen, isSelected ? 7.0f : 5.5f, markerColor);
 
+        // ラベルはトラック内のキー秒に開始秒を足し、全体のタイムラインと同じ時刻で読めるようにする。
         char label[96]{};
 
         if (isFirst) {
@@ -683,31 +698,54 @@ void GhostDirector::DrawPreview(const engine::Matrix4x4& viewProjection, const e
 #endif
 }
 
+void GhostDirector::CaptureSavedDocument() {
+    // 新規作成・読み込み・保存の完了時点の JSON を、未保存判定の比較元として保持する。
+    savedDocumentJson_ = sequence_.ToJsonText();
+    documentDirty_ = false;
+    nextDirtyCheck_ = 0.0;
+}
+
+void GhostDirector::UpdateDocumentDirty() {
+#ifdef USE_IMGUI
+    // 長い演出を毎フレーム変換すると編集画面の負荷になるため、比較頻度を制限する。
+    const double now = ImGui::GetTime();
+    if (now < nextDirtyCheck_) return;
+    nextDirtyCheck_ = now + 0.25;
+    documentDirty_ = sequence_.ToJsonText() != savedDocumentJson_;
+#endif
+}
+
 void GhostDirector::DrawScenarioFiles() {
+    UpdateDocumentDirty();
     const fs::path root(kScenarioDirectory);
     scenarioFiles_.Draw("演出JSONファイル", root,
         [this, &root](const fs::path& path) {
             return LoadScenarioFile(path, path.lexically_relative(root));
         },
         [this](const fs::path& path, const std::string& name) {
+            // 保存用の名前とキー順はコピー側へ適用し、書き込み時に編集データの並びを変更しない。
             auto saved = sequence_;
             saved.name = name;
             saved.Sort();
             return saved.Save(path);
         },
-        [this] { ResetScenarioDocument(); });
+        [this] { ResetScenarioDocument(); },
+        [this](const fs::path&) { CaptureSavedDocument(); }, documentDirty_);
 }
 
 void GhostDirector::ResetScenarioDocument() {
     player_.Stop(true);
     const bool reopenStudio = studioEnabled_;
+    // 仮空間が開いている場合は閉じてから新規文書へ切り替え、古い仮モデルを残さない。
     if (reopenStudio) EndStudio();
+    ResetTimelineInteraction();
     sequence_.Clear();
     player_.SetSequence(&sequence_);
     currentScrubTime_ = 0.0f;
     selectedTrackKind_ = 0;
     selectedTrackIndex_ = selectedKeyIndex_ = -1;
     if (reopenStudio) BeginStudio();
+    CaptureSavedDocument();
 }
 
 // Inspectorに保存されたパスを保持し、旧形式なら移動先を解決してから開く。
@@ -726,12 +764,14 @@ void GhostDirector::LoadScenario(const std::string& fileName) {
 
 bool GhostDirector::LoadScenarioFile(const fs::path& path, const fs::path& relative) {
     CinematicSequence loaded;
+    // 読めることを確認してから編集中の内容を置き換え、失敗時は元の状態を維持する。
     if (!loaded.Load(path)) return false;
 
     player_.Stop(true);
     const bool reopenStudio = studioEnabled_;
     if (reopenStudio)
         EndStudio();
+    ResetTimelineInteraction();
     sequence_ = std::move(loaded);
     scenarioFiles_.SetDocument(relative);
     player_.SetSequence(&sequence_);
@@ -741,6 +781,7 @@ bool GhostDirector::LoadScenarioFile(const fs::path& path, const fs::path& relat
     selectedKeyIndex_ = -1;
     if (reopenStudio)
         BeginStudio();
+    CaptureSavedDocument();
     return true;
 }
 
@@ -796,6 +837,7 @@ void GhostDirector::RecordTransformKey(engine::Object3D* object, bool force) {
     }
 
     CinematicTransformKey key;
+    // 時刻はシナリオ全体ではなく、トラック開始を0秒とした経過秒数で保存する。
     key.time = std::max(0.0f, currentScrubTime_ - track.startTime);
     key.position = object->GetTranslate();
     key.rotation = object->GetRotation();
@@ -806,6 +848,7 @@ void GhostDirector::RecordTransformKey(engine::Object3D* object, bool force) {
         float yaw = 0.0f;
         if (object->GetParent() || !player_.GetAnchorPose(origin, yaw))
             return;
+        // 基準の位置を引いてY回転を解き、実行時に別の基準点でも同じ相対姿勢を再現できるようにする。
         key.position = CinematicAnchorLocalPosition(key.position, origin, yaw);
         key.rotation.y -= yaw;
     } else if (track.relative) {
@@ -815,6 +858,7 @@ void GhostDirector::RecordTransformKey(engine::Object3D* object, bool force) {
         player_.GetBasePose(object, basePosition, baseRotation, baseScale);
         key.position = SubtractVector3(key.position, basePosition);
         key.rotation = SubtractVector3(key.rotation, baseRotation);
+        // 倍率の差は加減算でなく比で記録するので、実行時の基準倍率が違っても同じ割合で伸びる。
         key.scale = DivideScale(key.scale, baseScale);
     }
 
@@ -842,7 +886,7 @@ int GhostDirector::FindTransformTrack(engine::Object3D* object) const {
         return -1;
     }
 
-    // 一覧選択はトラックとキーの選択を同期し、実Scene上の対象も選び直します。
+    // 制作空間の役割を先に照合し、その後にイベントIDかオブジェクト名の一致を探す。
     for (int index = 0; index < static_cast<int>(sequence_.transformTracks.size()); ++index) {
         const auto& binding = sequence_.transformTracks[index].binding;
         if (GetRoleIndex(binding.targetName) >= 0 && ResolveTrackTarget(binding) == object)
@@ -967,6 +1011,7 @@ void GhostDirector::RemoveSelectedTrack() {
         return;
     }
 
+    ResetTimelineInteraction();
     selectedTrackIndex_ = -1;
     selectedKeyIndex_ = -1;
     RefreshPlayer(true);
@@ -1016,6 +1061,7 @@ engine::Object3D* GhostDirector::ResolveTrackTarget(const CinematicObjectBinding
         return nullptr;
     }
 
+    // 仮空間では役割名だけを仮オブジェクトへ解決し、本番シーンの対象を動かさない。
     const int role = GetRoleIndex(binding.targetName);
     if (studioEnabled_)
         return role >= 0 ? FindStudioObject(role) : nullptr;
@@ -1090,6 +1136,7 @@ void GhostDirector::UpsertTransformKey(CinematicTransformTrack& track, const Cin
     // 同時刻のキーは置換し、新しい時刻なら追加して順序を保つ。
     for (auto& existing : track.keys) {
         if (std::abs(existing.time - key.time) <= kKeyTimeEpsilon) {
+            // 姿勢を取り直しても、次のキーへ向かう区間で選んだ補間曲線は保持する。
             const int easing = existing.easingToNext;
             existing = key;
             existing.easingToNext = easing;
@@ -1112,6 +1159,7 @@ float GhostDirector::GetTransformTrackDuration(int trackIndex) const {
         return std::max(0.0f, track.keys.back().time);
     }
 
+    // インラインキーがない旧トラックでは、対象の記録経路に残る時間を使用する。
     if (track.legacyPathFile.empty() || !sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return 0.0f;
     }
@@ -1145,6 +1193,7 @@ void GhostDirector::DrawTransportControls() {
 
     if (!player_.IsPlaying()) {
         if (ImGui::Button(ICON_FA_PLAY " 再生")) {
+            // 停止からは先頭で開始し、一時停止・シーク後のプレビューからは現在位置を引き継ぐ。
             if (player_.IsPreviewing()) {
                 player_.Resume(isLooping_);
             } else {
@@ -1348,6 +1397,7 @@ void GhostDirector::DrawTransformTrackEditor() {
             EvaluatePreviewAtCurrentTime();
         }
 
+        // 削除後は現在の位置で再評価し、選択番号を残ったキーの範囲に収める。
         if (ImGui::Button(ICON_FA_TRASH_ALT " 選択キー削除")) {
             track.keys.erase(track.keys.begin() + selectedKeyIndex_);
             selectedKeyIndex_ =
@@ -1370,16 +1420,7 @@ void GhostDirector::DrawVfxTrackEditor() {
     // VFX素材の参照と開始時刻を編集し、シーケンス再生器へ渡すトラックを作る。
 #ifdef USE_IMGUI
     if (ImGui::Button(ICON_FA_PLUS_CIRCLE " VFXトラック追加", ImVec2(-1.0f, 0.0f))) {
-        CinematicVfxTrackData track;
-        track.name = "VFX Track";
-        track.startTime = currentScrubTime_;
-        if (studioEnabled_)
-            track.binding = {"$Actor", -1};
-        sequence_.vfxTracks.push_back(track);
-        selectedTrackKind_ = 1;
-        selectedTrackIndex_ = static_cast<int>(sequence_.vfxTracks.size()) - 1;
-        selectedKeyIndex_ = -1;
-        RefreshPlayer(true);
+        AddVfxTrack({}, currentScrubTime_);
     }
 
     for (int index = 0; index < static_cast<int>(sequence_.vfxTracks.size()); ++index) {
@@ -1427,12 +1468,14 @@ void GhostDirector::DrawVfxTrackEditor() {
     }
     if (!track.startSignal.empty())
         ImGui::Text("Signal開始: %.3f sec", sequence_.GetVfxStartTime(track));
+    // 王冠演出の同期対象と Signal 開始のトラックは、固定秒数の入力を無効にする。
     ImGui::BeginDisabled(crownVfx || !track.startSignal.empty());
     changed |= ImGui::DragFloat("VFX開始時刻", &track.startTime, 0.01f, 0.0f, 600.0f, "%.3f sec");
     ImGui::EndDisabled();
     if (crownVfx)
         ImGui::TextWrapped("この演出の発火時刻は王冠プレビューの調整値から同期します。");
 
+    // 対象の発火時の位置を基準にする場合だけ、そこからのずれと拡大倍率を編集できる。
     changed |= ImGui::Checkbox("開始時の対象位置に固定", &track.snapshotTargetPosition);
     if (track.snapshotTargetPosition) {
         changed |= ImGui::DragFloat3("発生位置オフセット", &track.rootOffset.x, 0.05f);
@@ -1523,6 +1566,7 @@ void GhostDirector::DrawCameraShotEditor() {
                 shot.binding.targetName = selected->GetName();
                 shot.binding.targetEventId = selected->GetEventId();
                 const SceneCameraSettings& settings = selected->GetSceneCameraSettings();
+                // 実シーンのカメラから作る初回だけ、その設定のブレンドと補間を初期値に使う。
                 shot.blendInDuration = settings.blendInDuration;
                 shot.blendOutDuration = settings.blendOutDuration;
                 shot.easing = static_cast<int>(settings.easing);
@@ -1573,6 +1617,7 @@ void GhostDirector::DrawCameraShotEditor() {
         shot.name = name;
     }
 
+    // カットの対象はカメラに限定し、ブレンドに使う区間と補間曲線を個別に編集する。
     bool refresh = DrawObjectBindingEditor("Camera Object", shot.binding, true, false);
     ImGui::Checkbox("有効##CameraShot", &shot.enabled);
     ImGui::SameLine();
@@ -1611,6 +1656,7 @@ void GhostDirector::DrawAnimationWorkbench() {
 
         if (studioEnabled_) {
             clip.binding = {"$Actor", -1};
+            // 制作空間は仮の役者を割り当て、Animatorの状態を必要としない身体変形を既定にする。
             clip.driver = "Body";
         }
 
@@ -1676,6 +1722,7 @@ void GhostDirector::DrawAnimationWorkbench() {
                     clip.clipName = asset;
                     BodyAnimationClip body;
 
+                    // 元の素材尺を再生倍率で割った秒数を、選択直後のタイムライン上の区間長にする。
                     if (body.Load(BodyAnimationClip::ResolveAssetPath(asset))) {
                         clip.duration = body.GetDuration() / std::max(0.01f, clip.playbackSpeed);
                         clip.loop = body.IsLoopDefault();
@@ -1779,6 +1826,7 @@ void GhostDirector::DrawAudioClipEditor() {
     strncpy_s(name, sizeof(name), clip.name.c_str(), _TRUNCATE);
     if (ImGui::InputText("Clip名##Audio", name, sizeof(name)))
         clip.name = name;
+    // 登録済みの音声 ID を割り当てる。既定のクリップ名だけ素材の表示名へ置き換える。
     const char* audioLabel = clip.audioId.empty() ? "(未設定)" : clip.audioId.c_str();
 
     if (ImGui::BeginCombo("Audio ID", audioLabel)) {
@@ -1802,6 +1850,7 @@ void GhostDirector::DrawAudioClipEditor() {
     ImGui::Checkbox("Loop##Audio", &clip.loop);
     ImGui::DragFloat("開始時刻##Audio", &clip.startTime, 0.01f, 0.0f, 600.0f, "%.3f sec");
     ImGui::DragFloat("長さ##Audio", &clip.duration, 0.01f, 0.05f, 600.0f, "%.3f sec");
+    // 音量は素材に掛ける倍率として設定する。素材選択とは別に調整できる。
     ImGui::SliderFloat("音量##Audio", &clip.volume, 0.0f, 2.0f, "%.2f");
     ImGui::TextDisabled("スクラブ中は発音せず、再生ヘッドが開始時刻を通過した時だけ鳴ります。");
 
@@ -1833,6 +1882,7 @@ void GhostDirector::DrawSignalEditor() {
             selectedTrackKind_ = 5;
             selectedTrackIndex_ = index;
             selectedKeyIndex_ = -1;
+            // マーカー選択では画面上の時計だけを移動させ、ゲームのSignal処理は起動しない。
             currentScrubTime_ = signal.time;
         }
 
@@ -1844,6 +1894,7 @@ void GhostDirector::DrawSignalEditor() {
         return;
     }
 
+    // タイムラインで表示する名前と、再生時に外部へ渡す ID・引数を別項目として保持する。
     auto& signal = sequence_.signals[selectedTrackIndex_];
     char name[128]{};
     char signalId[128]{};
@@ -1872,6 +1923,135 @@ void GhostDirector::DrawSignalEditor() {
 #endif
 }
 
+void GhostDirector::ResetTimelineInteraction() {
+    timelineKeyDrag_ = {};
+    timelineScrubbing_ = false;
+    // 別の演出を開いた後は以前のキーをUndoの対象にしない。
+    timelineDocument_ = std::make_shared<int>(0);
+}
+
+float* GhostDirector::GetEditableClipStart(int kind, int index) {
+    if (index < 0) return nullptr;
+    const auto i = static_cast<size_t>(index);
+    if (kind == 1 && i < sequence_.vfxTracks.size()) {
+        auto& track = sequence_.vfxTracks[i];
+        // 専用VFX編集と同様、Signalに従う開始時刻は秒数ドラッグで変更しない。
+        if (!track.startSignal.empty() || sequence_.name == "crown_defeat_vfx" || sequence_.name == "crown_finale_vfx")
+            return nullptr;
+        return &track.startTime;
+    }
+    if (kind == 2 && i < sequence_.cameraShots.size()) return &sequence_.cameraShots[i].startTime;
+    if (kind == 4 && i < sequence_.audioClips.size()) return &sequence_.audioClips[i].startTime;
+    return nullptr;
+}
+
+void GhostDirector::CommitTimelineKeyDrag() {
+    const auto drag = timelineKeyDrag_;
+    // クリックだけの操作や丸めた結果が元と同じ場合は、Undoの履歴を増やさない。
+    if (!drag.moved || drag.originalTime == drag.proposedTime) return;
+    if (drag.clipKind != 0) {
+        // 別の演出ファイルを開いた場合は古い履歴の対象が失効する。行番号だけで現在のファイルを編集しない。
+        const std::weak_ptr<int> document = timelineDocument_;
+        const auto apply = [this, document, drag](float expected, float seconds) {
+            if (document.expired()) return;
+            auto* start = GetEditableClipStart(drag.clipKind, drag.track);
+            // 同じ行でも開始時刻が前提と違う場合は変更を適用しない。UndoとRedoの双方で直前の値が一致することを要求する。
+            if (!start || *start != expected) return;
+            *start = seconds;
+            currentScrubTime_ = seconds;
+            RefreshPlayer(true);
+            nextDirtyCheck_ = 0.0;
+        };
+        auto* start = GetEditableClipStart(drag.clipKind, drag.track);
+        if (!start || *start != drag.originalTime) return;
+        apply(drag.originalTime, drag.proposedTime);
+        EditorTransaction transaction;
+        transaction.label = "演出クリップの開始時刻変更";
+        transaction.undo = [apply, drag] { apply(drag.proposedTime, drag.originalTime); };
+        transaction.redo = [apply, drag] { apply(drag.originalTime, drag.proposedTime); };
+        EditorTransactionManager::GetInstance()->Register(std::move(transaction));
+        return;
+    }
+    if (drag.track < 0 || drag.track >= static_cast<int>(sequence_.transformTracks.size())) return;
+
+    const auto& track = sequence_.transformTracks[drag.track];
+    if (track.locked || drag.key < 0 || drag.key >= static_cast<int>(track.keys.size()) ||
+        track.keys[drag.key].time != drag.originalTime || drag.originalTime == drag.proposedTime) return;
+
+    const std::weak_ptr<int> document = timelineDocument_;
+    const auto apply = [this, document, drag, name = track.name](float expected, float seconds) {
+        if (document.expired() || drag.track >= static_cast<int>(sequence_.transformTracks.size())) return;
+        auto& target = sequence_.transformTracks[drag.track];
+        if (target.name != name || drag.key >= static_cast<int>(target.keys.size()) ||
+            target.keys[drag.key].time != expected) return;
+        // 同じ行に後からキーが追加された場合も、キーの順序を壊さない。
+        if ((drag.key > 0 && seconds <= target.keys[drag.key - 1].time) ||
+            (drag.key + 1 < static_cast<int>(target.keys.size()) && seconds >= target.keys[drag.key + 1].time)) return;
+        target.keys[drag.key].time = seconds;
+        nextDirtyCheck_ = 0.0;
+        // 保存するキーはトラック内の秒数。プレビューの時計にはトラックの開始を足した全体時刻を渡す。
+        currentScrubTime_ = target.startTime + seconds;
+        EvaluatePreviewAtCurrentTime();
+    };
+
+    apply(drag.originalTime, drag.proposedTime);
+    if (track.keys[drag.key].time != drag.proposedTime) return;
+    EditorTransaction transaction;
+    transaction.label = "演出の移動キーの時刻変更";
+    transaction.undo = [apply, drag] { apply(drag.proposedTime, drag.originalTime); };
+    transaction.redo = [apply, drag] { apply(drag.originalTime, drag.proposedTime); };
+    EditorTransactionManager::GetInstance()->Register(std::move(transaction));
+}
+
+void GhostDirector::AddVfxTrack(const std::string& assetKey, float startTime) {
+    CinematicVfxTrackData track;
+    track.name = assetKey.empty() ? "VFX Track" : assetKey.substr(assetKey.find_last_of('/') + 1);
+    track.sequenceName = assetKey;
+    track.startTime = startTime;
+    if (studioEnabled_) track.binding = {"$Actor", -1};
+    sequence_.vfxTracks.push_back(std::move(track));
+    selectedTrackKind_ = 1;
+    // 追加した素材をそのまま調整できるように選択し、再生位置も開始秒へ移す。
+    selectedTrackIndex_ = static_cast<int>(sequence_.vfxTracks.size()) - 1;
+    selectedKeyIndex_ = -1;
+    currentScrubTime_ = startTime;
+    RefreshPlayer(true);
+}
+
+void GhostDirector::DrawTimelineVfxPalette() {
+#ifdef USE_IMGUI
+    const auto refresh = [this] {
+        timelineVfxAssets_ = JsonAssetBrowser::ListKeys(fs::path(kVfxDirectory).parent_path());
+    };
+    if (ImGui::SmallButton(showTimelineVfxPalette_ ? "VFX素材を閉じる" : "VFX素材を開く")) {
+        showTimelineVfxPalette_ = !showTimelineVfxPalette_;
+        if (showTimelineVfxPalette_) refresh();
+    }
+    if (!showTimelineVfxPalette_) return;
+
+    const float width = std::clamp(ImGui::GetContentRegionAvail().x * 0.28f, 100.0f, 285.0f);
+    if (ImGui::BeginChild("##TimelineVfxPalette", ImVec2(width, 0.0f), true)) {
+        ImGui::SetNextItemWidth(-1.0f);
+        ImGui::InputTextWithHint("##VfxSearch", "素材名・フォルダー名で検索", timelineVfxSearch_, sizeof(timelineVfxSearch_));
+        if (ImGui::SmallButton("一覧を更新")) refresh();
+        ImGui::TextWrapped("素材を時間軸へドラッグ");
+        ImGui::BeginDisabled(player_.IsPlaying());
+        for (const auto& key : timelineVfxAssets_) {
+            if (!std::strstr(key.c_str(), timelineVfxSearch_)) continue;
+            ImGui::Selectable(key.c_str());
+            if (ImGui::BeginDragDropSource()) {
+                ImGui::SetDragDropPayload(kTimelineVfxPayload, key.c_str(), key.size() + 1);
+                ImGui::TextUnformatted(key.c_str());
+                ImGui::EndDragDropSource();
+            }
+        }
+        ImGui::EndDisabled();
+    }
+    ImGui::EndChild();
+    ImGui::SameLine();
+#endif
+}
+
 void GhostDirector::DrawTimelineCanvas() {
     // 異なる種類のトラックを一つの時間軸に描き、選択とスクラブ位置を共有する。
 #ifdef USE_IMGUI
@@ -1888,6 +2068,22 @@ void GhostDirector::DrawTimelineCanvas() {
     const int audioCount = static_cast<int>(sequence_.audioClips.size());
     const int signalCount = static_cast<int>(sequence_.signals.size());
     const int authoredRowCount = transformCount + cameraCount + animationCount + vfxCount + audioCount + signalCount;
+    // 上から数えた行を、選択とドラッグで使う既存の種類IDと配列位置に変換する。
+    const auto resolveTrack = [&](int row) -> std::pair<int, int> {
+        if (row >= 0) {
+            const std::pair<int, int> trackGroups[] = {
+                {0, transformCount}, {2, cameraCount}, {3, animationCount},
+                {1, vfxCount}, {4, audioCount}, {5, signalCount}
+            };
+            for (const auto& [kind, count] : trackGroups) {
+                if (row < count) {
+                    return {kind, row};
+                }
+                row -= count;
+            }
+        }
+        return {-1, -1};
+    };
     const int rowCount = std::max(1, authoredRowCount);
     const float duration = std::max(1.0f, GetScenarioDuration());
     const float contentWidth =
@@ -1903,6 +2099,12 @@ void GhostDirector::DrawTimelineCanvas() {
     drawList->AddRectFilled(origin, ImVec2(origin.x + kLabelWidth, end.y), IM_COL32(35, 39, 48, 255));
     drawList->AddLine(ImVec2(origin.x + kLabelWidth, origin.y), ImVec2(origin.x + kLabelWidth, end.y),
                       IM_COL32(105, 115, 135, 255), 1.0f);
+
+    // 掴んでいる帯は候補時刻だけで描く。保存データへの反映はマウスを離したときに行う。
+    const auto dragTime = [this](int kind, int index, float seconds) {
+        const auto& drag = timelineKeyDrag_;
+        return drag.moved && drag.clipKind == kind && drag.track == index ? drag.proposedTime : seconds;
+    };
 
     // 全トラックで共有する秒目盛りを先に描き、各行のClipやSignalをその上へ重ねます。
     const int secondCount = static_cast<int>(std::ceil(duration));
@@ -1927,74 +2129,79 @@ void GhostDirector::DrawTimelineCanvas() {
         drawList->AddLine(ImVec2(origin.x, y1), ImVec2(end.x, y1), IM_COL32(60, 65, 78, 180), 1.0f);
 
         // 行番号を種類ごとの配列Indexへ戻して、移動キー・Camera Shot・素材Clipを描き分けます。
-        if (row < transformCount) {
-            const auto& track = sequence_.transformTracks[row];
-            const bool selected = selectedTrackKind_ == 0 && selectedTrackIndex_ == row;
+        const auto [kind, trackIndex] = resolveTrack(row);
+        if (kind == 0) {
+            const auto& track = sequence_.transformTracks[trackIndex];
+            const bool selected = selectedTrackKind_ == 0 && selectedTrackIndex_ == trackIndex;
             const ImU32 textColor = selected ? IM_COL32(255, 230, 110, 255) : IM_COL32(215, 220, 230, 255);
             drawList->AddText(ImVec2(origin.x + 9.0f, y0 + 9.0f), textColor, track.name.c_str());
             const float startX = origin.x + kLabelWidth + track.startTime * timelinePixelsPerSecond_;
-            const float trackDuration = std::max(0.05f, GetTransformTrackDuration(row));
+            const float trackDuration = std::max(0.05f, GetTransformTrackDuration(trackIndex));
             const float finishX = startX + trackDuration * timelinePixelsPerSecond_;
             const ImU32 clipColor = track.muted ? IM_COL32(75, 80, 92, 220) : IM_COL32(62, 145, 220, 220);
             drawList->AddRectFilled(ImVec2(startX, y0 + 6.0f), ImVec2(finishX, y1 - 6.0f), clipColor, 4.0f);
 
             for (int keyIndex = 0; keyIndex < static_cast<int>(track.keys.size()); ++keyIndex) {
-                const float keyX = startX + track.keys[keyIndex].time * timelinePixelsPerSecond_;
+                const bool dragging = timelineKeyDrag_.moved && timelineKeyDrag_.clipKind == 0 && timelineKeyDrag_.track == trackIndex &&
+                    timelineKeyDrag_.key == keyIndex;
+                const float time = dragging ? timelineKeyDrag_.proposedTime : track.keys[keyIndex].time;
+                // 移動キーの時刻はトラック内の秒数なので、帯の開始位置を基準に描く。
+                const float keyX = startX + time * timelinePixelsPerSecond_;
                 const bool keySelected = selected && selectedKeyIndex_ == keyIndex;
                 drawList->AddCircleFilled(ImVec2(keyX, (y0 + y1) * 0.5f), keySelected ? 6.0f : 4.5f,
                                           keySelected ? IM_COL32(255, 230, 90, 255) : IM_COL32(235, 245, 255, 255));
             }
-        } else if (row - transformCount < cameraCount) {
-            const int cameraIndex = row - transformCount;
-            const auto& shot = sequence_.cameraShots[cameraIndex];
-            const bool selected = selectedTrackKind_ == 2 && selectedTrackIndex_ == cameraIndex;
+        } else if (kind == 2) {
+            const auto& shot = sequence_.cameraShots[trackIndex];
+            const bool selected = selectedTrackKind_ == 2 && selectedTrackIndex_ == trackIndex;
             drawList->AddText(ImVec2(origin.x + 9.0f, y0 + 9.0f),
                               selected ? IM_COL32(120, 235, 255, 255) : IM_COL32(215, 220, 230, 255),
                               shot.name.c_str());
-            const float startX = origin.x + kLabelWidth + shot.startTime * timelinePixelsPerSecond_;
+            // カメラを切り替えて使う区間を、ショットの開始と継続時間で描く。
+            const float startX = origin.x + kLabelWidth + dragTime(2, trackIndex, shot.startTime) * timelinePixelsPerSecond_;
             const float finishX = startX + std::max(0.05f, shot.duration) * timelinePixelsPerSecond_;
             const ImU32 color = shot.muted ? IM_COL32(75, 80, 92, 220) : IM_COL32(45, 175, 205, 230);
             drawList->AddRectFilled(ImVec2(startX, y0 + 6.0f), ImVec2(finishX, y1 - 6.0f), color, 4.0f);
-        } else if (row - transformCount - cameraCount < animationCount) {
-            const int animationIndex = row - transformCount - cameraCount;
-            const auto& clip = sequence_.animationClips[animationIndex];
-            const bool selected = selectedTrackKind_ == 3 && selectedTrackIndex_ == animationIndex;
+        } else if (kind == 3) {
+            const auto& clip = sequence_.animationClips[trackIndex];
+            const bool selected = selectedTrackKind_ == 3 && selectedTrackIndex_ == trackIndex;
             drawList->AddText(ImVec2(origin.x + 9.0f, y0 + 9.0f),
                               selected ? IM_COL32(255, 205, 105, 255) : IM_COL32(215, 220, 230, 255),
                               clip.name.c_str());
+            // アニメーションは保存時刻を表示する。ここでは編集候補のドラッグ時刻を使わない。
             const float startX = origin.x + kLabelWidth + clip.startTime * timelinePixelsPerSecond_;
             const float finishX = startX + std::max(0.05f, clip.duration) * timelinePixelsPerSecond_;
             const ImU32 color = clip.muted ? IM_COL32(75, 80, 92, 220) : IM_COL32(220, 135, 45, 230);
             drawList->AddRectFilled(ImVec2(startX, y0 + 6.0f), ImVec2(finishX, y1 - 6.0f), color, 4.0f);
-        } else if (row - transformCount - cameraCount - animationCount < vfxCount) {
-            const int vfxIndex = row - transformCount - cameraCount - animationCount;
-            const auto& track = sequence_.vfxTracks[vfxIndex];
-            const bool selected = selectedTrackKind_ == 1 && selectedTrackIndex_ == vfxIndex;
+        } else if (kind == 1) {
+            const auto& track = sequence_.vfxTracks[trackIndex];
+            const bool selected = selectedTrackKind_ == 1 && selectedTrackIndex_ == trackIndex;
             drawList->AddText(ImVec2(origin.x + 9.0f, y0 + 9.0f),
                               selected ? IM_COL32(255, 210, 125, 255) : IM_COL32(215, 220, 230, 255),
                               track.name.c_str());
-            const float startX = origin.x + kLabelWidth + sequence_.GetVfxStartTime(track) * timelinePixelsPerSecond_;
+            // VFXはSignal連動を解決した実際の開始秒を表示する。ドラッグできる帯だけ候補時刻で上書きする。
+            const float startX = origin.x + kLabelWidth + dragTime(1, trackIndex, sequence_.GetVfxStartTime(track)) * timelinePixelsPerSecond_;
             const float finishX = startX + std::max(0.1f, track.duration) * timelinePixelsPerSecond_;
             drawList->AddRectFilled(ImVec2(startX, y0 + 6.0f), ImVec2(finishX, y1 - 6.0f), IM_COL32(165, 85, 215, 220),
                                     4.0f);
-        } else if (row - transformCount - cameraCount - animationCount - vfxCount < audioCount) {
-            const int audioIndex = row - transformCount - cameraCount - animationCount - vfxCount;
-            const auto& clip = sequence_.audioClips[audioIndex];
-            const bool selected = selectedTrackKind_ == 4 && selectedTrackIndex_ == audioIndex;
+        } else if (kind == 4) {
+            const auto& clip = sequence_.audioClips[trackIndex];
+            const bool selected = selectedTrackKind_ == 4 && selectedTrackIndex_ == trackIndex;
             drawList->AddText(ImVec2(origin.x + 9.0f, y0 + 9.0f),
                               selected ? IM_COL32(135, 255, 155, 255) : IM_COL32(215, 220, 230, 255),
                               clip.name.c_str());
-            const float startX = origin.x + kLabelWidth + clip.startTime * timelinePixelsPerSecond_;
+            // 音の帯には設定された開始秒と表示用の継続幅を使う。
+            const float startX = origin.x + kLabelWidth + dragTime(4, trackIndex, clip.startTime) * timelinePixelsPerSecond_;
             const float finishX = startX + std::max(0.05f, clip.duration) * timelinePixelsPerSecond_;
             const ImU32 color = clip.muted ? IM_COL32(75, 80, 92, 220) : IM_COL32(55, 175, 95, 230);
             drawList->AddRectFilled(ImVec2(startX, y0 + 6.0f), ImVec2(finishX, y1 - 6.0f), color, 4.0f);
-        } else if (row < authoredRowCount) {
-            const int signalIndex = row - transformCount - cameraCount - animationCount - vfxCount - audioCount;
-            const auto& signal = sequence_.signals[signalIndex];
-            const bool selected = selectedTrackKind_ == 5 && selectedTrackIndex_ == signalIndex;
+        } else if (kind == 5) {
+            const auto& signal = sequence_.signals[trackIndex];
+            const bool selected = selectedTrackKind_ == 5 && selectedTrackIndex_ == trackIndex;
             drawList->AddText(ImVec2(origin.x + 9.0f, y0 + 9.0f),
                               selected ? IM_COL32(255, 135, 145, 255) : IM_COL32(215, 220, 230, 255),
                               signal.name.c_str());
+            // Signalは持続する帯ではなく、指定時刻のマーカーとして描く。
             const float markerX = origin.x + kLabelWidth + signal.time * timelinePixelsPerSecond_;
             drawList->AddRectFilled(ImVec2(markerX - 3.0f, y0 + 5.0f), ImVec2(markerX + 3.0f, y1 - 5.0f),
                                     signal.enabled ? IM_COL32(235, 75, 85, 240) : IM_COL32(90, 90, 95, 220), 2.0f);
@@ -2007,67 +2214,126 @@ void GhostDirector::DrawTimelineCanvas() {
     drawList->AddTriangleFilled(ImVec2(playheadX - 6.0f, origin.y), ImVec2(playheadX + 6.0f, origin.y),
                                 ImVec2(playheadX, origin.y + 9.0f), IM_COL32(255, 82, 82, 255));
 
-    // 縦位置はトラック選択、横位置は時刻選択へ変換し、移動キー近傍ならキーも選びます。
-    if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+    // 目盛りは連続スクラブ、移動行はキーを押したときだけドラッグを開始する。
+    if (ImGui::IsItemActivated() && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && !player_.IsPlaying()) {
+        timelineKeyDrag_ = {};
         const ImVec2 mouse = ImGui::GetIO().MousePos;
-        const int row = static_cast<int>((mouse.y - origin.y - kHeaderHeight) / kRowHeight);
+        const int row = static_cast<int>(std::floor((mouse.y - origin.y - kHeaderHeight) / kRowHeight));
+        timelineScrubbing_ = row < 0 && mouse.x >= origin.x + kLabelWidth;
 
-        if (row >= 0 && row < authoredRowCount) {
-            if (row < transformCount) {
-                selectedTrackKind_ = 0;
-                selectedTrackIndex_ = row;
-                selectedKeyIndex_ = -1;
-                SelectTrackTarget(row);
-            } else if (row - transformCount < cameraCount) {
-                selectedTrackKind_ = 2;
-                selectedTrackIndex_ = row - transformCount;
-                selectedKeyIndex_ = -1;
-
+        const auto [kind, trackIndex] = resolveTrack(row);
+        if (kind >= 0) {
+            selectedTrackKind_ = kind;
+            selectedTrackIndex_ = trackIndex;
+            selectedKeyIndex_ = -1;
+            if (kind == 0) {
+                SelectTrackTarget(trackIndex);
+            } else if (kind == 2) {
                 if (editor_) {
                     if (engine::Object3D* target = ResolveTrackTarget(sequence_.cameraShots[selectedTrackIndex_].binding)) {
                         editor_->SetSelectedObject(target);
                     }
                 }
-            } else if (row - transformCount - cameraCount < animationCount) {
-                selectedTrackKind_ = 3;
-                selectedTrackIndex_ = row - transformCount - cameraCount;
-                selectedKeyIndex_ = -1;
-            } else if (row - transformCount - cameraCount - animationCount < vfxCount) {
-                selectedTrackKind_ = 1;
-                selectedTrackIndex_ = row - transformCount - cameraCount - animationCount;
-                selectedKeyIndex_ = -1;
-            } else if (row - transformCount - cameraCount - animationCount - vfxCount < audioCount) {
-                selectedTrackKind_ = 4;
-                selectedTrackIndex_ = row - transformCount - cameraCount - animationCount - vfxCount;
-                selectedKeyIndex_ = -1;
-            } else {
-                selectedTrackKind_ = 5;
-                selectedTrackIndex_ = row - transformCount - cameraCount - animationCount - vfxCount - audioCount;
-                selectedKeyIndex_ = -1;
             }
         }
 
-        // ラベル領域のクリックでは時刻を変えず、Clip側を押した場合だけ姿勢を再評価します。
+        // ラベル領域では時刻を変えず、Clip側を押した場合だけ姿勢を再評価する。
         if (mouse.x >= origin.x + kLabelWidth) {
             currentScrubTime_ =
                 std::clamp((mouse.x - origin.x - kLabelWidth) / timelinePixelsPerSecond_, 0.0f, duration);
-            if (selectedTrackKind_ == 0 && selectedTrackIndex_ >= 0 && selectedTrackIndex_ < transformCount) {
-                const auto& track = sequence_.transformTracks[selectedTrackIndex_];
+            if (row >= 0 && row < transformCount && std::abs(mouse.y -
+                (origin.y + kHeaderHeight + (row + 0.5f) * kRowHeight)) <= 10.0f) {
+                const auto& track = sequence_.transformTracks[row];
                 const float localTime = currentScrubTime_ - track.startTime;
+                // クリックの許容幅を8ピクセルに保ち、拡大率に合わせて検索距離だけを秒へ変換する。
                 float bestDistance = 8.0f / timelinePixelsPerSecond_;
 
                 for (int keyIndex = 0; keyIndex < static_cast<int>(track.keys.size()); ++keyIndex) {
                     const float distance = std::abs(track.keys[keyIndex].time - localTime);
-
                     if (distance <= bestDistance) {
                         bestDistance = distance;
                         selectedKeyIndex_ = keyIndex;
+                    }
+                }
+
+                if (selectedKeyIndex_ >= 0) {
+                    const float seconds = track.keys[selectedKeyIndex_].time;
+                    currentScrubTime_ = track.startTime + seconds;
+                    if (!track.locked) {
+                        timelineKeyDrag_ = {row, selectedKeyIndex_, timelinePixelsPerSecond_, seconds, seconds, false};
+                    }
+                }
+            }
+
+            if (row >= transformCount && row < authoredRowCount) {
+                const int kind = selectedTrackKind_;
+                const int index = selectedTrackIndex_;
+                if (const auto* start = GetEditableClipStart(kind, index)) {
+                    // 開始時刻を直接編集できるクリップだけ、画面上の帯を押したときにドラッグを開始する。
+                    const float clipDuration = kind == 1 ? sequence_.vfxTracks[index].duration
+                        : kind == 2 ? sequence_.cameraShots[index].duration : sequence_.audioClips[index].duration;
+                    const float rowY = origin.y + kHeaderHeight + row * kRowHeight;
+                    if (mouse.y >= rowY + 6.0f && mouse.y <= rowY + kRowHeight - 6.0f &&
+                        currentScrubTime_ >= *start && currentScrubTime_ <= *start + std::max(kind == 1 ? 0.1f : 0.05f, clipDuration)) {
+                        timelineKeyDrag_ = {index, -1, timelinePixelsPerSecond_, *start, *start, false, kind};
                     }
                 }
             }
 
             EvaluatePreviewAtCurrentTime();
         }
+    }
+
+    if (ImGui::IsItemActive() && !player_.IsPlaying()) {
+        if (timelineScrubbing_) {
+            currentScrubTime_ = std::clamp(
+                (ImGui::GetIO().MousePos.x - origin.x - kLabelWidth) / timelinePixelsPerSecond_, 0.0f, duration);
+            EvaluatePreviewAtCurrentTime();
+        }
+
+        auto& drag = timelineKeyDrag_;
+        if (drag.clipKind != 0 && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+            constexpr float fps = 60.0f;
+            // ドラッグ開始時の表示倍率で横移動を秒へ換算する。結果を60コマ毎秒の境界に丸めて候補時刻にする。
+            const float seconds = drag.originalTime + ImGui::GetMouseDragDelta().x / drag.pixelsPerSecond;
+            drag.proposedTime = std::max(0.0f, std::round(seconds * fps) / fps);
+            drag.moved = true;
+        } else if (drag.clipKind == 0 && drag.track >= 0 && drag.track < transformCount &&
+                   ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+            const auto& track = sequence_.transformTracks[drag.track];
+            if (!track.locked && drag.key >= 0 && drag.key < static_cast<int>(track.keys.size())) {
+                const auto& keys = track.keys;
+                // 前後のキーを追い越さない。秒数の刻みは既存の60 fpsを使う。
+                constexpr float frame = 1.0f / 60.0f;
+                // 前後のキーから1コマ以上離す。ただし元のキーが既に近い場合は元時刻を許容範囲に含める。
+                const float minTime = drag.key > 0 ? std::min(drag.originalTime, keys[drag.key - 1].time + frame) : 0.0f;
+                const float maxTime = drag.key + 1 < static_cast<int>(keys.size())
+                    ? std::max(drag.originalTime, keys[drag.key + 1].time - frame) : std::max(120.0f, drag.originalTime);
+                const float seconds = drag.originalTime + ImGui::GetMouseDragDelta().x / drag.pixelsPerSecond;
+                drag.proposedTime = std::clamp(std::round(seconds / frame) * frame, minTime, maxTime);
+                drag.moved = true;
+            }
+        }
+    } else {
+        if (ImGui::IsItemDeactivated() && ImGui::IsMouseReleased(ImGuiMouseButton_Left) && !player_.IsPlaying())
+            // 表示上の候補時刻は、停止中にマウスを離したときだけ確定する。
+            CommitTimelineKeyDrag();
+        timelineKeyDrag_ = {};
+        timelineScrubbing_ = false;
+    }
+
+    // ラベル領域へのドロップでは開始時刻が決まらないため、時間軸上だけを受け付ける。
+    if (!player_.IsPlaying() && ImGui::GetIO().MousePos.x >= origin.x + kLabelWidth &&
+        ImGui::BeginDragDropTarget()) {
+        if (const auto* payload = ImGui::AcceptDragDropPayload(kTimelineVfxPayload)) {
+            const auto* key = static_cast<const char*>(payload->Data);
+            const float seconds = (ImGui::GetIO().MousePos.x - origin.x - kLabelWidth) / timelinePixelsPerSecond_;
+            if (key && payload->DataSize > 1 && key[payload->DataSize - 1] == '\0') {
+                constexpr float fps = 60.0f;
+                AddVfxTrack(std::string(key, payload->DataSize - 1), std::round(seconds * fps) / fps);
+            }
+        }
+        ImGui::EndDragDropTarget();
     }
 
     ImGui::EndChild();

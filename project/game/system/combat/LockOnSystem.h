@@ -4,7 +4,7 @@
 
 // 前方宣言
 namespace engine { class Object3D; }
-class Camera;
+namespace engine { class Camera; }
 class Player;
 namespace engine { class InputManager; }
 
@@ -29,7 +29,7 @@ class LockOnSystem {
     /// <param name="camera">メインカメラ</param>
     /// <param name="player">操作中のプレイヤー</param>
     /// <param name="deltaTime">前フレームからの経過秒数</param>
-    void Update(const std::vector<std::unique_ptr<engine::Object3D>>& objects, Camera* camera, Player* player, float deltaTime);
+    void Update(const std::vector<std::unique_ptr<engine::Object3D>>& objects, engine::Camera* camera, Player* player, float deltaTime);
 
     /// <summary>
     /// 現在ロックオン中かどうか
@@ -44,13 +44,13 @@ class LockOnSystem {
     /// <summary>
     /// 保持中の対象を外し、ロック用カメラを通常の照準モードへ戻す。
     /// </summary>
-    void ResetLockOn(Camera* camera);
+    void ResetLockOn(engine::Camera* camera);
 
   private:
     /// <summary>
     /// 最も適したターゲットを検索する内部関数
     /// </summary>
-    engine::Object3D* FindBestTarget(const std::vector<std::unique_ptr<engine::Object3D>>& objects, Camera* camera, Player* player,
+    engine::Object3D* FindBestTarget(const std::vector<std::unique_ptr<engine::Object3D>>& objects, engine::Camera* camera, Player* player,
                              bool next = false);
 
   private:

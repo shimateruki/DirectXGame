@@ -17,6 +17,7 @@ void CameraEditor::DrawImGui() {
             for (int i = 0; i < (int)fileList_.size(); i++) {
                 bool isSelected = (currentItem == i);
 
+                // 一覧選択では次の読み書きのファイル名だけを変える。現在の視点を変えるのはロードを押したとき。
                 if (ImGui::Selectable(fileList_[i].c_str(), isSelected)) {
                     currentItem = i;
                     strcpy_s(fileNameBuffer_, sizeof(fileNameBuffer_), fileList_[i].c_str());
@@ -118,8 +119,8 @@ void CameraEditor::DrawImGui() {
         int style = static_cast<int>(settings_.gameplayStyle);
         const char* styleNames[] = {"自由操作（従来）", "自動構図＋補助操作"};
         if (ImGui::Combo("操作方式", &style, styleNames, IM_ARRAYSIZE(styleNames)))
-            settings_.gameplayStyle = static_cast<Camera::GameplayStyle>(style);
-        if (settings_.gameplayStyle == Camera::GameplayStyle::Guided) {
+            settings_.gameplayStyle = static_cast<engine::Camera::GameplayStyle>(style);
+        if (settings_.gameplayStyle == engine::Camera::GameplayStyle::Guided) {
             ImGui::TextWrapped("基準角度からの見回しだけを許可します。入力を離すと基準構図へ戻ります。");
             ImGui::SliderFloat("左右の補助角度", &settings_.guidedYawLimit, 0, 30, "%.1f deg");
             ImGui::SliderFloat("上下の補助角度", &settings_.guidedPitchLimit, 0, 15, "%.1f deg");
@@ -138,18 +139,35 @@ void CameraEditor::DrawImGui() {
             int obstacles = static_cast<int>(settings_.obstacleResponse);
             const char* responses[] = {"障害物の手前まで距離を詰める", "構図を維持（遮蔽物を透過）"};
             if (ImGui::Combo("障害物への対応", &obstacles, responses, IM_ARRAYSIZE(responses)))
-                settings_.obstacleResponse = static_cast<Camera::ObstacleResponse>(obstacles);
+                settings_.obstacleResponse = static_cast<engine::Camera::ObstacleResponse>(obstacles);
         }
         int currentFollow = static_cast<int>(settings_.gameFollowMode);
 
-        if (settings_.gameplayStyle == Camera::GameplayStyle::Free && ImGui::Combo(ICON_FA_EYE " View Type", &currentFollow, followModeNames, IM_ARRAYSIZE(followModeNames))) {
-            settings_.gameFollowMode = static_cast<Camera::FollowMode>(currentFollow);
+        // 自動構図は自由操作の追従形式を使わないため、切替欄は自由操作でだけ表示する。
+        if (settings_.gameplayStyle == engine::Camera::GameplayStyle::Free && ImGui::Combo(ICON_FA_EYE " View Type", &currentFollow, followModeNames, IM_ARRAYSIZE(followModeNames))) {
+            settings_.gameFollowMode = static_cast<engine::Camera::FollowMode>(currentFollow);
 
-            if (settings_.gameFollowMode == Camera::FollowMode::Orbit) {
+            if (settings_.gameFollowMode == engine::Camera::FollowMode::Orbit) {
                 ApplyOrbitStartAngle(CameraManager::GetInstance()->GetMainCamera(), true);
             }
         }
 
+        if (ImGui::TreeNode("ボス戦の自動構図")) {
+            auto& battle = settings_.bossFraming;
+            ImGui::TextWrapped("ステージ3のボス戦で使用。攻撃ロックオンとは独立し、ボスへ緩やかに旋回します。");
+            ImGui::Checkbox("有効##BossFraming", &battle.enabled);
+            ImGui::SliderFloat("基本距離##BossFraming", &battle.minDistance, 8, 60);
+            ImGui::SliderFloat("最大距離##BossFraming", &battle.maxDistance, battle.minDistance, 80);
+            ImGui::SliderFloat("注視高さ##BossFraming", &battle.height, 0, 10);
+            ImGui::SliderFloat("見下ろし角度##BossFraming", &battle.pitch, 20, 50, "%.1f deg");
+            ImGui::SliderFloat("画角##BossFraming", &battle.fov, .45f, 1.1f, "%.2f rad");
+            ImGui::SliderFloat("ボス側へ寄せる比率##BossFraming", &battle.targetWeight, 0, .5f);
+            ImGui::SliderFloat("追従・壁回避の旋回速度##BossFraming", &battle.turnSpeed, 10, 120, "%.1f deg/s");
+            ImGui::TextWrapped("壁際では回避方向を保持し、移動途中の壁も確認しながら通常視点へ戻ります。");
+            ImGui::SliderFloat("追従の応答##BossFraming", &battle.response, .5f, 8);
+            battle.Validate();
+            ImGui::TreePop();
+        }
         if (ImGui::TreeNode("ロックオン視点")) {
             ImGui::DragFloat("左右##LockOn", &settings_.lockOnOffset.x, 0.05f, -10.0f, 10.0f);
             ImGui::DragFloat("高さ##LockOn", &settings_.lockOnOffset.y, 0.05f, 0.0f, 15.0f);
@@ -157,12 +175,12 @@ void CameraEditor::DrawImGui() {
             ImGui::TreePop();
         }
 
-        if (settings_.gameplayStyle == Camera::GameplayStyle::Guided ||
-            settings_.gameFollowMode == Camera::FollowMode::Aimable ||
-            settings_.gameFollowMode == Camera::FollowMode::Fixed) {
+        if (settings_.gameplayStyle == engine::Camera::GameplayStyle::Guided ||
+            settings_.gameFollowMode == engine::Camera::FollowMode::Aimable ||
+            settings_.gameFollowMode == engine::Camera::FollowMode::Fixed) {
             ImGui::DragFloat(ICON_FA_ARROWS_ALT " 距離 (Distance)", &settings_.distance, 0.1f, 1.0f, 100.0f);
             ImGui::DragFloat(ICON_FA_ARROWS_ALT_V " 高さ (Height)", &settings_.height, 0.1f, 0.0f, 50.0f);
-            if (settings_.gameplayStyle == Camera::GameplayStyle::Guided) {
+            if (settings_.gameplayStyle == engine::Camera::GameplayStyle::Guided) {
                 ImGui::SliderFloat("見下ろし角度", &settings_.angle.x, 20.0f, 65.0f, "%.1f deg");
                 ImGui::SliderFloat("基準方向", &settings_.angle.y, -180.0f, 180.0f, "%.1f deg");
             } else {
@@ -170,7 +188,7 @@ void CameraEditor::DrawImGui() {
             }
         }
 
-        if (settings_.gameFollowMode == Camera::FollowMode::Orbit) {
+        if (settings_.gameFollowMode == engine::Camera::FollowMode::Orbit) {
             ImGui::Separator();
             ImGui::Text(ICON_FA_REDO " 周回設定");
             ImGui::DragFloat(" 半径 (Radius)", &settings_.orbitRadius, 0.1f, 1.0f, 100.0f);
@@ -178,7 +196,7 @@ void CameraEditor::DrawImGui() {
             ImGui::DragFloat(ICON_FA_TACHOMETER_ALT " 回転速度 (Speed)", &settings_.orbitSpeed, 0.0001f, -0.1f, 0.1f, "%.4f");
         }
 
-        if (settings_.gameFollowMode == Camera::FollowMode::Orbit) {
+        if (settings_.gameFollowMode == engine::Camera::FollowMode::Orbit) {
             ImGui::Spacing();
             ImGui::TextColored(ImVec4(0.4f, 0.9f, 1.0f, 1.0f), "周回ガイド");
             ImGui::Checkbox("ガイドを表示", &settings_.orbitGuideVisible);
@@ -213,10 +231,11 @@ void CameraEditor::DrawImGui() {
             ImGui::TextDisabled("周回中心: %.2f, %.2f, %.2f", center.x, center.y, center.z);
 
             if (ImGui::Button("現在の角度を開始角度にする")) {
-                Camera* cam = CameraManager::GetInstance()->GetMainCamera();
+                engine::Camera* cam = CameraManager::GetInstance()->GetMainCamera();
 
                 if (cam) {
                     engine::Vector3 diff = cam->GetEye() - center;
+                    // 中心から視点への水平角だけを保存し、開始の半径と高さを変更しない。
                     settings_.orbitStartAngleDeg = RadToDeg(std::atan2(diff.z, diff.x));
                     ApplyOrbitStartAngle(cam, true);
                 }
@@ -229,14 +248,14 @@ void CameraEditor::DrawImGui() {
             }
         }
 
-        if (settings_.gameFollowMode == Camera::FollowMode::FixedPoint) {
+        if (settings_.gameFollowMode == engine::Camera::FollowMode::FixedPoint) {
             ImGui::Separator();
             ImGui::Text(ICON_FA_MAP_MARKER_ALT " 定点カメラ設定");
             ImGui::DragFloat3(" カメラ座標", &settings_.fixedPointPos.x, 0.1f);
             ImGui::DragFloat3(" カメラ角度", &settings_.fixedPointAngle.x, 0.05f);
 
             if (ImGui::Button(ICON_FA_CROSSHAIRS " 現在のカメラ位置をセット")) {
-                Camera* cam = CameraManager::GetInstance()->GetMainCamera();
+                engine::Camera* cam = CameraManager::GetInstance()->GetMainCamera();
                 if (cam)
                     settings_.fixedPointPos = cam->GetEye();
             }
@@ -252,7 +271,7 @@ void CameraEditor::DrawImGui() {
         ImGui::SliderFloat(ICON_FA_FAST_FORWARD " 加速速度", &settings_.boostSpeed, 1.0f, 10.0f);
         ImGui::SliderFloat(ICON_FA_MOUSE " マウス感度", &settings_.mouseSensitivity, 0.001f, 0.05f);
 
-        Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+        engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
         if (camera) {
             engine::Vector3 pos = camera->GetEye();
@@ -365,7 +384,7 @@ void CameraEditor::DrawImGui() {
             std::string nName = newOverrideNameBuffer_;
 
             if (!nName.empty() && overrideParamsMap_.find(nName) == overrideParamsMap_.end()) {
-                overrideParamsMap_[nName] = Camera::CameraOverrideParams(); // 新規作成
+                overrideParamsMap_[nName] = engine::Camera::CameraOverrideParams(); // 新規作成
                 selectedOverrideName_ = nName;
                 newOverrideNameBuffer_[0] = '\0'; // 入力欄クリア
                 SaveSettings(); // 追加したら即保存
@@ -422,6 +441,7 @@ void CameraEditor::DrawImGui() {
             ImGui::EndListBox();
         }
 
+        // 一覧の走査中には消さず、対象名を控えて描画終了後に削除と保存を行う。
         if (!deleteOverrideName.empty()) {
             overrideParamsMap_.erase(deleteOverrideName);
 
@@ -442,14 +462,14 @@ void CameraEditor::DrawImGui() {
             ImGui::Spacing();
 
             if (ImGui::Button(ICON_FA_CAMERA " 現在のカメラ視点をここにコピー (Copy Current View)")) {
-                Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+                engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
                 if (camera) {
                     // 位置をそのままコピー
                     p.fixedEyePos = camera->GetEye();
                     p.fixedTargetPos = camera->GetTargetPoint();
-                    p.eyeSource = Camera::OverrideEyeSource::Fixed;
-                    p.targetSource = Camera::OverrideTargetSource::Fixed;
+                    p.eyeSource = engine::Camera::OverrideEyeSource::Fixed;
+                    p.targetSource = engine::Camera::OverrideTargetSource::Fixed;
 
                     // その場所・その角度に完全に固定するため、追従フラグはすべてOFFにする
                     p.trackEyeX = false;
@@ -473,7 +493,7 @@ void CameraEditor::DrawImGui() {
             int easing = static_cast<int>(p.easing);
 
             if (ImGui::Combo("切替Easing", &easing, easingNames, IM_ARRAYSIZE(easingNames))) {
-                p.easing = static_cast<Camera::OverrideEasing>(easing);
+                p.easing = static_cast<engine::Camera::OverrideEasing>(easing);
                 changed = true;
             }
 
@@ -484,11 +504,11 @@ void CameraEditor::DrawImGui() {
             int eyeSource = static_cast<int>(p.eyeSource);
 
             if (ImGui::Combo("Eye取得元", &eyeSource, eyeSourceNames, IM_ARRAYSIZE(eyeSourceNames))) {
-                p.eyeSource = static_cast<Camera::OverrideEyeSource>(eyeSource);
+                p.eyeSource = static_cast<engine::Camera::OverrideEyeSource>(eyeSource);
                 changed = true;
             }
 
-            if (p.eyeSource == Camera::OverrideEyeSource::Fixed) {
+            if (p.eyeSource == engine::Camera::OverrideEyeSource::Fixed) {
                 if (ImGui::Checkbox("X軸追従##Eye", &p.trackEyeX))
                     changed = true;
                 ImGui::SameLine();
@@ -528,11 +548,11 @@ void CameraEditor::DrawImGui() {
                 int followMode = static_cast<int>(p.eyeFollowMode);
 
                 if (ImGui::Combo("Eye追従", &followMode, followModeNames, IM_ARRAYSIZE(followModeNames))) {
-                    p.eyeFollowMode = static_cast<Camera::OverrideFollowMode>(followMode);
+                    p.eyeFollowMode = static_cast<engine::Camera::OverrideFollowMode>(followMode);
                     changed = true;
                 }
 
-                if (p.eyeFollowMode == Camera::OverrideFollowMode::Smooth &&
+                if (p.eyeFollowMode == engine::Camera::OverrideFollowMode::Smooth &&
                     ImGui::DragFloat("Eye追従レスポンス", &p.eyeFollowResponse, 0.1f, 0.1f, 40.0f, "%.2f")) {
                     changed = true;
                 }
@@ -545,11 +565,11 @@ void CameraEditor::DrawImGui() {
             int targetSource = static_cast<int>(p.targetSource);
 
             if (ImGui::Combo("Target取得元", &targetSource, targetSourceNames, IM_ARRAYSIZE(targetSourceNames))) {
-                p.targetSource = static_cast<Camera::OverrideTargetSource>(targetSource);
+                p.targetSource = static_cast<engine::Camera::OverrideTargetSource>(targetSource);
                 changed = true;
             }
 
-            if (p.targetSource == Camera::OverrideTargetSource::Fixed) {
+            if (p.targetSource == engine::Camera::OverrideTargetSource::Fixed) {
                 if (ImGui::Checkbox("X軸追従##Tgt", &p.trackTargetX))
                     changed = true;
                 ImGui::SameLine();
@@ -561,7 +581,7 @@ void CameraEditor::DrawImGui() {
                 if (ImGui::DragFloat3("固定座標##Tgt", &p.fixedTargetPos.x, 0.1f))
                     changed = true;
             }
-            else if (p.targetSource == Camera::OverrideTargetSource::SceneObject) {
+            else if (p.targetSource == engine::Camera::OverrideTargetSource::SceneObject) {
                 const char* targetObjectLabel = p.targetObjectName.empty() ? "(未選択)" : p.targetObjectName.c_str();
 
                 if (ImGui::BeginCombo("追従Object##Target", targetObjectLabel)) {
@@ -593,16 +613,16 @@ void CameraEditor::DrawImGui() {
                     changed = true;
             }
 
-            if (p.targetSource != Camera::OverrideTargetSource::Fixed) {
+            if (p.targetSource != engine::Camera::OverrideTargetSource::Fixed) {
                 const char* followModeNames[] = { "完全追従", "遅延追従" };
                 int followMode = static_cast<int>(p.targetFollowMode);
 
                 if (ImGui::Combo("Target追従", &followMode, followModeNames, IM_ARRAYSIZE(followModeNames))) {
-                    p.targetFollowMode = static_cast<Camera::OverrideFollowMode>(followMode);
+                    p.targetFollowMode = static_cast<engine::Camera::OverrideFollowMode>(followMode);
                     changed = true;
                 }
 
-                if (p.targetFollowMode == Camera::OverrideFollowMode::Smooth &&
+                if (p.targetFollowMode == engine::Camera::OverrideFollowMode::Smooth &&
                     ImGui::DragFloat("Target追従レスポンス", &p.targetFollowResponse, 0.1f, 0.1f, 40.0f, "%.2f")) {
                     changed = true;
                 }
@@ -614,7 +634,7 @@ void CameraEditor::DrawImGui() {
             ImGui::Spacing();
 
             if (ImGui::Button(ICON_FA_PLAY " テスト再生 (Test Play)")) {
-                Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+                engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
                 if (camera)
                     PlayOverrideCamera(camera, selectedOverrideName_);
             }
@@ -622,7 +642,7 @@ void CameraEditor::DrawImGui() {
             ImGui::SameLine();
 
             if (ImGui::Button(ICON_FA_STOP " 停止 (Stop)")) {
-                Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+                engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
                 if (camera)
                     camera->EndOverride(p.exitDuration);
             }
@@ -683,6 +703,7 @@ void CameraEditor::DrawCameraPreviewPanel() {
         SaveSettings();
     }
 
+    // 描画先の解像度倍率は表示枠のピクセル寸法から独立させ、周囲のレイアウトを変えずに負荷を調整する。
     constexpr float kPreviewResolutionScales[] = { 0.25f, 0.5f, 1.0f };
     const char* previewResolutionLabels[] = { "25% (軽量)", "50% (推奨)", "100% (高精細)" };
     int previewResolutionIndex = 1;
@@ -783,6 +804,7 @@ void CameraEditor::DrawCameraPreviewPanel() {
     }
 
     ImGui::Image((ImTextureID)gpuHandle.ptr, ImVec2(width, height));
+    // 描画側はこのフラグで、タブの裏側など実際に画像が見えない間の不要な更新を省く。
     cameraPreviewPanelVisibleThisFrame_ = ImGui::IsItemVisible();
 #endif
 }

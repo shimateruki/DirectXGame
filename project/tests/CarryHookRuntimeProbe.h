@@ -32,7 +32,7 @@ inline void Run(BaseScene* scene, std::ostream& log) {
     const auto savedInput = input->CaptureReplayState();
     auto* savedTarget = camera->GetFollowTarget();
     struct Restore {
-        engine::InputManager* input; Camera* camera; engine::InputManager::ReplayState saved; engine::Object3D* target;
+        engine::InputManager* input; engine::Camera* camera; engine::InputManager::ReplayState saved; engine::Object3D* target;
         ~Restore() { input->ApplyReplayState(saved); camera->SetFollowTarget(target); camera->SetAimCameraSuppressed(false); }
     } restore{input, camera, savedInput, savedTarget};
     // Restoreを最後に残さず、Actor破棄前にカメラ参照を戻す。
@@ -51,7 +51,7 @@ inline void Run(BaseScene* scene, std::ostream& log) {
     actor->SetTranslate({0, 1000, 0}); actor->UpdateWorldMatrix(true);
     actor->SetGravity(60); actor->SetMaxFallSpeed(100);
     camera->EndOverride(0); camera->SetFollowTarget(actor.get()); camera->SetInputEnabled(true);
-    camera->SetFollowMode(Camera::FollowMode::Aimable); camera->ConfigAimable(12, 2, {0, 0, 0});
+    camera->SetFollowMode(engine::Camera::FollowMode::Aimable); camera->ConfigAimable(12, 2, {0, 0, 0});
     const auto* binding = KeyConfig::GetInstance()->GetBindData("SecondaryAction");
     Require(binding && binding->mouseButton >= 0 && binding->padCode, "secondary binding missing");
     auto replay = [&](bool pad, bool held, bool previous) {

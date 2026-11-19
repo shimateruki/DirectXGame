@@ -47,6 +47,7 @@ void PresetManager::RefreshPrefabInheritance() {
             const json& addedChildren = asset["addedChildren"];
 
             if (addedChildren.is_array()) {
+                // 同じ親に対しては保存された挿入位置が手前の子から配置し、先に置いた子の位置が後の挿入でずれないようにする。
                 std::vector<json> sortedAddedChildren(addedChildren.begin(), addedChildren.end());
                 std::stable_sort(sortedAddedChildren.begin(), sortedAddedChildren.end(), [](const json& lhs, const json& rhs) {
                     const std::string lhsParent = lhs.value("parentObjectId", "");
@@ -96,6 +97,7 @@ void PresetManager::RefreshPrefabInheritance() {
                 }
             }
 
+            // 移動対象を元の位置からすべて外した後、新しい親と並び順で挿入する。
             std::stable_sort(pendingReparents.begin(), pendingReparents.end(), [](const auto& lhs, const auto& rhs) {
                 if (lhs.parentObjectId != rhs.parentObjectId)
                     return lhs.parentObjectId < rhs.parentObjectId;
@@ -301,6 +303,7 @@ bool PresetManager::UpdatePrefabFromObject(const std::string& prefabName, engine
         }
 
         json reparentedObjects = json::array();
+        // 既存のルートは移動対象から外し、配下の親変更と兄弟順の変更だけを記録する。
         const std::string rootId = baseRoot.value("prefabObjectId", "");
 
         for (const auto& [sourceObjectId, editedLocation] : editedLocations) {
@@ -337,6 +340,7 @@ bool PresetManager::UpdatePrefabFromObject(const std::string& prefabName, engine
             const json& baseNode = *baseLocationIt->second.node;
             const json& editedNode = *editedLocation.node;
 
+            // コンポーネントの有無を先に比較し、存在差分を値の変更と区別して保存する。
             for (const EditorComponentDescriptor& component : registry->GetComponents()) {
                 if (!IsPrefabComponentDescriptor(component)) {
                     continue;
@@ -460,12 +464,14 @@ int PresetManager::SynchronizePrefabInstances(
     }
 
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
+    // 同期対象の既存ノード、生成した追加ノード、削除対象ノードの数を数える。設定項目単位では加算しない。
     int synchronizedObjects = 0;
 
     for (auto& [instanceId, objects] : instances) {
         if (objects.empty() || !objects.front())
             continue;
         const auto rootInfo = objects.front()->GetPrefabInstanceInfo();
+        // アセット名が変わっても同じPrefabとして扱えるよう、更新前後の両方を永続IDで探す。
         const json* oldAsset = findAssetById(beforePrefabs, rootInfo.assetId);
         const json* newAsset = findAssetById(prefabs_, rootInfo.assetId);
         if (!oldAsset || !newAsset || !oldAsset->contains("root") || !newAsset->contains("root") ||
@@ -491,27 +497,31 @@ int PresetManager::SynchronizePrefabInstances(
             }
         }
 
-        // Source上で親が変わったObjectだけを同期します。Scene側で独自に親変更済みなら保持します。
-        for (auto& [sourceObjectId, object] : instanceObjects) {
-            auto oldIt = oldLocations.find(sourceObjectId);
-            auto newIt = newLocations.find(sourceObjectId);
-            if (!object || oldIt == oldLocations.end() || newIt == newLocations.end() ||
-                oldIt->second.parentObjectId == newIt->second.parentObjectId) {
-                continue;
-            }
+        // Sourceと同じ親を保つObjectだけ移動し、Scene固有の親変更は保持する。
+        const auto syncChangedParents = [&] {
+            for (auto& [sourceObjectId, object] : instanceObjects) {
+                auto oldIt = oldLocations.find(sourceObjectId);
+                auto newIt = newLocations.find(sourceObjectId);
+                if (!object || oldIt == oldLocations.end() || newIt == newLocations.end() ||
+                    oldIt->second.parentObjectId == newIt->second.parentObjectId) {
+                    continue;
+                }
 
-            std::string currentParentSourceId;
-            if (engine::Object3D* currentParent = object->GetParent(); currentParent && currentParent->IsPrefabInstance() &&
-                currentParent->GetPrefabInstanceInfo().instanceId == instanceId) {
-                currentParentSourceId = currentParent->GetPrefabInstanceInfo().sourceObjectId;
-            }
+                std::string currentParentSourceId;
+                if (engine::Object3D* currentParent = object->GetParent(); currentParent && currentParent->IsPrefabInstance() &&
+                    currentParent->GetPrefabInstanceInfo().instanceId == instanceId) {
+                    currentParentSourceId = currentParent->GetPrefabInstanceInfo().sourceObjectId;
+                }
 
-            auto newParentIt = instanceObjects.find(newIt->second.parentObjectId);
+                auto newParentIt = instanceObjects.find(newIt->second.parentObjectId);
 
-            if (currentParentSourceId == oldIt->second.parentObjectId && newParentIt != instanceObjects.end()) {
-                object->SetParent(newParentIt->second, false);
+                if (currentParentSourceId == oldIt->second.parentObjectId && newParentIt != instanceObjects.end()) {
+                    // 親を変更するときはローカル姿勢を保ち、新しい親に従って配置を移す。
+                    object->SetParent(newParentIt->second, false);
+                }
             }
-        }
+        };
+        syncChangedParents();
 
         // InstanceがSourceと同じ値を保っているPropertyだけ更新し、ローカルOverrideは残します。
         for (auto& [sourceObjectId, object] : instanceObjects) {
@@ -529,6 +539,7 @@ int PresetManager::SynchronizePrefabInstances(
                     continue;
                 }
 
+                // 最新のSourceと比べる前に、Instanceが更新前のSource値から変更されていないことを確かめる。
                 const json oldValue = ReadSourceProperty(*oldIt->second.node, descriptor.path);
                 const json newValue = ReadSourceProperty(*newIt->second.node, descriptor.path);
                 const json instanceValue = registry->GetValue(object, descriptor.path);
@@ -550,6 +561,7 @@ int PresetManager::SynchronizePrefabInstances(
                 continue;
             }
 
+            // 追加された親の配下は親を生成する際にまとめて作られる。子を個別の生成候補へ入れない。
             if (newLocations.find(location.parentObjectId) != newLocations.end() &&
                 oldLocations.find(location.parentObjectId) == oldLocations.end()) {
                 continue;
@@ -583,26 +595,7 @@ int PresetManager::SynchronizePrefabInstances(
         }
 
         // 追加Objectの生成後にもう一度親同期を行い、追加Object配下への移動を反映します。
-        for (auto& [sourceObjectId, object] : instanceObjects) {
-            auto oldIt = oldLocations.find(sourceObjectId);
-            auto newIt = newLocations.find(sourceObjectId);
-            if (!object || oldIt == oldLocations.end() || newIt == newLocations.end() ||
-                oldIt->second.parentObjectId == newIt->second.parentObjectId) {
-                continue;
-            }
-
-            std::string currentParentSourceId;
-            if (engine::Object3D* currentParent = object->GetParent(); currentParent && currentParent->IsPrefabInstance() &&
-                currentParent->GetPrefabInstanceInfo().instanceId == instanceId) {
-                currentParentSourceId = currentParent->GetPrefabInstanceInfo().sourceObjectId;
-            }
-
-            auto newParentIt = instanceObjects.find(newIt->second.parentObjectId);
-
-            if (currentParentSourceId == oldIt->second.parentObjectId && newParentIt != instanceObjects.end()) {
-                object->SetParent(newParentIt->second, false);
-            }
-        }
+        syncChangedParents();
 
         // Sourceから削除されたObjectは除去します。非Prefabの子はScene Rootへ退避します。
         std::unordered_set<engine::Object3D*> removedObjects;
@@ -619,10 +612,12 @@ int PresetManager::SynchronizePrefabInstances(
                 if (!candidate || removedObjects.find(candidate.get()) != removedObjects.end())
                     continue;
                 if (candidate->GetParent() && removedObjects.find(candidate->GetParent()) != removedObjects.end()) {
+                    // 親だけが削除される場合は、残す子をワールド姿勢を保ったままScene Rootへ移す。
                     candidate->SetParent(nullptr, true);
                 }
             }
 
+            // 削除対象を所有する一時配列へまとめ、取り外しの途中で別の削除対象の実体を失わないようにする。
             std::vector<std::unique_ptr<engine::Object3D>> detachedObjects;
             detachedObjects.reserve(removedObjects.size());
 

@@ -23,6 +23,7 @@ using namespace EnemyMagmaSlimeImplementation;
 
 // 遭遇制御中は通常AIに先行し、Editor復帰・待機・登場の状態を処理します。
 bool EnemyMagmaSlime::UpdateEncounterState(float deltaTime) {
+    // 配置が遭遇イベント制御を指定していなければ、通常の敵更新に処理を返します。
     if (!IsEncounterControlled()) {
         encounterState_ = EncounterState::Normal;
         encounterInitializedForPlay_ = false;
@@ -40,6 +41,7 @@ bool EnemyMagmaSlime::UpdateEncounterState(float deltaTime) {
         InitializeEncounterState();
     }
 
+    // 起動待ちでは速度と攻撃表示を止めます。登場自体の更新は Appearing の間だけ実行します。
     if (encounterState_ == EncounterState::Dormant) {
         SetVelocity({0.0f, 0.0f, 0.0f});
         ClearTransientVisuals();
@@ -51,6 +53,7 @@ bool EnemyMagmaSlime::UpdateEncounterState(float deltaTime) {
         return false;
     }
 
+    // 配置位置の上から回転しながら降り、登場時計に合わせて形と発光を通常の姿へ近づけます。
     encounterTimer_ += (std::max)(0.0f, deltaTime);
     idleTimer_ += (std::max)(0.0f, deltaTime);
     const float progress = std::clamp(encounterTimer_ / GetEncounterAppearanceDuration(), 0.0f, 1.0f);
@@ -88,6 +91,7 @@ bool EnemyMagmaSlime::UpdateEncounterState(float deltaTime) {
     SetEmissive(encounterBaseEmissive_ + (1.0f - std::abs(progress * 2.0f - 1.0f)) * 1.75f);
     SyncCollisionRadius();
 
+    // 登場が終わった時点で、戦闘用の衝突設定を戻す処理へ進みます。
     if (progress >= 1.0f) {
         FinishEncounterAppearance();
     }
@@ -137,6 +141,7 @@ void EnemyMagmaSlime::InitializeEncounterState() {
     lastAutomaticAttack_ = AttackKind::None;
     const bool startActive = GetParameters().has_value() && GetParameters()->startActive;
 
+    // 初回更新より先に起動イベントが届いていれば、配置時の開始フラグが無効でも登場します。
     if (startActive || encounterRequestedActive_) {
         BeginEncounterAppearance();
     } else {
@@ -168,6 +173,7 @@ void EnemyMagmaSlime::ResetEncounterStateForEditor() {
     SetVelocity({0.0f, 0.0f, 0.0f});
     SetCollisionAttribute(0);
     SetCollisionMask(0);
+    // 編集へ戻った後は待機姿勢を保持し、前回の攻撃表示を残しません。
     SetIsVisible(false);
     ClearTransientVisuals();
     HideAttackTelegraph();

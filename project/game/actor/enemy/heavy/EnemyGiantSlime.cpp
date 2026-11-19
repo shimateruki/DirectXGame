@@ -77,6 +77,7 @@ void EnemyGiantSlime::Update(float deltaTime) {
 
     UpdateTimers(deltaTime);
 
+    // 攻撃ジャンプの下降中に接地したら、次の状態を処理する前に着地衝撃を発生させます。
     if (state_ == State::Airborne && IsGrounded() && GetVelocity().y <= 0.5f) {
         BeginLandingRecovery();
     }
@@ -86,6 +87,7 @@ void EnemyGiantSlime::Update(float deltaTime) {
     UpdateTargetFacing(direction, distance);
     UpdateBossTargetEngagement(distance);
 
+    // 待機中の気付きは溜めに先行させ、見た目と共通物理だけを進めます。
     if (state_ == State::Idle && UpdateNoticeReaction(deltaTime, distance, GetDetectionRange(), direction)) {
         SetVelocity({0.0f, GetVelocity().y, 0.0f});
         ApplySlimeAnimation(deltaTime);
@@ -208,14 +210,17 @@ void EnemyGiantSlime::UpdateStateMachine(float deltaTime, const engine::Vector3&
 
     switch (state_) {
     case State::ChargeJump:
+        // 跳躍前の溜めと踏み切りへの移行を UpdateJumpCharge() へ渡す。
         UpdateJumpCharge(deltaTime);
         break;
 
     case State::Recovery:
+        // 着地後の硬直と姿勢復帰を進め、次の攻撃までの間隔を作る。
         UpdateLandingRecovery(deltaTime);
         break;
 
     case State::Airborne:
+        // 予測した着地点を表示し、下降中だけ着地までの時間から警告を強調する。
         if (!landingWarningTriggered_ && GetVelocity().y < -0.1f) {
             const float height = (std::max)(0.0f, GetWorldPosition().y - landingTelegraphPosition_.y);
             const float fallSpeed = (std::max)(1.0f, -GetVelocity().y);
@@ -227,6 +232,7 @@ void EnemyGiantSlime::UpdateStateMachine(float deltaTime, const engine::Vector3&
             }
         }
 
+        // 着地の警告は地表に置き、跳躍中の本体のアニメーションは別に進める。
         ShowAttackTelegraphCircle(HitEffectDirector::ResolveGroundEffectPosition(landingTelegraphPosition_),
                                   attack.radius, 1.0f, {1.0f, 0.36f, 0.82f, 0.82f});
         ApplySlimeAnimation(deltaTime);
@@ -234,6 +240,7 @@ void EnemyGiantSlime::UpdateStateMachine(float deltaTime, const engine::Vector3&
 
     case State::Idle:
     default:
+        // 攻撃の途中でなければ、対象との距離と向きから次の行動を選ぶ。
         UpdateIdleState(deltaTime, direction, distance);
         break;
     }
@@ -360,6 +367,7 @@ void EnemyGiantSlime::UpdateJumpCharge(float deltaTime) {
         }
     }
 
+    // 追従する着地円と別に、床へ立ち上がる予兆リングを一定間隔で出します。
     if (telegraphTimer_ >= kTelegraphInterval) {
         SpawnLandingTelegraph();
         telegraphTimer_ = 0.0f;
@@ -373,6 +381,7 @@ void EnemyGiantSlime::UpdateJumpCharge(float deltaTime) {
     SetScale({baseScale_.x * (1.0f + t * 0.34f + pulse), baseScale_.y * (1.0f - t * 0.34f),
               baseScale_.z * (1.0f + t * 0.34f - pulse)});
 
+    // 予備動作の最後に着地点を基準とした方向と距離へ変換し、移動を LaunchJump() に渡します。
     if (stateTimer_ >= windupDuration) {
         engine::Vector3 toLanding = landingTelegraphPosition_ - GetTranslate();
         toLanding.y = 0.0f;
@@ -525,6 +534,7 @@ bool EnemyGiantSlime::UpdateHookSplitPull(float deltaTime, const engine::Vector3
         hookSplitDirection_ = nextDirection;
     }
 
+    // 空中では引き寄せの姿勢だけを更新し、地上へ下りるまで分裂ゲージを進めません。
     if (hookSplitAwaitingLanding_) {
         if (IsGrounded() && GetVelocity().y <= 0.5f) {
             BeginGroundHookResistance(true);
@@ -534,6 +544,7 @@ bool EnemyGiantSlime::UpdateHookSplitPull(float deltaTime, const engine::Vector3
         return false;
     }
 
+    // 着地直後の反動は独立して数え、踏ん張り・滑り・破断はその終了後に進めます。
     if (hookSplitPhase_ == HookSplitPhase::LandingSquash) {
         hookSplitPhaseTimer_ += deltaTime;
 
@@ -557,6 +568,7 @@ bool EnemyGiantSlime::UpdateHookSplitPull(float deltaTime, const engine::Vector3
     ApplyHookSplitVisual(deltaTime, hookOwnerPos);
     const float progress = GetHookSplitProgress();
 
+    // 末尾の姿勢を更新してから分裂を確定し、呼び出し元に捕獲終了を通知します。
     if (progress >= 1.0f) {
         SplitIntoSmallSlimes(particleSystem);
         return true;
@@ -625,8 +637,8 @@ const char* EnemyGiantSlime::GetDebugHookSplitPhaseName() const {
 
 engine::Vector3 EnemyGiantSlime::GetHookAttachmentPosition() const {
     // 見た目のせん断・拡縮を反映した位置を返し、フックの線が変形前の胴体に残らないようにする。
-    MeshRenderer* renderer = GetMeshRenderer();
-    Model* model = renderer ? renderer->GetModel() : nullptr;
+    engine::MeshRenderer* renderer = GetMeshRenderer();
+    engine::Model* model = renderer ? renderer->GetModel() : nullptr;
 
     if (!model) {
         return GetWorldPosition() + hookSplitDirection_ * 0.8f + engine::Vector3{0.0f, 0.7f, 0.0f};
@@ -662,11 +674,13 @@ void EnemyGiantSlime::BeginGroundHookResistance(bool landedFromAir) {
 }
 
 void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const engine::Vector3& hookOwnerPos) {
+    // 掴まれている最中にだけ見た目を変え、分裂し終えた本体には触れない。
     if (!isHookSplitPulled_ || hasSplit_) {
         return;
     }
 
     engine::Vector3 toOwner = hookOwnerPos - GetTranslate();
+    // フックを引く方向は主に水平面から求め、向きと左右の揺れに同じ基準を使う。
     const float planarDistance = std::sqrt(toOwner.x * toOwner.x + toOwner.z * toOwner.z);
     engine::Vector3 direction = NormalizePlanar(toOwner);
     hookSplitDirection_ = direction;
@@ -679,6 +693,7 @@ void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const engine::Vector
     engine::Vector3 targetPosition = GetTranslate();
     bool pinGroundAnchor = false;
 
+    // 空中では落下速度とフックの角度を姿勢へ反映し、地上の踏ん張りとは分ける。
     if (hookSplitAwaitingLanding_) {
         const float fallRate = std::clamp(std::abs(GetVelocity().y) / 24.0f, 0.0f, 1.0f);
         const float tetherPulse = std::sin(idleTimer_ * 13.0f);
@@ -688,6 +703,7 @@ void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const engine::Vector
         targetVisualRotation.z = tetherPulse * 0.055f;
         targetVisualShear.z = -0.055f + tetherPulse * 0.018f;
     } else if (hookSplitPhase_ == HookSplitPhase::LandingSquash) {
+        // 接地した瞬間は一度潰し、その後の反動までを着地用の時計で進める。
         const float t = Easing::SmoothStep01(hookSplitPhaseTimer_ / kHookLandingSquashDuration);
 
         if (t < 0.48f) {
@@ -703,6 +719,7 @@ void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const engine::Vector
     } else {
         const float progress = GetHookSplitProgress();
         const float tearProgress = Easing::SmoothStep01((progress - 0.82f) / 0.18f);
+        // 地上では一周期を引かれる動きと踏み戻す動きへ分け、同じ足元で抵抗して見えるようにする。
         const float pullCycle = std::fmod(hookSplitPullTimer_ * 2.55f, 1.0f);
         const float yankRise = Easing::SmoothStep01(pullCycle / 0.14f);
         const float yankFall = 1.0f - Easing::SmoothStep01((pullCycle - 0.14f) / 0.28f);
@@ -725,13 +742,16 @@ void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const engine::Vector
 
         const engine::Vector3 baseToOwner = hookOwnerPos - hookSplitBasePosition_;
         const float basePlanarDistance = std::sqrt(baseToOwner.x * baseToOwner.x + baseToOwner.z * baseToOwner.z);
+        // 引っ張る方向へ滑る量は初期距離に応じて決め、分裂に近づくにつれて段階的に増やす。
         const float maximumSlip = (std::min)(basePlanarDistance * 0.12f, 1.65f);
+        // 分裂進捗50%、68%、84%から滑りを順に足し、三段階が終わると最大移動量に達します。
         const float slipStep1 = Easing::SmoothStep01((progress - 0.50f) / 0.10f);
         const float slipStep2 = Easing::SmoothStep01((progress - 0.68f) / 0.09f);
         const float slipStep3 = Easing::SmoothStep01((progress - 0.84f) / 0.09f);
         const float permanentSlip = maximumSlip * (slipStep1 * 0.28f + slipStep2 * 0.32f + slipStep3 * 0.40f);
         const float temporaryYank = yankPulse * (0.055f + progress * 0.12f);
         const float pushBack = bracePulse * 0.045f * (1.0f - progress);
+        // 累積で滑った距離へ一時的な引きと踏み戻しを足し、足元の高さは変えない。
         const float pullDistance = (std::max)(0.0f, permanentSlip + temporaryYank - pushBack);
         targetPosition = hookSplitBasePosition_ + direction * pullDistance;
         targetPosition += side * struggleSide * (0.45f + tearProgress * 0.55f);
@@ -739,10 +759,12 @@ void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const engine::Vector
         pinGroundAnchor = true;
     }
 
+    // 揺れや潰れが重なっても行き過ぎないよう、軸ごとに大きさを制限する。
     targetVisualScale.x = std::clamp(targetVisualScale.x, 0.82f, 1.38f);
     targetVisualScale.y = std::clamp(targetVisualScale.y, 0.56f, 1.16f);
     targetVisualScale.z = std::clamp(targetVisualScale.z, 0.82f, 1.28f);
 
+    // 各変形へ減衰ばねをかけ、フックの方向や段階が変わっても姿勢を滑らかにつなぎます。
     SlimeBounceAnimator::StepDampedSpring(hookVisualScale_, hookVisualScaleVelocity_, targetVisualScale, deltaTime,
                                           20.0f, 0.62f);
     SlimeBounceAnimator::StepDampedSpring(hookVisualRotation_, hookVisualRotationVelocity_, targetVisualRotation,
@@ -755,6 +777,7 @@ void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const engine::Vector
     SlimeBounceAnimator::StepDampedSpring(hookVisualOffset_, hookVisualOffsetVelocity_, targetVisualOffset, deltaTime,
                                           22.0f, 0.78f);
 
+    // 被弾は今回の描画姿勢だけに重ね、踏ん張り用のばねと当たり判定の基準を維持します。
     engine::Vector3 renderedScale = hookVisualScale_;
     engine::Vector3 renderedRotation = hookVisualRotation_;
     engine::Vector3 renderedOffset = hookVisualOffset_;
@@ -767,11 +790,12 @@ void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const engine::Vector
         SetTranslate(targetPosition);
     }
 
-    if (MeshRenderer* renderer = GetMeshRenderer()) {
+    // 足元を固定するため、せん断の支点は描画モデルの下側に合わせる。
+    if (engine::MeshRenderer* renderer = GetMeshRenderer()) {
         renderer->SetVisualTransform(renderedScale, renderedRotation, renderedOffset);
         float shearPivotY = 0.0f;
 
-        if (Model* model = renderer->GetModel()) {
+        if (engine::Model* model = renderer->GetModel()) {
             shearPivotY = model->GetCenter().y - model->GetSize().y * 0.5f;
         }
 
@@ -786,8 +810,8 @@ void EnemyGiantSlime::ApplyHookSplitVisual(float deltaTime, const engine::Vector
 }
 
 engine::Vector3 EnemyGiantSlime::CalculateHookAnchorOffset(const engine::Vector3& visualScale, const engine::Vector3& visualRotation) const {
-    MeshRenderer* renderer = GetMeshRenderer();
-    Model* model = renderer ? renderer->GetModel() : nullptr;
+    engine::MeshRenderer* renderer = GetMeshRenderer();
+    engine::Model* model = renderer ? renderer->GetModel() : nullptr;
 
     if (!model) {
         return {0.0f, 0.5f * (1.0f - visualScale.y), 0.5f * (1.0f - visualScale.z)};
@@ -815,7 +839,7 @@ void EnemyGiantSlime::ResetHookSplitVisual() {
     hookVisualShear_ = {0.0f, 0.0f, 0.0f};
     hookVisualShearVelocity_ = {0.0f, 0.0f, 0.0f};
 
-    if (MeshRenderer* renderer = GetMeshRenderer()) {
+    if (engine::MeshRenderer* renderer = GetMeshRenderer()) {
         renderer->ResetVisualTransform();
     }
 }
@@ -827,6 +851,7 @@ void EnemyGiantSlime::LaunchJump(const engine::Vector3& direction, float distanc
     const float configuredJumpPower =
         GetParameters().has_value() && GetParameters()->jumpPower > 0.0f ? GetParameters()->jumpPower : kHeavyHopDefaultJumpPower;
     const float jumpPower = std::clamp(configuredJumpPower, kHeavyHopMinJumpPower, kHeavyHopMaxJumpPower);
+    // 飛び上がった位置と同じ高さへ戻る時間は上向き初速の2倍を重力で割った値。ここでは調整範囲に収めます。
     const float flightTime = std::clamp((jumpPower * 2.0f) / gravity, 0.42f, 0.68f);
     const float horizontalSpeed = std::clamp(distance / flightTime, kHeavyHopMinSpeed, kHeavyHopMaxSpeed);
     SetVelocity({direction.x * horizontalSpeed, jumpPower, direction.z * horizontalSpeed});
@@ -914,7 +939,8 @@ void EnemyGiantSlime::SyncWorldCollisionRadius(float worldRadius, float worldCen
     const engine::Vector3 scale = GetScale();
     const float maxScale = (std::max)({0.001f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)});
     const float yScale = (std::max)(0.001f, std::abs(scale.y));
-    ColliderConfig config = GetColliderConfig();
+    engine::ColliderConfig config = GetColliderConfig();
+    // 中心の高さにはY軸倍率、球の半径には最大軸倍率が掛かるため、それぞれ別の倍率で割り戻します。
     config.center.y = worldCenterY / yScale;
     SetColliderConfig(config);
     SetCollisionRadius(worldRadius / maxScale);
@@ -952,6 +978,7 @@ void EnemyGiantSlime::SplitIntoSmallSlimes(engine::ParticleSystem* particleSyste
 
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
 
+    // 子の実体は現在のシーンに生成し、分裂点を中心に等間隔で外へ飛ばします。
     if (scene && scene->GetObject3DCommon()) {
         for (int i = 0; i < kSplitSlimeCount; ++i) {
             auto slime = EnemyFactory::GetInstance()->CreateEnemy("Slime", scene->GetObject3DCommon());
@@ -972,6 +999,7 @@ void EnemyGiantSlime::SplitIntoSmallSlimes(engine::ParticleSystem* particleSyste
             slime->SetDetectionRange(18.0f);
             slime->SetVelocity({dir.x * 4.0f, 4.0f, dir.z * 4.0f});
 
+            // 隔離プレビューで生成する場合は、子も編集用としてロックし、通常の衝突を無効にします。
             if (IsEditorInternal()) {
                 slime->SetEditorInternal(true);
                 slime->SetIsLocked(true);
@@ -991,6 +1019,7 @@ void EnemyGiantSlime::SplitIntoSmallSlimes(engine::ParticleSystem* particleSyste
         }
     }
 
+    // 子を登録した後で元の大型個体の表示と接触を止め、シーンに取り除くよう要求します。
     SetCollisionAttribute(0);
     SetCollisionMask(0);
     SetIsVisible(false);

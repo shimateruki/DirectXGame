@@ -149,12 +149,15 @@ inline engine::Vector3 SafeNormalize(const engine::Vector3& value, const engine:
 
 // モデルの指定軸を攻撃方向へ合わせる回転を生成します。
 inline engine::Quaternion MakeAxisToDirectionQuaternion(const engine::Vector3& axis, const engine::Vector3& direction) {
+    // 軸と進行方向が短すぎる場合も回転を作れるよう、既定の上向きと元の軸を予備にする。
     const engine::Vector3 from = SafeNormalize(axis, {0.0f, 1.0f, 0.0f});
     const engine::Vector3 to = SafeNormalize(direction, from);
     const float dot = std::clamp(engine::Math::Dot(from, to), -1.0f, 1.0f);
+    // ほぼ同方向なら回転を掛けない単位クォータニオンを返す。
     if (dot > 0.9999f) {
         return {0.0f, 0.0f, 0.0f, 1.0f};
     }
+    // 逆向きでは二方向の外積から回転軸を作れないため、元の軸に直交する軸で半回転する。
     if (dot < -0.9999f) {
         engine::Vector3 perpendicular = engine::Math::Cross(from, {1.0f, 0.0f, 0.0f});
         if (engine::Math::Length(perpendicular) <= 0.001f) {
@@ -164,6 +167,7 @@ inline engine::Quaternion MakeAxisToDirectionQuaternion(const engine::Vector3& a
         return {perpendicular.x, perpendicular.y, perpendicular.z, 0.0f};
     }
 
+    // 通常は外積を回転軸にし、内積から回転量を求める。
     const engine::Vector3 rotationAxis = engine::Math::Cross(from, to);
     const float scale = std::sqrt((1.0f + dot) * 2.0f);
     const float inverseScale = 1.0f / scale;

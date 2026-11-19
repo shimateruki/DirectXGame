@@ -6,8 +6,7 @@
 namespace engine { class Object3D; }
 class Player;
 
-// 通常スライムでも敵へ対抗できる、形態に依存しない基礎攻撃を管理します。
-// コピー能力の入力処理と分離し、ボス戦で能力を失っても詰まない状態を保証します。
+// 通常形態の体当たりと踏みつけを管理します。ボス戦でコピー能力を失った後も通常攻撃を使えます。
 // 関連：Playerが入力・更新を渡し、体当たり・急降下の段階、判定、演出をまとめて進める。
 // 主な入口：ProcessInput / Update / Cancel
 class PlayerBaseCombatController {
@@ -15,7 +14,7 @@ class PlayerBaseCombatController {
     // 通常攻撃の押下エッジを渡します。継続押下を毎フレーム true にしないでください。
     void ProcessInput(Player& player, bool attackTriggered);
 
-    // deltaTime は秒。叩きつけと押し潰し、それぞれの準備・攻撃・硬直を進めます。
+    // deltaTime は秒。体当たりと踏みつけの準備・攻撃・硬直を進めます。
     void Update(Player& player, float deltaTime);
 
     // 中断時に一時演出を片付け、既定ではプレイヤー操作も戻します。

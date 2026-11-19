@@ -23,6 +23,7 @@ namespace {
 
 std::string StripResourcesPrefix(const std::string& path) {
     const std::string normalized = AssetReferenceExplorer::Normalize(path);
+    // 索引ではResourcesからの相対指定も受け付けるため、先頭の共通ディレクトリ名を取り除く。
     constexpr const char* kPrefix = "resources/";
     return normalized.rfind(kPrefix, 0) == 0 ? normalized.substr(std::strlen(kPrefix)) : normalized;
 }
@@ -37,6 +38,7 @@ std::string FileStemLower(const std::string& path) {
 
 int CommonPrefixScore(const std::string& lhs, const std::string& rhs) {
     const std::size_t count = std::min(lhs.size(), rhs.size());
+    // 途中で不一致になった時点で打ち切り、先頭から連続して一致した長さだけを類似度に使う。
     int score = 0;
 
     for (std::size_t index = 0; index < count && lhs[index] == rhs[index]; ++index) {
@@ -128,6 +130,7 @@ bool AssetReferenceExplorer::IsReferenceLikeKey(const std::string& key) {
 
 bool AssetReferenceExplorer::IsDirectReferenceValue(const std::string& value) {
     const std::string lower = Normalize(value);
+    // 文字列の形から明示参照の候補を判定する。一意に解決できるかはVisitJsonで確認する。
     return lower.rfind("guid:", 0) == 0 || lower.rfind("resources/", 0) == 0 ||
         lower.find('/') != std::string::npos || fs::path(lower).has_extension();
 }
@@ -216,6 +219,7 @@ void AssetReferenceExplorer::VisitJson(
         return;
     }
 
+    // 配列要素は添字を JSON Pointer へ足し、同じ文字列が複数あっても修復位置を区別する。
     if (value.is_array()) {
         for (std::size_t index = 0; index < value.size(); ++index) {
             VisitJson(value[index], ownerPath, pointer + "/" + std::to_string(index), key, destination, collectMissing);
@@ -313,6 +317,7 @@ std::vector<std::size_t> AssetReferenceExplorer::FindRepairCandidates(const Miss
             scored.push_back({ index, score });
     }
 
+    // 点数順に並べて上位だけを表示する。類似スコアは人が選ぶ修復候補の順位に使う。
     std::sort(scored.begin(), scored.end(), [](const Scored& lhs, const Scored& rhs) {
         return lhs.score > rhs.score;
     });
@@ -357,6 +362,7 @@ bool AssetReferenceExplorer::RepairMissingReference(MissingReference& missing, s
     std::ifstream input(missing.ownerPath);
     nlohmann::json data;
     try {
+        // 修復前に、走査時の参照位置と値を現在のファイルから再確認する。
         input >> data;
         nlohmann::json::json_pointer pointer(missing.jsonPointer);
 
@@ -403,6 +409,7 @@ void AssetReferenceExplorer::RefreshIndex() {
         }
     }
 
+    // 全JSONの走査を終えた索引だけを、現在世代の参照結果として扱う。
     indexedGeneration_ = database->GetGeneration();
     rescanRequested_ = false;
     statusMessage_ = "参照索引を更新しました。Asset " + std::to_string(database->GetAssets().size()) +

@@ -21,6 +21,7 @@ void Log::WriteInternal(LogLevel level, const std::string& file, int line, const
     // 1. ファイル出力が有効な場合のみ書き出し
     if (isFileEnabled_) {
         if (!ofs.is_open()) {
+            // 初回の出力時にファイルを開きます。出力モードのみで開くため前回の実行ログはここで切り詰められます。
             ofs.open(kLogFileName, std::ios::out);
         }
 

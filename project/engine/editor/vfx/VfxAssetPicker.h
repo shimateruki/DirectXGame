@@ -44,6 +44,7 @@ inline bool DrawCombo(const char* label, const std::vector<std::string>& entries
     if (ImGui::IsWindowAppearing())
         ImGui::SetKeyboardFocusHere();
     ImGui::InputTextWithHint("##AssetSearch", "名前・フォルダーで検索", query, queryCapacity);
+    // 検索は元の一覧を並べ替えず、表示する添字だけ集める。絞り込み中に選んでも同じ Asset を指せる。
     std::vector<int> visibleIndices;
     visibleIndices.reserve(entries.size());
     for (int i = 0; i < static_cast<int>(entries.size()); ++i) {
@@ -60,6 +61,7 @@ inline bool DrawCombo(const char* label, const std::vector<std::string>& entries
     }
     if (visibleIndices.empty())
         ImGui::TextDisabled("一致する項目はありません");
+    // 候補の画面外の行は生成しない。ファイル名表示とホバー用のフルパスは、実際に見える行だけ計算する。
     ImGuiListClipper clipper;
     clipper.Begin(static_cast<int>(visibleIndices.size()));
     while (clipper.Step()) {

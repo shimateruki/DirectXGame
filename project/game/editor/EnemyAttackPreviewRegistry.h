@@ -77,12 +77,14 @@ public:
         for (const auto& entry : entries) {
             if (entry.type.empty() || entry.displayName.empty() || !entry.selectAttack ||
                 !types.insert(entry.type).second) return false;
+            // 同じ敵の中で確認モードIDが重複しないよう、型ごとに別の集合で検証します。
             std::unordered_set<std::string> options;
             for (const auto& option : entry.options) {
                 if (option.id.empty() || option.displayName.empty() || !option.duration ||
                     !options.insert(option.id).second) return false;
             }
         }
+        // 全候補を検証できたときだけ一覧へ移し、途中で失敗した型が残らないようにします。
         for (auto& entry : entries) Entries().push_back(std::move(entry));
         return true;
     }

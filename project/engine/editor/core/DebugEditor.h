@@ -36,21 +36,19 @@ class SelectedActorSession;
 #include "game/system/cinematic/GhostDirector.h"
 #include "HierarchyWindow.h"
 #include "engine/editor/scene/inspector/InspectorWindow.h"
-#include "MaterialPreviewBoard.h"
 #include "PrimitiveDrawer.h"
 #include "ProjectWindow.h"
 #include "SceneSavePreview.h"
 #include "SceneSerializer.h"
-#include "SceneInventoryWindow.h"
 #include "TextSpriteGenerator.h"
 
 namespace engine { class Object3D; }
 class DebrisEffectEditor;
-class DirectXCommon;
+namespace engine { class DirectXCommon; }
 class SceneManager;
 class SceneWorkspace;
 class GhostRecorder;
-class Model;
+namespace engine { class Model; }
 class PostEffectEditor;
 class SpriteDebugEditor;
 class ParticleEditor;
@@ -76,7 +74,7 @@ public:
 
     /// <summary>シーン管理と描画基盤を借りて編集機能を初期化する。</summary>
     /// <remarks>借用先はFinalizeまで有効である必要がある。</remarks>
-    void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
+    void Initialize(SceneManager* sceneManager, engine::DirectXCommon* dxCommon);
 
     /// <summary>編集入力、選択、配置プレビュー、通知を毎フレーム更新する。</summary>
     void Update();
@@ -314,6 +312,7 @@ public:
 
     /// <summary>Game Viewの位置とサイズを各プレビューツールへ通知する。</summary>
     void SetGameViewRegion(const engine::Vector2& offset, const engine::Vector2& size) {
+        // 黒帯を除いた画像矩形を記録し、各プレビューにも同じ画面原点とピクセル寸法を渡す。
         gameViewOffset_ = offset;
         gameViewSize_ = size;
 
@@ -326,6 +325,7 @@ public:
 
     /// <summary>ウィンドウ上のGame View矩形を設定する。</summary>
     void SetGameViewScreenRect(float left, float top, float right, float bottom) {
+        // 設定メニューなどへ渡す画面矩形は整数ピクセルにそろえる。幅または高さのない矩形は公開しない。
         gameViewScreenRectLeft_ = static_cast<int>(left);
         gameViewScreenRectTop_ = static_cast<int>(top);
         gameViewScreenRectRight_ = static_cast<int>(right);
@@ -400,6 +400,7 @@ public:
         DebrisEffectEditor* debrisEffectEditor,
         TrailEmitterEditor* trailEmitterEditor)
     {
+        // 実体は GameEditorController が所有する。ここでは編集画面から各ツールへ渡す参照だけを保持する。
         postEffectEditor_ = postEffectEditor;
         spriteDebugEditor_ = spriteDebugEditor;
         particleEditor_ = particleEditor;
@@ -507,9 +508,7 @@ public:
     TrailEmitterEditor* GetTrailEmitterEditor() const { return trailEmitterEditor_; }
 
     /// <summary>DebugEditorが所有する各ツールウィンドウへの参照を返す。</summary>
-    SceneInventoryWindow* GetSceneInventoryWindow() { return &sceneInventoryWindow_; }
 
-    MaterialPreviewBoard* GetMaterialPreviewBoard() { return &materialPreviewBoard_; }
 
     EffectPreviewStage* GetEffectPreviewStage() { return EffectPreviewStage::GetInstance(); }
 
@@ -734,7 +733,7 @@ struct PlacementResult {
 private:
     // SceneManagerとDirectX基盤は外部所有。MathはEditorの座標計算に使う。
     SceneManager* sceneManager_ = nullptr;
-    DirectXCommon* dxCommon_ = nullptr;
+    engine::DirectXCommon* dxCommon_ = nullptr;
     engine::Math math_;
 
     // 選択Objectはシーンが所有する。複数選択と単一選択を別々に保持する。
@@ -785,8 +784,8 @@ private:
     float previewObjectOriginalEmissive_ = 1.0f;
     std::string previewObjectOriginalClassName_;
     std::string previewObjectOriginalModelName_;
-    Model* previewObjectOriginalModel_ = nullptr;
-    ColliderConfig previewObjectOriginalColliderConfig_{};
+    engine::Model* previewObjectOriginalModel_ = nullptr;
+    engine::ColliderConfig previewObjectOriginalColliderConfig_{};
     bool previewObjectUsesFallbackModel_ = false;
 
     // 配置面への接触位置。有効でない間は計算値を利用しない。
@@ -957,8 +956,6 @@ private:
     SceneSerializer serializer_;
     PrimitiveDrawer primitiveDrawer_;
 
-    SceneInventoryWindow sceneInventoryWindow_;
-    MaterialPreviewBoard materialPreviewBoard_;
 
     SelectedActorSession* actorSession_ = nullptr;
 #ifdef USE_IMGUI

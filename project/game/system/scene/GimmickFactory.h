@@ -26,6 +26,7 @@ class GimmickFactory {
     template<class T>
     bool RegisterGimmick(const std::string& displayName, const char* typeId = T::kTypeId,
                          const char* model = T::kModelPath, std::function<void(T&)> configure = {}) {
+        // 同じ保存IDで別の生成先が選ばれないよう、表示名のない登録とIDの重複を拒否します。
         if (displayName.empty() || std::any_of(registered_.begin(), registered_.end(),
             [typeId](const Entry& entry) { return entry.info.id == typeId; })) return false;
         registered_.push_back({{typeId, displayName, [](const engine::Object3D& object) {
@@ -33,6 +34,7 @@ class GimmickFactory {
         }}, [model = std::string(model), configure](engine::Object3DCommon* common) {
             auto object = std::make_unique<T>();
             object->Initialize(common, model);
+            // 別名プリセットの差分は、クラス標準の初期化後に反映します。
             if (configure) configure(*object);
             return object;
         }});

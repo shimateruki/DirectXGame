@@ -15,6 +15,7 @@ constexpr uint32_t kCrownMovieHiddenReason = 1u << 8;
 bool GamePlayScene::BeginCrownMoviePreview(bool defeat) {
     if (crownMoviePreview_.active)
         return true;
+    // 編集中の配置を借りるため、すでにプレイ中か本編演出が準備済みの場合は始めません。
     if (!player_ || crownFinale_.prepared || !GetSceneManager() || GetSceneManager()->IsPlaying())
         return false;
     EnemyFalseKingSlime* sourceBoss = nullptr;
@@ -28,14 +29,15 @@ bool GamePlayScene::BeginCrownMoviePreview(bool defeat) {
         hasFloor |= object->GetName().find("Stage3_HighCrown_ArenaFloor_") != std::string::npos;
     }
 
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    // 複製元の役者と床を確認し、見つかった場合だけ元の編集カメラを退避します。
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!sourceBoss || !hasFloor || !camera)
         return false;
     auto& p = crownMoviePreview_;
     p.defeat = defeat;
     p.originalPlayer = player_;
     p.previousCameraOverride = CameraManager::GetInstance()->GetActiveCameraOverride();
-    p.camera = std::make_unique<Camera>();
+    p.camera = std::make_unique<engine::Camera>();
     p.camera->Initialize();
     p.camera->SetClipRange(camera->GetNearClip(), camera->GetFarClip());
     p.camera->SetInputEnabled(false);
@@ -61,6 +63,7 @@ bool GamePlayScene::BeginCrownMoviePreview(bool defeat) {
         auto copy = object->Clone();
         if (!copy)
             continue;
+        // 複製は保存・操作・実戦の当たり判定から外し、プレビューの表示に限定します。
         copy->ClearEditorHiddenReasons();
         copy->SetEditorInternal(true);
         copy->SetIsLocked(true);
@@ -78,6 +81,7 @@ bool GamePlayScene::BeginCrownMoviePreview(bool defeat) {
         copies.push_back(std::move(copy));
     }
 
+    // ボスの複製に失敗した場合は、配置を隠す前にカメラの保存制限を解除します。
     if (!previewBoss) {
         CameraEditor::GetInstance()->SetEditorStateSaveBlocker(1u << 3, false);
         p = CrownMoviePreviewState{};
@@ -126,6 +130,7 @@ bool GamePlayScene::BeginCrownMoviePreview(bool defeat) {
         AddObject(std::move(copy));
     objectManager_->ApplyPendingChanges();
 
+    // 本編と同じ継承処理で再生を始め、準備失敗時は隔離した表示とカメラを元に戻します。
     if (!StartCrownFinale(previewBoss)) {
         EndCrownMoviePreview();
         return false;
@@ -155,6 +160,7 @@ void GamePlayScene::RewindCrownMoviePreview() {
         return;
     }
 
+    // 継承プレビューが進行中の場合だけ、能力と演出姿勢を初期値へ戻します。
     if (!crownMoviePreview_.active || !crownFinale_.active)
         return;
     auto& s = crownFinale_;
@@ -176,6 +182,7 @@ void GamePlayScene::RewindCrownMoviePreview() {
     s.bodyFormed = false;
     s.granted = s.landed = false;
 
+    // 以前の再生で変化した床・壁などを保存済みの姿勢と判定に戻してから0秒を描画します。
     for (const auto& pose : s.originalObjects) {
         pose.object->SetTranslate(pose.position);
         pose.object->SetRotation(pose.rotation);
@@ -189,6 +196,7 @@ void GamePlayScene::RewindCrownMoviePreview() {
 }
 
 void GamePlayScene::StepCrownMoviePreview(float deltaTime) {
+    // 撃破と継承のうち開いている方だけ時間を進め、複製の描画定数を更新します。
     if (crownMoviePreview_.active && crownMoviePreview_.defeat) {
         UpdateCrownDefeat(deltaTime);
 
@@ -217,27 +225,31 @@ void GamePlayScene::EndCrownMoviePreview() {
     auto& p = crownMoviePreview_;
     if (!p.active)
         return;
+    // プレビュー用の演出を停止し、複製がまだ有効な間に演出側が借りた参照を片付けます。
     ResetCrownDefeat();
     ResetCrownFinaleWorld();
     objectManager_->ApplyPendingChanges();
     player_ = p.originalPlayer;
 
+    // 元の配置ではプレビュー由来の非表示理由だけ外し、別の編集操作の表示設定を保ちます。
     for (engine::Object3D* object : p.hiddenObjects)
         object->SetEditorHiddenReason(kCrownMovieHiddenReason, false);
 
+    // 複製はすぐ非表示にし、管理側へ削除を要求します。
     for (engine::Object3D* object : p.objects) {
         object->SetIsVisible(false);
         object->SetReplayRemoved(true);
         RequestRemoveObject(object);
     }
 
-    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+    // 元の追従先・姿勢・画角を戻してから、編集時のカメラ選択と保存を再開します。
+    if (engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         camera->SetFollowTarget(p.follow);
         camera->SetFollowMode(p.followMode);
         camera->SetEye(p.eye);
         camera->SetTarget(p.target);
         camera->SetRotation(p.rotation);
-        if (p.followMode == Camera::FollowMode::FixedPoint)
+        if (p.followMode == engine::Camera::FollowMode::FixedPoint)
             camera->ConfigFixedPoint(p.eye, p.rotation);
         camera->SetFovY(p.fov);
         camera->SetInputEnabled(true);

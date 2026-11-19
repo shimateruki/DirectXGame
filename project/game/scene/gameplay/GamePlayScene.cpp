@@ -7,6 +7,7 @@
 #include "Skybox.h"
 #include "Text.h"
 #include "game/ui/ControlsGuideOverlay.h"
+#include "game/actor/gimmick/trigger/GimmickGuideSign.h"
 #include "game/ui/PauseMenuOverlay.h"
 #include "game/ui/SettingsMenuOverlay.h"
 #include "game/ui/SaveIndicatorOverlay.h"
@@ -70,9 +71,9 @@ void GamePlayScene::Draw() {
     // 近距離では自キャラのモデルが視界を塞ぐため、通常パス・半透明パス・特殊材質パスで
     // 同じ「プレイヤーとその子を描かない」判定を使います。王冠演出中は専用カメラなので除外します。
     bool isFirstPerson = false;
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 #ifndef _DEBUG
-    if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::FirstPerson) {
+    if (camera->GetFollowTarget() && camera->GetFollowMode() == engine::Camera::FollowMode::FirstPerson) {
         isFirstPerson = true;
     }
 #endif
@@ -92,8 +93,8 @@ void GamePlayScene::Draw() {
     }
 
     // ワールド描画に使う光源バッファを先に取得し、通常時と残機喪失演出で共有します。
-    ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
-    ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
+    ID3D12Resource* pointLightRes = engine::LightManager::GetInstance()->GetPointLightResource();
+    ID3D12Resource* spotLightRes = engine::LightManager::GetInstance()->GetSpotLightResource();
 
     // 残機喪失中は演出専用の世界だけを描き、通常のオブジェクト群を重ねません。
     if (lifeLostState_.IsActive()) {
@@ -109,8 +110,8 @@ void GamePlayScene::Draw() {
     auto& objects = objectManager_->GetObjects();
 
     // 背景を先に描き、以降は不透明→半透明→画面色・深度を読む特殊材質の順で重ねます。
-    if (skybox_ && camera && LightManager::GetInstance()->IsSkyboxEnabled()) {
-        skybox_->SetTextureHandle(LightManager::GetInstance()->GetSkyboxTextureHandle());
+    if (skybox_ && camera && engine::LightManager::GetInstance()->IsSkyboxEnabled()) {
+        skybox_->SetTextureHandle(engine::LightManager::GetInstance()->GetSkyboxTextureHandle());
         skybox_->Draw(camera->GetConstantBuffer());
     }
 
@@ -121,7 +122,7 @@ void GamePlayScene::Draw() {
     DrawSceneObjectPass(objects, MaterialRenderPolicy::Pass::Opaque, pointLightRes, spotLightRes,
         player_, isFirstPerson, true, [this](engine::Object3D* object) { return IsVisible(object); });
 
-    // フックマーカーの描画（プレイヤーがカメラ外に判定されて非表示になってもマーカーだけは描画する）
+    // 王冠の継承・撃破演出が所有するモデルは通常の配置集合と別に描きます。
     DrawCrownFinaleWorld(pointLightRes, spotLightRes);
     DrawCrownDefeatWorld(pointLightRes, spotLightRes);
 
@@ -257,13 +258,24 @@ void GamePlayScene::DrawUi() {
     // ワールド描画の後に2Dを重ねます。早期returnする演出は通常HUDと同時表示しません。
     BeginSpriteDrawing();
 
+    const auto drawGuideSigns = [&](engine::Camera* camera) {
+        if (!objectManager_)
+            return;
+        for (const auto& object : objectManager_->GetObjects())
+            if (auto* sign = dynamic_cast<GimmickGuideSign*>(object.get()))
+                sign->DrawGuide(camera);
+    };
+
+    // 残機演出は専用表示が含まれるHUD経路に任せ、通常UIを別に重ねません。
     if (lifeLostState_.IsActive() || lifeLostState_.HoldsBlack()) {
+        drawGuideSigns(nullptr);
         DrawGameplayHUD();
         return;
     }
 
     // クリア演出中は通常HUDを隠し、カメラとリザルトへ視線を集中させます。
     if (isGoal_) {
+        drawGuideSigns(nullptr);
         DrawGoalPresentationOverlay();
         return;
     }
@@ -277,7 +289,20 @@ void GamePlayScene::DrawUi() {
     // 演出状態が解除された次のフレームから通常描画へ戻ります。
     if (stageEntryPresentationActive_ || arenaBossIntroActive_ || arenaBossRewardActive_ ||
         sealBarrageMovie_.active || crownFinale_.active || crownDefeat_.active) {
+        drawGuideSigns(nullptr);
         return;
+    }
+
+    // 疾走線をワールドの上、照準やHUDの下に重ねる。
+    const bool modalOpen = pausePageSliding_ || (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) ||
+                           (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive()) ||
+                           (settingsOverlay_ && settingsOverlay_->IsActive());
+    // 図鑑などが動画を再生する前に、看板側の共有転送先を解放します。
+    drawGuideSigns(modalOpen ? nullptr : CameraManager::GetInstance()->GetActiveCamera());
+    if (!modalOpen) {
+        for (const auto& line : dashSpeedLineSprites_)
+            if (line && line->IsVisible())
+                line->Draw();
     }
 
     // JSON配置のSpriteとプレイヤーUIを描いた後、照準・HUD・モーダルの順に重ねます。

@@ -66,7 +66,7 @@ PostEffect::Params MakeNeutralPostEffectParams(float time) {
 }
 
 // HDR描画先、縮小Bloom用描画先、プレビュー用描画先と共通GPU定数を準備します。
-void PostEffect::Initialize(DirectXCommon* dxCommon) {
+void PostEffect::Initialize(engine::DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
     renderWidth_ = WinApp::GetClientWidth();
@@ -97,10 +97,12 @@ void PostEffect::Initialize(DirectXCommon* dxCommon) {
 }
 
 void PostEffect::Update(float deltaTime) {
-    LightManager::GetInstance()->UpdateEnvironmentProfile(deltaTime);
+    // 環境補間でこの定数の色調や発光値が変わるため、描画用の値を使う前に今フレームの環境状態を反映する。
+    engine::LightManager::GetInstance()->UpdateEnvironmentProfile(deltaTime);
 
     // 時間を進める（ノイズのアニメーション用）
     paramsData_->time += deltaTime;
+    // 入力を作業色空間で扱う設定をシェーダーにも渡し、色調整の経路と揃える。
     paramsData_->linearWorkflowEnabled =
         engine::ColorSpace::WorkflowSettings::GetInstance().IsLinearWorkflowEnabled() ? 1.0f : 0.0f;
 }
@@ -173,6 +175,7 @@ int PostEffect::GetExpectedPostEffectPassCount() const {
         return 1;
     }
 
+    // 高輝度抽出と最終合成に加え、選択した段数に応じた縮小・加算分を数えます。
     return GetBloomLevelCount() * 2 + 2;
 }
 
@@ -222,6 +225,7 @@ void PostEffect::ResizeCameraPreviewTextures() {
     int width = (std::max)(static_cast<int>(renderWidth_ * cameraPreviewResolutionScale_), 16);
     int height = (std::max)(static_cast<int>(renderHeight_ * cameraPreviewResolutionScale_), 16);
 
+    // 候補矩形の片側だけを縮めて16:9に収め、指定した解像度の上限を超えないようにします。
     if (static_cast<float>(width) / static_cast<float>(height) > kPreviewAspect) {
         width = (std::max)(static_cast<int>(height * kPreviewAspect), 16);
     }
@@ -416,7 +420,7 @@ void PostEffect::PreDrawSceneWithDepth(ID3D12GraphicsCommandList* commandList, i
     commandList->OMSetRenderTargets(1, &rtvHandle, false, &dsvHandle);
 
     if (clear) {
-        const engine::Vector4& sceneClearColor = LightManager::GetInstance()->GetSceneClearColor();
+        const engine::Vector4& sceneClearColor = engine::LightManager::GetInstance()->GetSceneClearColor();
         float clearColor[] = {
             sceneClearColor.x,
             sceneClearColor.y,
@@ -463,6 +467,7 @@ bool PostEffect::BeginCameraPreviewSpecialPass(ID3D12GraphicsCommandList* comman
     barriers[1].Transition.StateAfter = D3D12_RESOURCE_STATE_COPY_DEST;
     commandList->ResourceBarrier(2, barriers);
 
+    // 屈折で読む背景色を別のテクスチャへ退避し、特殊パスで描き足す色との同時読み書きを避けます。
     commandList->CopyResource(rt.grabResource.Get(), rt.resource.Get());
 
     barriers[0].Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_SOURCE;
@@ -485,6 +490,7 @@ bool PostEffect::BeginCameraPreviewSpecialPass(ID3D12GraphicsCommandList* comman
     }
 
     const D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rt.rtvHeap->GetCPUDescriptorHandleForHeapStart();
+    // 同じ深度を深度テストとシェーダーの両方で読むので、書き込み用DSVの次に作成した読み取り専用DSVを使います。
     D3D12_CPU_DESCRIPTOR_HANDLE readOnlyDsv = rt.dsvHeap->GetCPUDescriptorHandleForHeapStart();
     readOnlyDsv.ptr += dxCommon_->GetDevice()->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
     commandList->OMSetRenderTargets(1, &rtvHandle, false, &readOnlyDsv);
@@ -504,6 +510,7 @@ void PostEffect::EndCameraPreviewSpecialPass(ID3D12GraphicsCommandList* commandL
     }
 
     commandList->OMSetRenderTargets(0, nullptr, false, nullptr);
+    // 先に読み取り用DSVを外し、深度を書き込める状態に戻ってから通常のDSVを接続します。
     if (rt.depthState != D3D12_RESOURCE_STATE_DEPTH_WRITE) {
         D3D12_RESOURCE_BARRIER depthBarrier{};
         depthBarrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -531,6 +538,7 @@ void PostEffect::Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle
     SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 1, srvHandle);
 
     // [2] t1 のセット (LUT画像) 
+    // LUTまたはノイズが未設定でもテーブルは有効なSRVを指すよう、主画像のSRVを代わりに束縛します。
     uint32_t currentLutHandle = (lutSrvHandle_ > 0) ? lutSrvHandle_ : srvHandle;
     SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 2, currentLutHandle);
 
@@ -548,6 +556,7 @@ void PostEffect::Draw(ID3D12GraphicsCommandList* commandList, uint32_t srvHandle
 
 void PostEffect::CreateConstBuffer() {
     // 定数バッファは256バイトアラインメントが必要
+    // サイズへ255を足して下位8ビットを消し、次の256バイト境界まで切り上げます。
     constBuffer_ = dxCommon_->CreateBufferResource((sizeof(Params) + 0xff) & ~0xff);
     constBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&paramsData_));
     *paramsData_ = MakeNeutralPostEffectParams(0.0f);
@@ -682,6 +691,7 @@ void PostEffect::CreateRenderTexture(int texIndex, int width, int height, DXGI_F
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
     // SRVManagerを使ってインデックスを取得
+    // 再生成では従来のSRV番号を書き換え、ImGuiなどが保持する表示用ハンドルを維持します。
     if (rt.srvHandle != 0) {
         SrvManager::GetInstance()->CreateSrvForResource(rt.srvHandle, newResource.Get(), srvDesc);
     } else {

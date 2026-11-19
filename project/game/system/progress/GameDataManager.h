@@ -139,6 +139,7 @@ class GameDataManager {
             }
         }
 
+        // ステージごとの有効な三枠だけを数え、旧ファイルの余分な要素を一覧の件数に含めません。
         if (data.contains("starCoins") && data["starCoins"].is_object()) {
             for (auto it = data["starCoins"].begin(); it != data["starCoins"].end(); ++it) {
                 if (!it.value().is_array())
@@ -158,6 +159,7 @@ class GameDataManager {
 
     // 保存ファイルに未管理の項目があれば保持し、管理中の項目だけ更新します。
     bool Save() {
+        // 置換が済むまで未保存扱いにし、途中で失敗しても次回の保存対象に残す。
         dirty_ = true;
         nlohmann::json data;
         const std::filesystem::path savePath(GetSaveFilePath());
@@ -174,6 +176,7 @@ class GameDataManager {
         if (!data.is_object())
             data = nlohmann::json::object();
 
+        // 読めたJSONを土台にし、このクラスが管理する進行状況だけを書き換える。
         data["lives"] = lives_;
         data["coins"] = coins_;
         data["playTimeSeconds"] = playTimeSeconds_;
@@ -201,6 +204,7 @@ class GameDataManager {
             outFile.close();
             if (outFile.fail())
                 return false;
+            // 一時ファイルを閉じた後、Windows側の書き込みも確定させてから本体を触る。
             HANDLE tempHandle = ::CreateFileW(tempPath.c_str(), GENERIC_WRITE, FILE_SHARE_READ, nullptr,
                                               OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
             if (tempHandle == INVALID_HANDLE_VALUE)
@@ -217,6 +221,7 @@ class GameDataManager {
                 if (ec)
                     return false;
             }
+            // バックアップの準備を終えた後で本体を置き換える。未保存フラグを下げるのは成功時だけ。
             if (!::MoveFileExW(tempPath.c_str(), savePath.c_str(),
                                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
                 return false;
@@ -237,6 +242,7 @@ class GameDataManager {
         if (!dirty_ || !std::isfinite(deltaTime) || deltaTime <= 0.0f)
             return;
         saveDelaySeconds_ -= deltaTime;
+        // 保存に失敗すると未保存状態を残し、毎フレーム再試行せず5秒後にもう一度試します。
         if (saveDelaySeconds_ <= 0.0f && !Save())
             saveDelaySeconds_ = 5.0f;
     }
@@ -248,6 +254,7 @@ class GameDataManager {
         playTimeRemainder_ += deltaTime;
         if (playTimeRemainder_ < 1.0f)
             return;
+        // 一秒未満の端数を次のフレームへ残してから、記録秒数と保存の予定を更新します。
         const int addedSeconds = static_cast<int>(playTimeRemainder_);
         playTimeRemainder_ -= static_cast<float>(addedSeconds);
         playTimeSeconds_ = (std::min)(kMaxPlayTimeSeconds, playTimeSeconds_ + addedSeconds);
@@ -261,12 +268,14 @@ class GameDataManager {
         // 保存失敗時はクリア記録と今回のスターコインを揃って巻き戻す。
         const auto oldCleared = clearedStages_;
         const auto oldCoins = stageStarCoins_;
+        // クリア済みのステージは重複登録せず、今回取ったスターコインは既存の取得状況へ足す。
         if (!IsStageCleared(stageIdx))
             clearedStages_.push_back(stageIdx);
         for (int i = 0; i < kStarCoinsPerStage; ++i) {
             if (collected[i])
                 GetOrCreateStarCoins(stageIdx)[i] = true;
         }
+        // クリアと収集の両方を同じ保存で確定し、失敗した場合はメモリ上の両方を戻す。
         if (Save())
             return true;
         clearedStages_ = oldCleared;
@@ -304,6 +313,7 @@ class GameDataManager {
         coins_ = std::clamp(ReadInteger(data, "coins", 0), 0, kMaxCoins);
         playTimeSeconds_ = (std::max)(0, ReadInteger(data, "playTimeSeconds", 0));
 
+        // 配列にある値のうち整数として読めたステージ番号だけを、進行状況に戻す。
         auto readStageIndices = [&](const char* key, std::vector<int>& output) {
             if (!data.contains(key) || !data[key].is_array()) {
                 return;
@@ -346,6 +356,14 @@ class GameDataManager {
         Save();
     }
 
+    // 旗の報酬は即時に表示し、書き込みは通常コインと同じ待ち時間にまとめる。
+    void AwardCheckpointLife() {
+        if (lives_ >= kMaxLives)
+            return;
+        ++lives_;
+        QueueProgressSave();
+    }
+
     void SubtractLife() {
         // 残機はゼロで止め、減少結果を即座に保存する。
         lives_--;
@@ -386,11 +404,7 @@ class GameDataManager {
         lives_ =
             static_cast<int>((std::min)(static_cast<int64_t>(kMaxLives), static_cast<int64_t>(lives_) + earnedLives));
         coins_ = static_cast<int>(totalCoins % kCoinsPerLife);
-        dirty_ = true;
-
-        // 取得のたびに時計を戻すと、連続取得中に永久に保存されなくなる。
-        if (saveDelaySeconds_ <= 0.0f || saveDelaySeconds_ > 1.0f)
-            saveDelaySeconds_ = 1.0f;
+        QueueProgressSave();
     }
 
     void ResetCoins() {
@@ -644,12 +658,14 @@ class GameDataManager {
         removed = std::filesystem::remove(path, ec) || removed;
         if (ec)
             return false;
+        // 最初のスロットだけ旧ファイルも読込対象なので、同時に取り除きます。
         if (slotIndex == 0) {
             removed = std::filesystem::remove(GetLegacySaveFilePath(), ec) || removed;
             if (ec)
                 return false;
         }
 
+        // 現在の枠を削除した場合は、以前の進行を使わないよう読込をやり直します。
         if (slotIndex == activeSlot_) {
             Load();
         }
@@ -730,6 +746,14 @@ class GameDataManager {
     int playTimeSeconds_ = 0;
     static constexpr int kMaxPlayTimeSeconds = 99 * 60 * 60 + 59 * 60 + 59;
     float playTimeRemainder_ = 0.0f; // プレイ時間を整数秒へ加える前の端数秒。
+
+    void QueueProgressSave() {
+        dirty_ = true;
+
+        // 追加の報酬で期限を延長せず、連続取得中も保存を進める。
+        if (saveDelaySeconds_ <= 0.0f || saveDelaySeconds_ > 1.0f)
+            saveDelaySeconds_ = 1.0f;
+    }
 
     float saveDelaySeconds_ = 0.0f; // まとめて保存するまでの待ち秒数。
     bool dirty_ = false; // メモリ上の進行が保存ファイルへ未反映か。

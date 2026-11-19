@@ -33,7 +33,8 @@ constexpr PlayerHurtFaceModel kPlayerHurtFaceModels[] = {
 } // namespace
 
 void Player::PrepareHurtFaceModel() {
-    Model* baseModel = GetModel();
+    // 本体モデルが同じ間は探索結果を再利用し、形態が変わった時だけ被弾顔を引き直します。
+    engine::Model* baseModel = GetModel();
     if (hurtFaceBaseModel_ == baseModel) {
         return;
     }
@@ -69,6 +70,7 @@ void Player::UpdateHurtFace(float deltaTime) {
     if (hurtFaceRemaining_ <= 0.0f) {
         return;
     }
+    // 実時間で残り表示時間を減らし、死亡・変身解除・演出に切り替わった場合は満了を待たず解除します。
     hurtFaceRemaining_ -= (std::max)(0.0f, deltaTime);
     if (hurtFaceRemaining_ <= 0.0f || GetHp() <= 0.0f || IsDead() || isCinematicLocked_ ||
         enemyMorphReleaseActive_ || gateReturnAnimation_.IsActive()) {
@@ -84,6 +86,7 @@ void Player::UpdateHurtFace(float deltaTime) {
 
 void Player::ClearHurtFace() {
     hurtFaceRemaining_ = 0.0f;
+    // 表示枠にこの被弾顔が残っている場合にだけ消し、別の変形が入れたモデルは残します。
     if (auto* renderer = GetMeshRenderer(); hurtFaceModel_ && renderer &&
         renderer->GetVisualModelOverride() == hurtFaceModel_) {
         renderer->SetVisualModelOverride(nullptr);
@@ -128,6 +131,7 @@ void Player::StartElectricShockFeedback(float duration, float invincibleDuration
         copyAbilityController_->NotifyDamageStarted(*this);
     RestoreDamageBlinkVisibility();
 
+    // 繰り返し感電しても、揺れた途中姿勢で解除後の基準を上書きしません。
     if (!electricShockControlLocked_) {
         electricShockWasControlActive_ = isControlActive_;
         electricShockLockedPosition_ = GetTranslate();
@@ -136,6 +140,7 @@ void Player::StartElectricShockFeedback(float duration, float invincibleDuration
         electricShockControlLocked_ = true;
     }
 
+    // 感電の追加は残り時間を短縮せず、解除まで入力と速度を止めます。
     electricShockFeedbackTimer_ = (std::max)(electricShockFeedbackTimer_, duration);
     electricShockFeedbackTotalDuration_ = (std::max)(electricShockFeedbackTotalDuration_, electricShockFeedbackTimer_);
     electricShockFeedbackEmitTimer_ = 0.0f;
@@ -156,6 +161,7 @@ void Player::UpdateElectricShockFeedback(float deltaTime) {
     electricShockFeedbackTimer_ = (std::max)(0.0f, electricShockFeedbackTimer_ - deltaTime);
     electricShockFeedbackEmitTimer_ -= deltaTime;
 
+    // 開始からの実時間を使い、変身色へ感電の点滅を重ねます。
     const float totalDuration = (std::max)(electricShockFeedbackTotalDuration_, 0.001f);
     const float elapsed = (std::max)(0.0f, totalDuration - electricShockFeedbackTimer_);
     const float flicker = std::sin(elapsed * 74.0f);
@@ -164,6 +170,7 @@ void Player::UpdateElectricShockFeedback(float deltaTime) {
               (std::clamp)(base.y + 0.18f, 0.0f, 1.0f),
               (std::clamp)(base.z + 0.42f * std::max(0.0f, -flicker), 0.0f, 1.0f), base.w});
 
+    // 実際の移動はさせず、退避座標の周りに振動と伸縮を重ねます。
     if (electricShockControlLocked_) {
         engine::Vector3 shockPosition = electricShockLockedPosition_;
         shockPosition.x += std::sin(elapsed * 94.0f) * kElectricShockShakeAmount;
@@ -181,6 +188,7 @@ void Player::UpdateElectricShockFeedback(float deltaTime) {
         SetRotation(shockRotation);
     }
 
+    // 身体の姿勢を確定してからオーラを更新し、間隔を設けて外周の粒子を足します。
     UpdateElectricShockAuraEffect(deltaTime);
 
     if (electricShockFeedbackEmitTimer_ <= 0.0f) {
@@ -204,12 +212,14 @@ void Player::EndElectricShockFeedback() {
         electricShockControlLocked_ = false;
     }
 
+    // 表示を片付けた後に予約した無敵時間を消費し、感電中の拘束と解除後の無敵を分離します。
     electricShockFeedbackTimer_ = 0.0f;
     electricShockFeedbackEmitTimer_ = 0.0f;
     electricShockFeedbackTotalDuration_ = 0.0f;
     HideElectricShockAuraEffect();
     UpdateColor();
 
+    // 予約した無敵秒数はここで一度だけ消費します。中断側が予約をゼロにした場合は無敵を付与しません。
     const float invincibleDuration = electricShockPendingInvincibleDuration_;
     electricShockPendingInvincibleDuration_ = 0.0f;
 
@@ -255,7 +265,7 @@ void Player::UpdateElectricShockAuraEffect(float deltaTime) {
     CalculateElectricShockAuraShape(auraPos, horizontalDiameter, verticalDiameter);
 
     float yaw = GetRotation().y;
-    Camera* camera = CameraManager::GetInstance() ? CameraManager::GetInstance()->GetActiveCamera() : nullptr;
+    engine::Camera* camera = CameraManager::GetInstance() ? CameraManager::GetInstance()->GetActiveCamera() : nullptr;
 
     if (camera) {
         const engine::Vector3 toCamera = camera->GetEye() - auraPos;

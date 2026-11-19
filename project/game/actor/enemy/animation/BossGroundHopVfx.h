@@ -12,12 +12,14 @@ inline void EmitPuff(const engine::Vector3& groundPosition, const engine::Vector
     if (!particles || !particles->IsInitialized()) {
         return;
     }
+    // 着地と踏み切りでは素材を分け、素材が未読込ならその回の発生を省く。
     const char* presetName = landing ? "shared/player_land_dust" : "player/base/player_jump_dust";
     const auto preset = particles->GetPresets().find(presetName);
     if (preset == particles->GetPresets().end()) {
         return;
     }
 
+    // 共有プリセットをコピーして地表の位置・広がり・上向きの勢いだけを今回の発生に合わせる。
     GpuParticleConfig config = preset->second;
     config.emitPos = groundPosition;
     config.emitArea = {radius * 0.55f, 0.04f, radius * 0.55f};
@@ -25,6 +27,7 @@ inline void EmitPuff(const engine::Vector3& groundPosition, const engine::Vector
     config.emitVelocity = {0.0f, landing ? 0.68f : 0.46f, 0.0f};
     config.velocityVariance = landing ? 2.2f : 1.5f;
     config.emitLife = landing ? 0.48f : 0.34f;
+    // 粒子の大きさと色も床の範囲に合わせ、一度だけ発生して透明に消えるようにする。
     const float sizeScale = radius / 1.5f;
     config.baseSize *= sizeScale;
     config.midSize *= sizeScale;

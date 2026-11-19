@@ -55,6 +55,7 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
                     for (const auto& component : value) if (!component.is_number()) return false;
                 } else if (type == EditorPropertyType::Bool ? !value.is_boolean() :
                     type == EditorPropertyType::Integer ? !value.is_number_integer() : !value.is_number()) return false;
+                // 一項目だけ上書きした全設定を共通のデシリアライザへ通し、専用 UI と同じ範囲補正を受ける。
                 json camera = SerializeSceneCameraSettings(object.GetSceneCameraSettings());
                 camera["region"][key] = value;
                 DeserializeSceneCameraSettings(camera, object.GetSceneCameraSettings());
@@ -80,6 +81,7 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         [](engine::Object3D& object, const json& value) {
             if (!value.is_number())
                 return false;
+            // ここへ渡る縦画角はラジアン。度への換算は入力欄だけで、保存や投影行列への値は変えない。
             object.GetSceneCameraSettings().fovY = std::clamp(value.get<float>(), 0.05f, 3.0f);
             return true;
         },
@@ -93,6 +95,7 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
                 return false;
             auto& settings = object.GetSceneCameraSettings();
             settings.nearClip = (std::max)(value.get<float>(), 0.001f);
+            // 遠面には少なくとも 0.01 ワールド単位の間隔を残す。近面が遠面を追い越したときは遠面も押し出す。
             settings.farClip = (std::max)(settings.farClip, settings.nearClip + 0.01f);
             return true;
         },
@@ -273,6 +276,7 @@ void EditorPropertyRegistry::RegisterBuiltInCameraAndGameplayProperties() {
         [](engine::Object3D& object, const json& value) {
             if (!value.is_number())
                 return false;
+            // カメラへ切り替える補間時間を秒で保持する。0 秒は即時切替。
             object.GetSceneCameraSettings().blendInDuration = (std::max)(value.get<float>(), 0.0f);
             return true;
         },

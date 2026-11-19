@@ -28,6 +28,7 @@ std::string ResolveEnemyType(const json& node) {
     return enemyType;
 }
 
+// 旧プレハブの識別子を復元するため、同じ文字列の各バイトから毎回同じ値を得る。
 std::uint64_t HashText(const std::string& text) {
     std::uint64_t hash = 1469598103934665603ull;
 
@@ -51,6 +52,7 @@ std::string MakeStableId(const std::string& prefix, const std::string& seed) {
 
 std::string MakeUniqueId(const std::string& prefix) {
     static std::atomic<std::uint64_t> counter = 0;
+    // 同じ時刻に生成を繰り返しても入力が変わるよう、時刻に通し番号を混ぜる。
     const auto ticks = static_cast<std::uint64_t>(
         std::chrono::high_resolution_clock::now().time_since_epoch().count());
     return MakeHexId(prefix, ticks ^ (++counter * 0x9E3779B97F4A7C15ull));
@@ -213,6 +215,7 @@ void EnsurePrefabVariantFields(json& asset) {
 }
 
 // Prefab階層のObject ID、親ID、並び順を一覧へ採取します。
+// 親IDと兄弟内の位置を含む比較用索引を作る。ノードへのポインタは参照元ツリーの生存中に使う。
 void CollectPrefabNodeLocations(
     const json& node,
     const std::string& parentObjectId,
@@ -464,6 +467,7 @@ void MigrateLegacyComponentOverrides(json& asset) {
             }
 
             json& componentPatch = serializedComponents[component.typeId];
+            // 存在フラグだけを新形式へ移し、他のプロパティが残るパッチは保持する。
             if (componentPatch.contains("_editorPresent") &&
                 componentPatch["_editorPresent"].is_boolean()) {
                 asset["componentOverrides"][nodeIt.key()][component.typeId] =
@@ -977,6 +981,7 @@ bool WriteSourceProperty(json& sourceNode, const std::string& propertyPath, cons
 
     *target = value;
 
+    // 旧キーと現行コンポーネントキーの両方がある項目は同じ値に揃え、読み込む形式による差を防ぐ。
     if (const char* canonicalKey = GetCanonicalComponentPropertyKey(propertyPath)) {
         if (json* canonicalTarget = EnsureJsonPath(sourceNode, canonicalKey)) {
             *canonicalTarget = value;
@@ -997,6 +1002,7 @@ bool IsPrefabComponentDescriptor(const EditorComponentDescriptor& component) {
 }
 
 // Componentを取り除く際に、そのComponentに属するプロパティ差分を消します。
+// 部品の有無を戻す際に、その部品の項目だけを上書きから取り除き、同じノードの他の編集を残す。
 void RemoveComponentPropertyOverrides(
     json& asset,
     const std::string& sourceObjectId,
@@ -1094,6 +1100,7 @@ bool ApplySerializedComponentState(
 }
 
 // Registryで扱うComponentの旧存在マーカーを保存ノードから取り除きます。
+// 登録済み部品の有無は個別に差分化するため、汎用のJSON差分に旧マーカーとバージョンを含めない。
 void RemoveKnownComponentPresenceMarkers(json& node) {
     EditorPropertyRegistry* registry = EditorPropertyRegistry::GetInstance();
 
@@ -1124,6 +1131,7 @@ void RegisterPrefabAssetTransaction(
 
     EditorTransaction transaction;
     transaction.label = label;
+    // 履歴から Asset の定義を差し戻した後、派生する Prefab を解決し直して保存する。
     transaction.undo = [manager, prefabName, before]() {
         manager->GetPrefab(prefabName) = before;
         manager->RefreshPrefabInheritance();

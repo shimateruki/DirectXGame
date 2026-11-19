@@ -22,7 +22,7 @@ public:
     /// <summary>保持中のログを破棄する。</summary>
     void Finalize();
 
-    /// <summary>情報レベルのログを追加する。</summary>
+    /// <summary>本文のレベル表記を判定してログを追加する。表記がなければ情報レベルとして扱う。</summary>
     void AddLog(const std::string& log);
 
     /// <summary>レベルを指定してログを追加する。</summary>
@@ -54,6 +54,7 @@ private:
     std::mutex logMutex_;
 
     bool scrollToBottom_ = true;
+    // 表示用の上限付き履歴とは別の累積件数です。読み取り側はログ配列をロックせず件数だけ取得できます。
     std::atomic<uint64_t> errorCount_{ 0 };
     bool autoScroll_ = true;
 #ifdef USE_IMGUI

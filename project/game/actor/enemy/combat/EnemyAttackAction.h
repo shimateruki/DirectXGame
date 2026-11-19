@@ -43,13 +43,14 @@ public:
             aim_ = context;
             aim_.owner = nullptr;
         }
+        // 照準だけを確定済みの値に置き換え、発射元や対象の有無はこのフレームの情報を保つ。
         auto execution = context;
         if (controlled_) {
             execution.forward = aim_.forward;
             execution.targetPosition = aim_.targetPosition;
             execution.targetDistance = aim_.targetDistance;
 
-            // 対象消失時の条件判定は現在の情報を使い、固定座標で命令を発行します。
+            // 命令を実行する前に直前の時刻で予告を描き、今回の更新で強調時刻を跨ぐなら一度だけ光らせる。
             ApplyPresentation(context);
             if (!cuePlayed_ && GetElapsed() + deltaTime >= control.cueTime) {
                 cuePlayed_ = true;
@@ -58,6 +59,7 @@ public:
             }
         }
         AttackSequence::Update(deltaTime, execution);
+        // 命令が終われば色と予告を戻し、続いていれば進んだ時刻に表示を合わせる。
         if (!IsRunning())
             Restore();
         else ApplyPresentation(context);
@@ -77,15 +79,18 @@ private:
         if (!controlled_ || !owner_ || !IsRunning())
             return;
         const auto& c = GetDefinition().sequence.actorControl;
+        // 予備動作中は水平移動を止め、落下などに使う上下速度は保つ。
         if (c.stopMovement) {
             auto v = owner_->GetVelocity();
             v.x = v.z = 0;
             owner_->SetVelocity(v);
         }
+        // モデルの正面補正は設定上の度数をラジアンへ換算し、照準方向へ加える。
         if (c.faceTarget)
             owner_->SetRotationY(std::atan2(aim_.forward.x, aim_.forward.z) + c.modelYawOffset * (std::numbers::pi_v<float> / 180.0f));
         if (c.tint)
             owner_->SetColor(GetElapsed() < c.telegraphEnd ? ToColor(c.color) : originalColor_);
+        // 現在の発射元から確定した方向へ、攻撃射程内の長さで予告を伸ばす。
         if (c.telegraph && GetElapsed() < c.telegraphEnd) {
             const auto& d = GetDefinition();
             owner_->ShowAttackTelegraphLine(context.position, aim_.forward,

@@ -56,7 +56,7 @@ class BaseEnemy : public Character {
     /// <remarks>召喚する敵の追加設定は派生側で行う。</remarks>
     virtual void BindSceneSpawnContext(BaseScene* scene);
 
-    /// <summary>シーン演出中などにAI、重力、衝突を一時停止する。</summary>
+    /// <summary>休眠中は通常AIと重力を進めず、攻撃予兆を解除する。衝突属性自体は変更しない。</summary>
     void SetDormant(bool dormant);
 
     /// <summary>敵が休止中か返す。</summary>
@@ -183,7 +183,7 @@ class BaseEnemy : public Character {
     /// <summary>表示中の攻撃予兆を消す。</summary>
     void HideAttackTelegraph();
 
-    /// <summary>ターゲットの発見・見失いリアクションを進める。</summary>
+    /// <summary>固有AIが測った距離から発見を判定する。経過時間と見失いは共通の Update() が扱う。</summary>
     /// <returns>リアクション中に通常AIを止める必要がある場合はtrue。</returns>
     bool UpdateNoticeReaction(float deltaTime, float targetDistance, float detectRange, const engine::Vector3& targetDirection);
 
@@ -366,7 +366,7 @@ private:
     float defeatEffectTimer_ = 0.0f;
     float defeatEffectParticleTimer_ = 0.0f;
 
-    Model* hurtFaceModel_ = nullptr; // ModelManagerが所有する被弾中の描画差し替え。
+    engine::Model* hurtFaceModel_ = nullptr; // ModelManagerが所有する被弾中の描画差し替え。
     float damageReactionTimer_ = 0.0f;
     float damageReactionDuration_ = 0.0f;
     float damageReactionStrength_ = 0.0f;

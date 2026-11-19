@@ -6,7 +6,7 @@
 #include <memory>
 #include <vector>
 
-class DirectXCommon;
+namespace engine { class DirectXCommon; }
 namespace engine { class InputManager; }
 class LevelLoader;
 namespace engine { class Object3DCommon; }
@@ -81,7 +81,7 @@ class SceneAssetEditorScene : public BaseScene, public ISceneGameplayAccess {
   private:
     std::vector<std::unique_ptr<engine::Sprite>>* GetMutableSprites() override { return &sprites_; }
 
-    DirectXCommon* dxCommon_ = nullptr;
+    engine::DirectXCommon* dxCommon_ = nullptr;
     engine::InputManager* inputManager_ = nullptr;
 
     std::unique_ptr<ObjectManager> objectManager_;

@@ -17,6 +17,8 @@
 #include <DebugConsole.h>
 #include <LightManager.h>
 
+namespace engine {
+
 
 
 // ==========================================
@@ -52,6 +54,7 @@ int Model::FindJointIndex(const std::string& name) const {
 }
 
 // 指定ジョイントの現在のローカルトランスフォームを取得する。
+// 負の番号や配列の外を指定した場合は、拡縮1・回転なし・移動なしの姿勢を返す。
 Model::QuaternionTransform Model::GetJointTransform(int jointIndex) const {
     if (jointIndex < 0 || jointIndex >= static_cast<int>(modelData_.skeleton.joints.size())) {
         return {};
@@ -105,6 +108,7 @@ int32_t Model::CreateJoint(const Node& node, const std::optional<int32_t>& paren
 
     for (const Node& child : node.children) {
         // 子Jointを作成し、そのIndexを登録
+        // 親の添字が必ず子より先になるように登録し、行列更新時に先頭から一度走査するだけで親を参照できるようにします。
         int32_t childIndex = CreateJoint(child, joint.index, joints);
         joints[joint.index].children.push_back(childIndex);
     }
@@ -203,6 +207,7 @@ void Model::ApplyBlendedAnimation(
             return node && !node->rotate.empty() ? CalculateValue(node->rotate, time) : fallback;
         };
 
+        // 開始クリップで省略された成分は現在姿勢を使い、終了クリップで省略された成分は開始側の値を保持します。
         const engine::Vector3 fromScale = sampleScale(fromNode, fromTime, joint.transform.scale);
         const engine::Vector3 fromTranslate = sampleTranslate(fromNode, fromTime, joint.transform.translate);
         const engine::Quaternion fromRotate = sampleRotate(fromNode, fromTime, joint.transform.rotate);
@@ -222,6 +227,7 @@ void Model::ApplyBlendedAnimation(
             std::lerp(fromTranslate.z, toTranslate.z, weight)
         };
 
+        // 回転は球面補間で向きを補間し、位置や拡縮とは異なるクォータニオンの計算を使います。
         joint.transform.rotate = engine::Math::Slerp(fromRotate, toRotate, weight);
 
         const engine::Matrix4x4 scaleMatrix = math.MakeScaleMatrix(joint.transform.scale);
@@ -230,3 +236,5 @@ void Model::ApplyBlendedAnimation(
         joint.localMatrix = math.Multiply(scaleMatrix, math.Multiply(rotateMatrix, translateMatrix));
     }
 }
+
+} // namespace engine

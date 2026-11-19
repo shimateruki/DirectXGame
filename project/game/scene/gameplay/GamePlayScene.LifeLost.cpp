@@ -91,6 +91,7 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
         return;
     }
 
+    // 動作中は3D側と数字側に同じ演出時刻を使い、復活の有無で終端を切り替えます。
     lifeLostState_.Advance(deltaTime);
     UpdateLifeLostPresentationWorld(deltaTime);
     const float t = lifeLostState_.Timer();
@@ -118,10 +119,12 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
         return;
     }
 
+    // 残機を減らす瞬間を記録し、それ以降は減少後の値と着地の反動を表示します。
     if (t >= kNumberDropTime) {
         lifeLostState_.MarkNumberDropped();
     }
 
+    // 表示部品は開始0.25秒で出し、復活の有無で選んだ終盤から0.35秒で消す。背景の黒は別に保持する。
     float alpha = std::clamp(t / 0.25f, 0.0f, 1.0f);
 
     if (t > kFadeOutStartTime) {
@@ -133,6 +136,7 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
     const float screenH = static_cast<float>(WinApp::GetClientHeight());
     const float centerX = screenW * 0.5f;
     const float centerY = screenH * 0.5f;
+    // 数字を減らす前は周期的にわずかに伸縮し、減らした瞬間は大きくして0.42秒で等倍へ戻す。
     const float settlePulse = lifeLostState_.DidDropNumber()
                                   ? 1.0f + std::max(0.0f, 1.0f - (t - kNumberDropTime) / 0.42f) * 0.22f
                                   : 1.0f + std::sin(t * 7.0f) * 0.035f;
@@ -175,6 +179,7 @@ void GamePlayScene::UpdateLifeLostPresentation(float deltaTime) {
     const float rightX = lifeLostDigits_[1].sprite ? lifeLostDigits_[1].basePosition.x : centerX + 132.0f;
     const float digitY = lifeLostDigits_[1].sprite ? lifeLostDigits_[1].basePosition.y : centerY + 2.0f;
     const float totalWidth = showTens ? spacing + digitWidth : digitWidth;
+    // 右端から表示全体の幅を引き、数字画像の中心を置くため半分の幅を戻す。
     const float startX = rightX - totalWidth + digitWidth * 0.5f;
     const std::array<int, 2> values = {tens, ones};
 
@@ -224,15 +229,17 @@ void GamePlayScene::InitializeLifeLostPresentationObjects() {
         return;
     }
 
-    lifeLostCamera_ = std::make_unique<Camera>();
+    // ゲームの追従カメラと独立した固定カメラを用意し、残機表示中の入力では動かさないようにします。
+    lifeLostCamera_ = std::make_unique<engine::Camera>();
     lifeLostCamera_->Initialize();
     lifeLostCamera_->SetInputEnabled(false);
     lifeLostCamera_->SetFollowTarget(nullptr);
-    lifeLostCamera_->SetFollowMode(Camera::FollowMode::FixedPoint);
+    lifeLostCamera_->SetFollowMode(engine::Camera::FollowMode::FixedPoint);
     lifeLostCamera_->SetFovY(0.48f);
     lifeLostCamera_->ConfigFixedPoint({0.0f, 2.25f, -7.2f}, {0.10f, 0.0f, 0.0f});
     lifeLostCamera_->Update();
 
+    // 残機演出のスライムと拘束表示は初期状態で隠し、通常の配置物と別に管理します。
     lifeLostSlimeObject_ = std::make_unique<engine::Object3D>();
     lifeLostSlimeObject_->Initialize(GetObject3DCommon());
     lifeLostSlimeObject_->SetName("LifeLostSlime");
@@ -252,6 +259,7 @@ void GamePlayScene::InitializeLifeLostPresentationObjects() {
     lifeLostStunObject_->SetColor({1.0f, 0.94f, 0.28f, 0.78f});
     lifeLostStunObject_->SetIsVisible(false);
 
+    // 拘束表示の波設定は描画側の領域が確保できた場合だけ渡します。
     if (lifeLostStunObject_->GetMeshRenderer() && lifeLostStunObject_->GetMeshRenderer()->GetWaterParamData()) {
         auto* stun = lifeLostStunObject_->GetMeshRenderer()->GetWaterParamData();
         stun->effectType = 0.0f;
@@ -291,6 +299,7 @@ void GamePlayScene::DrawLifeLostPresentationWorld(ID3D12Resource* pointLightReso
         return;
     }
 
+    // 背景をまずSpriteで描き、専用モデルが見える状態の場合だけ対応する3Dパスへ切り替えます。
     BeginSpriteDrawing();
     DrawGameplayHUDSprite(lifeLostBackdrop_);
 
@@ -300,6 +309,7 @@ void GamePlayScene::DrawLifeLostPresentationWorld(ID3D12Resource* pointLightReso
         lifeLostSlimeObject_->Draw(pointLightResource, spotLightResource);
     }
 
+    // 屈折表示が有効な場合は直前までに描いた背景をコピーし、深度と一緒に渡します。
     if (lifeLostStunObject_ && lifeLostStunObject_->GetIsVisible()) {
         dxCommon_->UpdateGrabTexture();
         lifeLostStunObject_->DrawStunBind(dxCommon_->GetDepthSrvHandle(), dxCommon_->GetGrabSrvHandle());

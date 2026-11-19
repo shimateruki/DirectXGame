@@ -48,6 +48,7 @@ void BulletManager::Fire(const engine::Vector3& pos, const engine::Vector3& vel,
                          float radius, float life, const BulletVisualConfig& visualConfig, float damage,
                          const StatusEffectApplication& statusEffect, DamageType damageType, float gravity) {
 
+    // 描画と衝突の初期化先が揃う前は、弾を作成しません。
     if (!common_ || !colManager_) {
         return;
     }
@@ -69,6 +70,7 @@ void BulletManager::Fire(const engine::Vector3& pos, const engine::Vector3& vel,
         }
     }
 
+    // 発射前にモデルと共通材質を設定し、指定がある場合だけテクスチャを上書きします。
     auto bullet = std::make_unique<Bullet>();
     bullet->Initialize(common_);
     if (!visualConfig.debugLabel.empty())
@@ -84,7 +86,8 @@ void BulletManager::Fire(const engine::Vector3& pos, const engine::Vector3& vel,
         bullet->SetTexture(visualConfig.texturePath);
     }
 
-    if (MeshRenderer* renderer = bullet->GetMeshRenderer()) {
+    // 描画側に材質パラメータがある場合は、弾の形状や発光に使う設定を渡します。
+    if (engine::MeshRenderer* renderer = bullet->GetMeshRenderer()) {
         if (auto* param = renderer->GetWaterParamData()) {
             param->waveSpeed = visualConfig.waveSpeed;
             param->waveHeight = visualConfig.waveHeight;
@@ -102,9 +105,11 @@ void BulletManager::Fire(const engine::Vector3& pos, const engine::Vector3& vel,
         }
     }
 
+    // 球の当たり判定を設定します。半径がワールド単位の場合はモデルの拡縮を判定に掛けません。
     bullet->SetColliderType(ColliderType::Sphere);
     bullet->SetCollisionRadius(radius);
     bullet->SetCollisionSize({radius, radius, radius});
+    // 見た目を二倍にしても、ワールド半径を指定した弾の接触範囲は二倍にしない。
     if (visualConfig.collisionRadiusIsWorld && bullet->GetCollider())
         bullet->GetCollider()->SetScaleOverride({1.0f, 1.0f, 1.0f});
     if (visualConfig.magmaHopperPresentation && bullet->GetCollider()) {
@@ -112,6 +117,7 @@ void BulletManager::Fire(const engine::Vector3& pos, const engine::Vector3& vel,
         bullet->SetCastShadow(false);
     }
 
+    // プレビューでは属性・マスク・ダメージをゼロで渡し、実戦用の衝突や被害を発生させません。
     bullet->Fire(pos, vel, life,
                  visualConfig.previewOnly ? 0 : attr, visualConfig.previewOnly ? 0 : mask,
                  visualConfig.previewOnly ? 0.0f : damage, statusEffect, damageType);
@@ -121,7 +127,9 @@ void BulletManager::Fire(const engine::Vector3& pos, const engine::Vector3& vel,
     bullet->SetExplosionRadius(visualConfig.explosionRadius);
     if (visualConfig.explosionRadius > 0.0f && bullet->GetCollider())
         bullet->GetCollider()->SetScaleOverride({1.0f, 1.0f, 1.0f});
+    // ここで受け取る重力は下向き加速度の大きさ。負の値は加速なしとして扱う。
     bullet->SetGravity((std::max)(0.0f, gravity));
+    // プレビューの負荷を抑えるため、残光の間隔に下限を設けて二重の残光を省きます。
     const float trailInterval = visualConfig.previewOnly
         ? (std::max)(0.14f, visualConfig.trailInterval) : visualConfig.trailInterval;
     const std::string secondaryTrail = visualConfig.previewOnly ? std::string{} : visualConfig.trailSecondaryPreset;
@@ -133,6 +141,7 @@ void BulletManager::Fire(const engine::Vector3& pos, const engine::Vector3& vel,
                                     visualConfig.impactDebrisScale, visualConfig.impactOnExpiry,
                                     visualConfig.destroyOnSolidCastHit);
 
+    // 実戦弾だけを衝突管理へ登録し、弾の所有は実戦・プレビューとも管理リストへ移します。
     if (!visualConfig.previewOnly)
         colManager_->AddObject(bullet.get());
     bullets_.push_back(std::move(bullet));
@@ -151,6 +160,7 @@ void BulletManager::Update(float deltaTime) {
         bullet->UpdateWorldMatrix();
     }
 
+    // 全弾を更新した後で、消滅した実戦弾の衝突登録を解除してから削除します。
     bullets_.remove_if([this](const std::unique_ptr<Bullet>& bullet) {
         if (bullet->IsDead()) {
             if (!bullet->IsPreviewOnly())
@@ -163,6 +173,7 @@ void BulletManager::Update(float deltaTime) {
 
 #ifdef USE_IMGUI
 void BulletManager::UpdatePreview(float deltaTime) {
+    // 時間が進まないフレームでは、プレビューの軌道や寿命を進めません。
     if (deltaTime <= 0.0f) {
         return;
     }
@@ -223,10 +234,12 @@ void BulletManager::DrawSpecial(uint32_t depthSrvHandle, uint32_t grabSrvHandle)
 
 #ifdef USE_IMGUI
 void BulletManager::BeginEditorSession() {
+    // ゲーム中の弾を退避し、エディターの一時弾と同じリストで更新しないようにします。
     if (editorSession_) return;
     bullets_.swap(savedEditorBullets_); editorSession_ = true;
 }
 void BulletManager::EndEditorSession() {
+    // 編集中の弾を片付けてから、退避したゲーム中の弾を元のリストに戻します。
     if (!editorSession_) return;
     Clear(); bullets_.swap(savedEditorBullets_); editorSession_ = false;
 }

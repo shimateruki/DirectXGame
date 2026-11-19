@@ -104,6 +104,7 @@ void GameEditorController::ProcessPendingWorkspaceLayout() {
     }
 
     const WorkspacePreset preset = static_cast<WorkspacePreset>(pendingWorkspaceLayout_);
+    // 読み込み予約は一度だけ消費する。保存先がなくなっていた場合も次フレームへ持ち越さない。
     pendingWorkspaceLayout_ = -1;
     const char* key = "vfx";
 
@@ -185,6 +186,7 @@ void GameEditorController::SetupDefaultDockspace() {
             JsonAssetBrowser::SetBottomDock(bottomId);
             ImGuiDockNode* parent = bottom->ParentNode;
             const float height = parent->Size.y * 0.50f;
+            // 下段にある分割だけを作り直す。古い子ノードを消した後、現在の下段ノードを取り直す。
             ImGui::DockBuilderRemoveNodeChildNodes(bottomId);
             bottom = ImGui::DockBuilderGetNode(bottomId);
             bottom->LocalFlags &= ~(ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoDockingSplit);
@@ -231,6 +233,7 @@ void GameEditorController::SetupDefaultDockspace() {
     // ファイル画面・計測・タイムラインは下段のドックを共用する。
     JsonAssetBrowser::SetBottomDock(dockBottomId);
     ImGui::DockBuilderDockWindow("ステータス", dockBottomId);
+	// 下段を使う専用タイムラインは攻撃・エフェクト・アニメーションまたは演出の順に選び、同時に複数の領域へ分割しない。
 	if (showEnemyAttackTimeline_) {
         ImGui::DockBuilderDockWindow("攻撃・能力プレビュー - Timeline", dockBottomId);
 		if (ImGuiDockNode* timelineNode = ImGui::DockBuilderGetNode(dockBottomId)) {

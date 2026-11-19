@@ -64,6 +64,7 @@ void GimmickPhaseFlipFloor::Update(float deltaTime) {
         isPlaying = sceneManager->IsPlaying();
     }
 
+    // 再生を止めると周期の履歴を破棄し、エディターで選べる床表示へ戻す。
     if (!isPlaying) {
         initializedForPlay_ = false;
         cycleTimer_ = 0.0f;
@@ -77,6 +78,7 @@ void GimmickPhaseFlipFloor::Update(float deltaTime) {
         return;
     }
 
+    // 最初の再生フレームに、配置された向きと回転後も使う衝突設定を保存する。
     if (!initializedForPlay_) {
         originalCollisionAttribute_ = GetCollisionAttribute();
         originalCollisionMask_ = GetCollisionMask();
@@ -93,6 +95,7 @@ void GimmickPhaseFlipFloor::Update(float deltaTime) {
 
     cycleTimer_ += deltaTime;
 
+    // 設定された位相数と間隔から一周期を求め、タイマーをその範囲内に戻す。
     const int phaseCount = GetPhaseCount();
     const float phaseDuration = GetPhaseDuration();
     const float cycleLength = phaseDuration * static_cast<float>(phaseCount);
@@ -103,6 +106,7 @@ void GimmickPhaseFlipFloor::Update(float deltaTime) {
 
     // 自分の位相へ入るたびに半回転を一回加え、途中経過は滑らかに補間します。
     const int currentPhase = static_cast<int>(cycleTimer_ / phaseDuration) % phaseCount;
+    // 現在の位相で経過した秒数だけを取り出し、位相の長さで割って半回転の進み具合に使います。
     const float phaseProgress = std::fmod(cycleTimer_, phaseDuration) / phaseDuration;
     const bool isOwnPhase = currentPhase == GetPhaseIndex();
 
@@ -112,6 +116,7 @@ void GimmickPhaseFlipFloor::Update(float deltaTime) {
 
     wasOwnPhase_ = isOwnPhase;
 
+    // 現在の位相に対応する回転と表示を反映してから、共通のオブジェクト更新を行う。
     ApplyState(isOwnPhase, phaseProgress);
     BaseGimmick::Update(deltaTime);
 }
@@ -122,6 +127,7 @@ void GimmickPhaseFlipFloor::ApplyState(bool isOwnPhase, float phaseProgress) {
     SetCollisionMask(originalCollisionMask_ != 0 ? originalCollisionMask_ : CollisionCategories::GetDefaultGameplayMask());
     SetIsVisible(true);
 
+    // 床番号に対応する位相中だけ、済んだ半回転数から今回の終点へ補間します。
     const float direction = GetParameters().has_value() && !GetParameters()->startActive ? -1.0f : 1.0f;
     float turn = static_cast<float>(flipCount_);
 
@@ -131,6 +137,7 @@ void GimmickPhaseFlipFloor::ApplyState(bool isOwnPhase, float phaseProgress) {
 
     SetColor(GetPhaseColor(1.0f));
 
+    // 半回転数をラジアンへ換算して配置時のX軸回転に加え、オイラー角を描画に使います。
     engine::Vector3 rot = baseRotation_;
     rot.x += direction * turn * std::numbers::pi_v<float>;
     SetEulerAngles(rot);

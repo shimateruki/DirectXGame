@@ -17,6 +17,7 @@
 #include <unordered_set>
 
 BaseScene* PlayModeSnapshot::CurrentScene() const {
+    // アドレスが以前のシーンと同じでも、世代が違えば退避した状態を適用しない。
     if (!sceneManager_ || !scene_ || sceneManager_->IsTransitioning() ||
         sceneManager_->GetSceneGeneration() != sceneGeneration_ ||
         sceneManager_->GetCurrentScene() != scene_) {
@@ -27,6 +28,7 @@ BaseScene* PlayModeSnapshot::CurrentScene() const {
 
 void PlayModeSnapshot::Reset() {
     if (BaseScene* scene = CurrentScene()) {
+        // 退避中に実体を残していたObjectを通常管理へ戻し、削除済みの印が残るものだけ遅延削除へ渡す。
         for (auto& object : scene->GetObjects()) {
             if (!object || !object->IsReplayRetained()) continue;
             object->SetReplayRetained(false);
@@ -52,11 +54,13 @@ bool PlayModeSnapshot::Capture() {
     // 保存前の編集内容も含める。ディスクのScene JSONへは書き込まない。
     for (auto& object : scene_->GetObjects()) {
         if (!object || object->IsEditorInternal()) continue;
+        // プレイ中に削除されても停止後に戻せるように実体を保持し、一覧順ではなくIDで識別する。
         object->SetReplayRetained(true);
         objects_.push_back({object->EnsureReplayId(), object->CaptureReplayState()});
     }
     std::vector<engine::Sprite*> currentSprites;
     scene_->CollectReplaySprites(currentSprites);
+    // シーンとUIが同じSpriteを列挙する場合に備え、同じ実体の退避は一度に限る。
     std::unordered_set<engine::Sprite*> uniqueSprites;
     for (engine::Sprite* sprite : currentSprites) {
         if (!sprite || !uniqueSprites.insert(sprite).second) continue;
@@ -64,7 +68,8 @@ bool PlayModeSnapshot::Capture() {
         sprites_.push_back({sprite->EnsureReplayId(), sprite->CaptureReplayState()});
     }
     scene_->CaptureReplaySceneState(sceneState_);
-    if (Camera* camera = CameraManager::GetInstance()->GetActiveCamera()) {
+    // 開始前に実際に描いていた視点を控える。画角はラジアン、クリップ距離はワールド単位で保持する。
+    if (engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera()) {
         camera_.valid = true;
         camera_.eye = camera->GetEye();
         camera_.target = camera->GetTargetPoint();
@@ -83,6 +88,7 @@ bool PlayModeSnapshot::Restore() {
         return false;
     }
 
+    // シーン固有の再生・UI状態を先に戻し、その後に現在の登録一覧から個体を照合する。
     scene->RestoreReplaySceneState(sceneState_);
     auto& currentObjects = scene->GetObjects();
     std::unordered_map<uint64_t, engine::Object3D*> objectsById;
@@ -97,6 +103,7 @@ bool PlayModeSnapshot::Restore() {
         const auto found = objectsById.find(saved.id);
         if (found == objectsById.end()) continue;
         engine::Object3D* object = found->second;
+        // 復元前後で削除状態が変わったObjectだけ衝突管理の登録を更新する。
         const bool wasRemoved = object->IsReplayRemoved();
         object->RestoreReplayState(saved.state);
         if (wasRemoved && !object->IsReplayRemoved()) collisionManager->AddObject(object);
@@ -122,6 +129,7 @@ bool PlayModeSnapshot::Restore() {
         if (!parent || !managedObjects.contains(parent)) object->UpdateWorldMatrix();
     }
 
+    // Spriteの各状態を先に全件戻し、後続の走査で親IDを解決して描画用行列を更新する。
     std::vector<engine::Sprite*> currentSprites;
     scene->CollectReplaySprites(currentSprites);
     std::unordered_map<uint64_t, engine::Sprite*> spritesById;
@@ -141,6 +149,7 @@ bool PlayModeSnapshot::Restore() {
             const auto parentFound = spritesById.find(saved.state.parentReplayId);
             if (parentFound != spritesById.end()) parent = parentFound->second;
         }
+        // 復元したローカル座標を保つため、親の再接続でワールド位置を維持する補正は掛けない。
         found->second->SetParent(parent, false);
         found->second->RefreshAfterReplayRestore();
     }
@@ -148,18 +157,20 @@ bool PlayModeSnapshot::Restore() {
     for (const auto& [id, sprite] : spritesById)
         if (!originalSpriteIds.contains(id)) runtimeSprites.push_back(sprite);
     for (engine::Sprite* sprite : runtimeSprites) {
+        // シーンが直接所有するSpriteは破棄する。個別UIの所有物は外から破棄せず、親接続と可視状態を解除する。
         if (scene->DestroySprite(sprite)) continue;
         sprite->SetParent(nullptr, false);
         sprite->SetReplayRemoved(true);
         sprite->SetVisible(false);
     }
     if (camera_.valid) {
-        if (Camera* camera = CameraManager::GetInstance()->GetActiveCamera()) {
+        if (engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera()) {
             camera->ApplyReplayView(camera_.eye, camera_.target, camera_.rotation,
                 camera_.fovY, camera_.nearClip, camera_.farClip);
         }
     }
 
+    // 元の配置とカメラへ戻してから、プレイ中だけ残る弾や粒子を掃除して保持状態を解除する。
     BulletManager::GetInstance()->Clear();
     MeshEffectManager::GetInstance()->Clear();
     DebrisEffectManager::GetInstance()->Clear();

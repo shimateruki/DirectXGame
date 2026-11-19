@@ -16,6 +16,7 @@ constexpr int kFlipFrameCount = 24;
 constexpr const char* kFlipModelPrefix = "Stages/jump_flip_pair/jump_flip_pair_";
 
 std::string FlipFrameModelName(int frame) {
+    // 赤と青の停止姿勢だけプレビュー用の端点モデルを使い、途中は連番モデルを使います。
     if (frame <= 0)
         return std::string(kFlipModelPrefix) + "blue_preview.obj";
     if (frame >= kFlipFrameCount)
@@ -24,14 +25,15 @@ std::string FlipFrameModelName(int frame) {
            std::to_string(frame) + ".obj";
 }
 
-ColliderConfig BuildFlipPairCollider(const Model* model) {
+engine::ColliderConfig BuildFlipPairCollider(const engine::Model* model) {
     // OBJのZ座標は読込時に反転するため、描画に使う変換済み頂点から板の位置を得る。
     // 固定枠・軸・模様より大きい、上向きの水平三角形が回転板の天面に相当する。
-    ColliderConfig config;
+    engine::ColliderConfig config;
     config.type = ColliderType::None;
     if (!model)
         return config;
 
+    // 上向きでほぼ水平な三角形のうち最大のものを選び、XZ の範囲と高さを記録します。
     float largestArea = 0.0f;
     engine::Vector3 minimum{}, maximum{};
     for (const auto& mesh : model->GetModelData().meshes) {
@@ -109,6 +111,7 @@ void GimmickBlinkBlock::Initialize(engine::Object3DCommon* common, const std::st
 }
 
 void GimmickBlinkBlock::Update(float deltaTime) {
+    // 反転板は専用モデルとコライダーを同期させるため、通常の透明度更新を通しません。
     if (IsFlipPairModel()) {
         UpdateFlipPair(deltaTime);
         BaseGimmick::Update(deltaTime);
@@ -174,6 +177,7 @@ void GimmickBlinkBlock::ResetFlipPair() {
         flipPairColliders_[0] = BuildFlipPairCollider(ModelManager::GetInstance()->LoadModel(FlipFrameModelName(0)));
         flipPairColliders_[1] = BuildFlipPairCollider(ModelManager::GetInstance()->LoadModel(FlipFrameModelName(kFlipFrameCount)));
     }
+    // 保存された初期面を始点・現在値・目標の全てに使い、途中角度やモデル番号を持ち越しません。
     flipPairInitialSide_ = GetParameters().has_value() && GetParameters()->colorType == 1 ? 1 : 0;
     flipAngle_ = flipPairInitialSide_ == 0 ? 0.0f : kPi;
     flipFromAngle_ = flipAngle_;
@@ -188,12 +192,14 @@ void GimmickBlinkBlock::UpdateFlipPair(float deltaTime) {
     const SceneManager* sceneManager = SceneManager::GetInstance();
     const bool playing = sceneManager && sceneManager->IsPlaying();
     const int configuredSide = GetParameters().has_value() && GetParameters()->colorType == 1 ? 1 : 0;
+    // 再生の切り替えや編集時の初期面変更を検出し、古い回転状態を引き継がない。
     if (!flipPairInitialized_ || playing != flipPairWasPlaying_ ||
         (!playing && configuredSide != flipPairInitialSide_)) {
         ResetFlipPair();
     }
     flipPairWasPlaying_ = playing;
 
+    // 再生中に面を切り替えるときだけ角度を補間し、完了したら次の回転の始点を更新する。
     if (playing && std::abs(flipTargetAngle_ - flipFromAngle_) > 0.001f) {
         flipElapsed_ = (std::min)(flipElapsed_ + (std::max)(deltaTime, 0.0f), flipDuration_);
         const float t = std::clamp(flipElapsed_ / flipDuration_, 0.0f, 1.0f);
@@ -219,8 +225,8 @@ void GimmickBlinkBlock::ApplyFlipPairAppearance() {
     SetColor({1.0f, 1.0f, 1.0f, 1.0f});
 
     // 描画の読込座標と一致する端点判定へ切り替える。途中コマの全体AABBは使わない。
-    const ColliderConfig& config = flipPairColliders_[flipTargetAngle_ < kPi * 0.5f ? 0 : 1];
-    const ColliderConfig& current = GetColliderConfig();
+    const engine::ColliderConfig& config = flipPairColliders_[flipTargetAngle_ < kPi * 0.5f ? 0 : 1];
+    const engine::ColliderConfig& current = GetColliderConfig();
     const bool colliderChanged = current.type != config.type ||
         current.center.x != config.center.x || current.center.y != config.center.y || current.center.z != config.center.z ||
         current.size.x != config.size.x || current.size.y != config.size.y || current.size.z != config.size.z ||

@@ -22,12 +22,15 @@ template <typename Event>
 void EventManager::DispatchTo(ListenerList<Event>& listeners, const Event& event) {
     // 配信中に追加された購読は次のイベントから通知します。
     const SubscriptionId lastExistingId = nextSubscriptionId_ - 1;
+    // コールバックから同じ配信処理に入る場合に備えて、現在の入れ子の深さを数えます。
     ++dispatchDepth_;
     try {
         for (auto& listener : listeners) {
+            // 途中で解除された購読と、この配信が始まった後に登録された購読を飛ばします。
             if (listener.active && listener.id <= lastExistingId)
                 listener.callback(event);
         }
+    // 例外で途中終了しても深さを戻し、最外層であれば解除済みの購読を消してから例外を伝えます。
     } catch (...) {
         --dispatchDepth_;
         if (dispatchDepth_ == 0)
@@ -35,6 +38,7 @@ void EventManager::DispatchTo(ListenerList<Event>& listeners, const Event& event
         throw;
     }
 
+    // 正常終了でも、配信中の走査が全て終わった時点で登録リストを整理します。
     --dispatchDepth_;
     if (dispatchDepth_ == 0)
         PruneInactiveListeners();

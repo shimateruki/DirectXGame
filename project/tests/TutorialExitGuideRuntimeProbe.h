@@ -27,7 +27,7 @@ inline engine::Object3D* Find(TutorialScene& scene, const char* name) {
     return nullptr;
 }
 inline void CaptureView(const std::string& path) {
-    auto* dx = DirectXCommon::GetInstance();
+    auto* dx = engine::DirectXCommon::GetInstance();
     // Editorの最終GameViewは1番。0番はBloomを使わないシーンでは前の画面が残る。
     auto* texture = PostEffect::GetInstance()->GetRenderTexture(1);
     DirectX::ScratchImage image, converted;

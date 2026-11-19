@@ -21,6 +21,7 @@ engine::Vector3 SafeNormal(const engine::Vector3& value) {
 engine::Quaternion BuildSurfaceQuaternion(const engine::Vector3& normal, float rotationRadians) {
     // Planeのローカル-Zを面法線へ合わせ、面上の回転も含む直交基底を作る。
     const engine::Vector3 zAxis = -SafeNormal(normal);
+    // 面法線がほぼ上下向きなら補助軸をXへ切り替え、外積で面内の軸がほぼゼロになるのを避けます。
     const engine::Vector3 helper = std::abs(engine::Math::Dot(zAxis, { 0.0f, 1.0f, 0.0f })) > 0.98f
         ? engine::Vector3{ 1.0f, 0.0f, 0.0f }
         : engine::Vector3{ 0.0f, 1.0f, 0.0f };
@@ -129,6 +130,7 @@ engine::Object3D* DecalSystem::SpawnFromRaycast(
     const DecalSpawnDesc& desc) {
     if (maxDistance <= 0.0f || engine::Math::Length(rayDirection) <= 0.0001f)
         return nullptr;
+    // 方向を単位ベクトルへ揃え、入力ベクトルの長さにかかわらず maxDistance をワールド上の距離として使います。
     const RaycastHit hit = CollisionManager::GetInstance()->Raycast(
         rayStart, SafeNormal(rayDirection), maxDistance, collisionMask);
     if (!hit.isHit)
@@ -148,10 +150,12 @@ void DecalSystem::AlignToSurface(
     settings.depthOffset = (std::max)(depthOffset, 0.0001f);
     object.SetDecalSettings(settings);
     object.SetTranslate(surfacePoint + normal * settings.depthOffset);
+    // Planeの元寸法が2なので、指定した幅・高さの半分をスケールとして渡します。
     object.SetScale({ settings.size.x * 0.5f, settings.size.y * 0.5f, 1.0f });
     const engine::Quaternion rotation = BuildSurfaceQuaternion(normal, rotationRadians);
     object.SetQuaternionWithEulerHint(rotation,
         engine::Math::MatrixToEuler(engine::Math::MakeRotateQuaternionMatrix(rotation)));
+    // 面に沿わせた姿勢をローカルからワールドへ順に反映し、次の描画から使えるようにします。
     object.UpdateLocalMatrix();
     object.UpdateWorldMatrix();
 }
@@ -173,6 +177,7 @@ void engine::Object3D::SetDecalSettings(const DecalSettings& settings) {
 
 void engine::Object3D::RestartDecalPlayback() {
     decalElapsedTime_ = 0.0f;
+    // フェードに掛ける元の不透明度を、この時点の色から保存します。
     decalAuthoredAlpha_ = GetColor().w;
 
     if (decalSettings_.enabled) {

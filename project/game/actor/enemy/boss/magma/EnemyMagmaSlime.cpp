@@ -61,6 +61,7 @@ void EnemyMagmaSlime::Update(float deltaTime) {
         return;
     }
 
+    // 既に場にある溶岩は、新しい技を選ぶ前に寿命・移動・命中を更新する。
     UpdateMagmaBlobs(deltaTime);
     UpdateMagmaPools(deltaTime);
     UpdateMagmaRings(deltaTime);
@@ -68,6 +69,7 @@ void EnemyMagmaSlime::Update(float deltaTime) {
     UpdateMagmaSurges(deltaTime);
     UpdateMagmaFlood(deltaTime);
 
+    // 撃破または非表示では、未消化の独自移動と場に残る攻撃を取り消して基底処理へ戻す。
     if (IsDead() || !GetIsVisible()) {
         locomotion_.Reset();
         HideAttackTelegraph();
@@ -76,6 +78,7 @@ void EnemyMagmaSlime::Update(float deltaTime) {
         return;
     }
 
+    // 休眠や投げからの復帰中はボスの攻撃を進めず、基底側の物理や回復を優先する。
     if (IsDormant() || IsThrowRecovering() || ShouldHandleDefeatEffect()) {
         locomotion_.Reset();
         HideAttackTelegraph();
@@ -84,6 +87,7 @@ void EnemyMagmaSlime::Update(float deltaTime) {
         return;
     }
 
+    // 配置倍率を先に確保し、ジャンプや溶岩攻撃の残り時間を今フレームへ進める。
     EnsureBaseScale();
     scriptedMovementThisFrame_ = false;
     idleTimer_ += deltaTime;
@@ -91,6 +95,7 @@ void EnemyMagmaSlime::Update(float deltaTime) {
     attackCooldown_ = (std::max)(0.0f, attackCooldown_ - deltaTime);
     landingPulseTimer_ = (std::max)(0.0f, landingPulseTimer_ - deltaTime);
 
+    // 技の選択と向きの調整には、標的との水平距離と水平向きを使う。
     engine::Vector3 targetDirection = lockedDirection_;
     float targetDistance = 9999.0f;
 
@@ -108,11 +113,13 @@ void EnemyMagmaSlime::Update(float deltaTime) {
     velocity.z = 0.0f;
     UpdateBehavior(deltaTime, targetDirection, targetDistance, velocity);
 
+    // AIが決めた速度を反映してから、ボスの姿勢とコライダーをそろえる。
     SetVelocity(velocity);
     ApplySlimeAnimation(deltaTime);
     UpdateSlamBodyPose();
     UpdateBodyHeat(deltaTime);
     SyncCollisionRadius();
+    // 専用移動が位置を確定したフレームでは共通モーターによる二重移動を止める。
     SetMotorSuspended(scriptedMovementThisFrame_);
     BaseEnemy::Update(deltaTime);
     SetMotorSuspended(false);
@@ -146,13 +153,13 @@ void EnemyMagmaSlime::DrawOwnedTransparentVisuals(ID3D12Resource* pointLightReso
     }
 }
 
-void EnemyMagmaSlime::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+void EnemyMagmaSlime::DrawForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource,
                                     ID3D12Resource* spotLightResource, int previewBufferIndex) {
     if (!camera || !GetIsRenderVisible()) return;
     engine::Object3D::DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
 }
 
-void EnemyMagmaSlime::DrawOwnedTransparentVisualsForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+void EnemyMagmaSlime::DrawOwnedTransparentVisualsForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource,
                                                             ID3D12Resource* spotLightResource, int previewBufferIndex) {
     if (!camera || !GetIsRenderVisible()) return;
     if (chantVisual_) chantVisual_->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
@@ -331,6 +338,7 @@ void EnemyMagmaSlime::EnsureBaseScale() {
 // 攻撃中の状態機械を優先し、待機中は選択した技の射程へ移動します。
 void EnemyMagmaSlime::UpdateBehavior(float deltaTime, const engine::Vector3& targetDirection, float targetDistance,
                                      engine::Vector3& velocity) {
+    // 発動中の技を先に進め、次の技や移動はその技が終わるまで選び直さない。
     if (attackState_ != AttackState::Idle) {
         UpdateAttack(deltaTime, targetDirection, targetDistance, velocity);
         return;
@@ -341,6 +349,7 @@ void EnemyMagmaSlime::UpdateBehavior(float deltaTime, const engine::Vector3& tar
         return;
     }
 
+    // 追跡の前提がそろわなければ、落下速度を保ったまま徘徊する。
     if (!GetTarget() || !GetParameters().has_value()) {
         const float verticalVelocity = velocity.y;
         velocity = CalculateWanderVelocity(deltaTime, 0.48f, 0.38f);
@@ -355,6 +364,7 @@ void EnemyMagmaSlime::UpdateBehavior(float deltaTime, const engine::Vector3& tar
         return;
     }
 
+    // プレビュー指定を優先し、通常戦では距離をもとに巡回中の技を選ぶ。
     const AttackKind debugAttack = ResolveDebugAttack();
     const AttackKind plannedAttack =
         debugAttack != AttackKind::None ? debugAttack : ResolveAutomaticAttack(targetDistance);
@@ -391,6 +401,7 @@ void EnemyMagmaSlime::UpdateBehavior(float deltaTime, const engine::Vector3& tar
     style.arcHeight = farAway ? std::clamp(GetParameters()->jumpPower * 0.035f, 0.70f, 1.08f) : 0.0f;
     style.maximumHeightDifference = 1.2f;
 
+    // 着地点を確保できない場合はすぐ再試行せず、短い待ち時間を置く。
     const engine::Vector3 current = GetTranslate();
     if (!locomotion_.Begin(current, current + movement * stepDistance, farAway, this, style)) {
         locomotion_.Delay(0.38f);
@@ -399,6 +410,7 @@ void EnemyMagmaSlime::UpdateBehavior(float deltaTime, const engine::Vector3& tar
 
 void EnemyMagmaSlime::UpdateLocomotion(float deltaTime, const engine::Vector3& targetDirection,
                                       engine::Vector3& velocity) {
+    // 地上移動器の確定位置を反映し、基底モーターに位置を重ねて更新させない。
     const BossGroundLocomotion::Frame frame = locomotion_.Advance(deltaTime);
     if (!frame.scripted) return;
 
@@ -409,6 +421,7 @@ void EnemyMagmaSlime::UpdateLocomotion(float deltaTime, const engine::Vector3& t
     const bool landing = locomotion_.GetPhase() == BossGroundLocomotion::Phase::Landing;
     UpdateFacing(locomotion_.IsLeap() && !landing ? locomotion_.GetDirection() : targetDirection);
 
+    // 踏み切りと着地だけ地面を再取得して土煙を発生させる。
     if (frame.takeoff || frame.landed) {
         const engine::Vector3 ground = CombatGroundQuery::FindGroundPoint(
             frame.position, this, {4.0f, 12.0f}, frame.position.y) + engine::Vector3{0.0f, 0.04f, 0.0f};
@@ -434,6 +447,7 @@ void EnemyMagmaSlime::StartAttack(AttackKind kind, const engine::Vector3& target
     attackStartPosition_ = GetTranslate();
     attackEndPosition_ = attackStartPosition_;
 
+    // 詠唱の残り秒数と連射番号を初期化し、前回の命中済み状態を持ち越さない。
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
     attackStateDuration_ = (std::max)(0.12f, attack.windupDuration);
     attackTimer_ = attackStateDuration_;
@@ -445,6 +459,7 @@ void EnemyMagmaSlime::StartAttack(AttackKind kind, const engine::Vector3& target
     rushImpactSpawned_ = false;
     slamImpactSpawned_ = false;
 
+    // 砲撃と噴火は予定地点を先に作り、予兆と実行で同じ候補を使う。
     if (kind == AttackKind::MagmaMortar) {
         mortarPatternPhase_ =
             std::fmod(idleTimer_ * 1.731f + static_cast<float>(automaticAttackSerial_) * 0.917f, kPi * 2.0f);
@@ -453,6 +468,7 @@ void EnemyMagmaSlime::StartAttack(AttackKind kind, const engine::Vector3& target
         PrepareEruptionTargets();
     }
 
+    // 火柱は地上の位置に専用魔法陣を配置する。
     if (kind == AttackKind::FireColumn) {
         PrepareFireColumnTargets();
         CreateFireColumnSigils();
@@ -476,6 +492,7 @@ void EnemyMagmaSlime::StartAttack(AttackKind kind, const engine::Vector3& target
         }
     }
 
+    // 技の選択順は実戦時だけ進め、固定技のプレビューでは変えない。
     if (debugPreviewAttackId_.empty()) {
         lastAutomaticAttack_ = kind;
         ++attackCycleIndex_;
@@ -499,12 +516,12 @@ void EnemyMagmaSlime::UpdateAttack(float deltaTime, const engine::Vector3& targe
         }
 
         UpdateFacing(lockedDirection_);
-        UpdateWindup(deltaTime, targetDirection);
+        UpdateAttackPattern(AttackState::Windup, deltaTime, targetDistance, velocity);
         return;
     }
 
     if (attackState_ == AttackState::Active) {
-        UpdateActive(deltaTime, targetDistance, velocity);
+        UpdateAttackPattern(AttackState::Active, deltaTime, targetDistance, velocity);
         return;
     }
 
@@ -522,9 +539,11 @@ void EnemyMagmaSlime::UpdateAttack(float deltaTime, const engine::Vector3& targe
 
 void EnemyMagmaSlime::UpdateSlamBodyPose() {
     if (!slamVisualPose_) return;
+    // 毎回初期化し、火山プレスをやめた後に直前の変形が残らないようにする。
     *slamVisualPose_ = engine::Math::MakeIdentity4x4();
     if (currentAttack_ != AttackKind::VolcanicSlam) return;
 
+    // 技の実時間を、予兆・実行・硬直それぞれを1秒分で扱うクリップの時刻へ写す。
     float phaseTime = 0.0f;
     const float progress = 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.01f), 0.0f, 1.0f);
     if (attackState_ == AttackState::Windup) phaseTime = progress;
@@ -534,6 +553,7 @@ void EnemyMagmaSlime::UpdateSlamBodyPose() {
 
     BodyAnimationClip::Sample pose;
     if (!slamBodyClip_.Evaluate(phaseTime, false, pose)) return;
+    // 指定した高さを支点に傾けられるよう、せん断で生じる位置ずれを相殺する。
     engine::Matrix4x4 shear = engine::Math::MakeIdentity4x4();
     shear.m[1][0] = pose.shear.x;
     shear.m[1][2] = pose.shear.z;
@@ -543,72 +563,139 @@ void EnemyMagmaSlime::UpdateSlamBodyPose() {
         shear, engine::Math::MakeAffineMatrix(pose.scale, pose.rotate, pose.translate));
 }
 
-void EnemyMagmaSlime::UpdateWindup(float deltaTime, const engine::Vector3&) {
-    // 技ごとの危険範囲を同じ進捗率で示し、発生直前に警告を一度強める。
-    const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
+void EnemyMagmaSlime::UpdateAttackPattern(AttackState phase, float deltaTime, float targetDistance, engine::Vector3& velocity) {
+    // このフレームの段階を引数で受け取り、技の処理が終わってから次の段階へ移る。
+    const bool windup = phase == AttackState::Windup;
+    const EnemyAttackDefinition* attack = windup ? &GetCurrentAttackDefinition() : nullptr;
+
+    // 現在の段階の残り時間を減らす。発射間隔は実行中だけ進め、演出の間隔は両方の段階で進める。
     attackTimer_ = (std::max)(0.0f, attackTimer_ - deltaTime);
+    if (!windup) {
+        actionTimer_ -= deltaTime;
+    }
     effectTimer_ -= deltaTime;
-    const float progress = 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.01f), 0.0f, 1.0f);
+
+    // 予兆の表示に、開始を0・終了を1とした進行率を渡す。
+    const float progress = windup
+        ? 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.01f), 0.0f, 1.0f)
+        : 0.0f;
     const engine::Vector4 warningColor = {1.0f, 0.19f, 0.015f, 0.84f};
 
+    // 同じ技の予兆と実行を並べ、表示した範囲と実際に発生する攻撃を照合できるようにする。
     switch (currentAttack_) {
     case AttackKind::MagmaMortar:
-        ShowAttackTelegraphImpactAreas(mortarTargets_.data(), mortarTargets_.size(), attack.radius, progress,
-                                       warningColor);
+        // 予兆と砲撃で同じ着弾候補を使う。発射側は固定済みの地点を順に参照する。
+        if (windup) {
+            ShowAttackTelegraphImpactAreas(mortarTargets_.data(), mortarTargets_.size(), attack->radius, progress,
+                                           warningColor);
+        } else {
+            // 低フレームレートでも発射を取りこぼさないよう、時刻を過ぎた弾を着弾地点の順に撃つ。
+            while (actionIndex_ < static_cast<int>(mortarTargets_.size()) && actionTimer_ <= 0.0f) {
+                LaunchNextMagmaBlob();
+                ++actionIndex_;
+                actionTimer_ += kMortarInterval;
+            }
+        }
         break;
 
     case AttackKind::LavaRush:
-        ShowAttackTelegraphLine(GetTranslate(), lockedDirection_, attack.maxRange, attack.radius * 2.0f, progress,
-                                warningColor);
+        // 予兆は進行方向を線で示す。実行中は UpdateRush() が開始時に決めた終点まで動かす。
+        if (windup) {
+            ShowAttackTelegraphLine(GetTranslate(), lockedDirection_, attack->maxRange, attack->radius * 2.0f, progress,
+                                    warningColor);
+        } else {
+            UpdateRush(deltaTime, targetDistance, velocity);
+        }
         break;
 
     case AttackKind::VolcanicSlam:
-        ShowAttackTelegraphCircle(lockedTargetPosition_, attack.radius, progress, warningColor);
+        // 固定した地点を円で予告し、実行中は UpdateVolcanicSlam() が跳躍の着地に衝撃を合わせる。
+        if (windup) {
+            ShowAttackTelegraphCircle(lockedTargetPosition_, attack->radius, progress, warningColor);
+        } else {
+            UpdateVolcanicSlam(deltaTime, velocity);
+        }
         break;
 
     case AttackKind::EruptionField:
-        ShowAttackTelegraphImpactAreas(eruptionTargets_.data(), eruptionTargets_.size(), attack.radius, progress,
-                                       warningColor);
+        // 予告した地点へ順番に火柱を立てる。遅いフレームでは予定時刻を過ぎた分まで生成する。
+        if (windup) {
+            ShowAttackTelegraphImpactAreas(eruptionTargets_.data(), eruptionTargets_.size(), attack->radius, progress,
+                                           warningColor);
+        } else {
+            while (actionIndex_ < static_cast<int>(eruptionTargets_.size()) && actionTimer_ <= 0.0f) {
+                SpawnNextMagmaPillar();
+                ++actionIndex_;
+                actionTimer_ += kEruptionInterval;
+            }
+        }
         break;
 
     case AttackKind::LavaSpiral:
-        ShowAttackTelegraphCircle(GetTranslate(), attack.maxRange, progress, warningColor);
+        // 渦は BeginActive() から起動する。発動中はボスの水平移動を止める。
+        if (windup) {
+            ShowAttackTelegraphCircle(GetTranslate(), attack->maxRange, progress, warningColor);
+        } else {
+            velocity.x = 0.0f;
+            velocity.z = 0.0f;
+        }
         break;
 
     case AttackKind::FireColumn:
+        // 予兆の魔法陣は switch の後で UpdateFireColumnSigils() が更新する。
+        if (!windup) {
+            velocity.x = 0.0f;
+            velocity.z = 0.0f;
+            UpdateFireColumn(deltaTime);
+        }
         break;
 
     case AttackKind::MagmaFlood:
-        ShowAttackTelegraphLine(GetTranslate(), lockedDirection_, attack.maxRange, attack.radius * 2.0f, progress,
-                                warningColor);
+        // 溶岩流は BeginActive() から起動する。ここでは発動中のボスをその場に留める。
+        if (windup) {
+            ShowAttackTelegraphLine(GetTranslate(), lockedDirection_, attack->maxRange, attack->radius * 2.0f, progress,
+                                    warningColor);
+        } else {
+            velocity.x = 0.0f;
+            velocity.z = 0.0f;
+        }
         break;
 
     default:
         break;
     }
 
-    if (currentAttack_ == AttackKind::FireColumn) {
-        PrepareFireColumnTargets();
-        UpdateFireColumnSigils(deltaTime);
-    }
-
-    if (effectTimer_ <= 0.0f && currentAttack_ != AttackKind::FireColumn) {
-        const char* preset = attack.windupVfx.empty() ? kChargePreset : attack.windupVfx.c_str();
-        EmitDirectedPreset(preset, GetWorldPosition() + engine::Vector3{0.0f, baseScale_.y * 0.55f, 0.0f},
-                           {-lockedDirection_.x * 0.18f, 1.0f, -lockedDirection_.z * 0.18f}, 0.82f + progress * 0.72f);
-        effectTimer_ += (std::max)(0.055f, 0.14f - progress * 0.075f);
-    }
-
-    if (!warningTriggered_ && attackTimer_ <= attack.warningLeadTime) {
-        if (currentAttack_ != AttackKind::FireColumn) {
-            TriggerAttackTelegraphCue({1.0f, 0.18f, 0.015f, 1.0f});
+    if (windup) {
+        // 火柱は専用の魔法陣で発生地点を示すため、後続の共通の溜め粒子と警告通知は使わない。
+        if (currentAttack_ == AttackKind::FireColumn) {
+            PrepareFireColumnTargets();
+            UpdateFireColumnSigils(deltaTime);
         }
 
-        warningTriggered_ = true;
-    }
+        // 技の指定素材を優先し、未指定なら共通素材を使う。発動が近づくほど粒子の間隔を詰める。
+        if (effectTimer_ <= 0.0f && currentAttack_ != AttackKind::FireColumn) {
+            const char* preset = attack->windupVfx.empty() ? kChargePreset : attack->windupVfx.c_str();
+            EmitDirectedPreset(preset, GetWorldPosition() + engine::Vector3{0.0f, baseScale_.y * 0.55f, 0.0f},
+                               {-lockedDirection_.x * 0.18f, 1.0f, -lockedDirection_.z * 0.18f}, 0.82f + progress * 0.72f);
+            effectTimer_ += (std::max)(0.055f, 0.14f - progress * 0.075f);
+        }
 
-    if (attackTimer_ <= 0.0f) {
-        BeginActive();
+        // 残り時間が警告のしきい値に達したら、その攻撃の警告を一度だけ処理する。
+        if (!warningTriggered_ && attackTimer_ <= attack->warningLeadTime) {
+            if (currentAttack_ != AttackKind::FireColumn) {
+                TriggerAttackTelegraphCue({1.0f, 0.18f, 0.015f, 1.0f});
+            }
+
+            warningTriggered_ = true;
+        }
+
+        // このフレームの予兆と警告を更新し終えてから、攻撃を起動する。
+        if (attackTimer_ <= 0.0f) {
+            BeginActive();
+        }
+    } else if (attackTimer_ <= 0.0f) {
+        // 今フレーム分の発射や判定を処理した後で、硬直へ移る。
+        BeginRecovery();
     }
 }
 
@@ -633,64 +720,6 @@ void EnemyMagmaSlime::BeginActive() {
         BeginFireColumn();
     } else if (currentAttack_ == AttackKind::MagmaFlood) {
         BeginMagmaFlood();
-    }
-}
-
-void EnemyMagmaSlime::UpdateActive(float deltaTime, float targetDistance, engine::Vector3& velocity) {
-    // 連続発射の間隔と移動技の速度を進め、実行時間が尽きたら硬直へ移す。
-    attackTimer_ = (std::max)(0.0f, attackTimer_ - deltaTime);
-    actionTimer_ -= deltaTime;
-    effectTimer_ -= deltaTime;
-
-    switch (currentAttack_) {
-    case AttackKind::MagmaMortar:
-        while (actionIndex_ < static_cast<int>(mortarTargets_.size()) && actionTimer_ <= 0.0f) {
-            LaunchNextMagmaBlob();
-            ++actionIndex_;
-            actionTimer_ += kMortarInterval;
-        }
-
-        break;
-
-    case AttackKind::LavaRush:
-        UpdateRush(deltaTime, targetDistance, velocity);
-        break;
-
-    case AttackKind::VolcanicSlam:
-        UpdateVolcanicSlam(deltaTime, velocity);
-        break;
-
-    case AttackKind::EruptionField:
-        while (actionIndex_ < static_cast<int>(eruptionTargets_.size()) && actionTimer_ <= 0.0f) {
-            SpawnNextMagmaPillar();
-            ++actionIndex_;
-            actionTimer_ += kEruptionInterval;
-        }
-
-        break;
-
-    case AttackKind::LavaSpiral:
-        velocity.x = 0.0f;
-        velocity.z = 0.0f;
-        break;
-
-    case AttackKind::FireColumn:
-        velocity.x = 0.0f;
-        velocity.z = 0.0f;
-        UpdateFireColumn(deltaTime);
-        break;
-
-    case AttackKind::MagmaFlood:
-        velocity.x = 0.0f;
-        velocity.z = 0.0f;
-        break;
-
-    default:
-        break;
-    }
-
-    if (attackTimer_ <= 0.0f) {
-        BeginRecovery();
     }
 }
 
@@ -809,8 +838,8 @@ std::unique_ptr<engine::Object3D> EnemyMagmaSlime::CreateMagmaVisual(const std::
     visual->SetRoughness(0.20f);
     visual->SetMetallic(0.0f);
 
-    if (MeshRenderer* renderer = visual->GetMeshRenderer()) {
-        if (MeshRenderer::WaterParamForGpu* parameter = renderer->GetWaterParamData()) {
+    if (engine::MeshRenderer* renderer = visual->GetMeshRenderer()) {
+        if (engine::MeshRenderer::WaterParamForGpu* parameter = renderer->GetWaterParamData()) {
             const bool isShockwave = materialType == kShockwaveMaterialType;
             const bool isFire = materialType == kFireMaterialType;
             parameter->waveSpeed = isShockwave ? 1.8f : (isFire ? 3.4f : 3.2f);
@@ -879,6 +908,7 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
     engine::Vector3 targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, IsGrounded(), params);
     engine::Vector3 targetRotation = {0.0f, GetRotation().y, 0.0f};
 
+    // 専用移動は踏み切り前の圧縮、空中の伸び、着地後の圧縮を別の形で見せる。
     if (attackState_ == AttackState::Idle && locomotion_.IsActive()) {
         const float progress = locomotion_.GetProgress();
         if (locomotion_.GetPhase() == BossGroundLocomotion::Phase::Windup) {
@@ -956,6 +986,7 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
         // 発動中は着地・突進・連射の動きに合わせた形へ切り替える。
         const float progress = 1.0f - attackTimer_ / (std::max)(attackStateDuration_, 0.01f);
 
+        // 連続砲撃を、本体が上下に反動を繰り返す形で見せる。
         if (currentAttack_ == AttackKind::MagmaMortar) {
             const float recoil = std::sin(progress * kPi * 6.0f);
             targetScale = {
@@ -964,6 +995,7 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
                 baseScale_.z * (1.10f + recoil * 0.04f),
             };
         } else if (currentAttack_ == AttackKind::LavaRush) {
+            // 突進中は進行方向に伸ばして低く構え、小刻みに震わせる。
             const float speedPulse = std::sin(progress * kPi * 10.0f) * 0.035f;
             targetScale = {
                 baseScale_.x * (1.18f + speedPulse),
@@ -973,6 +1005,7 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
 
             targetRotation.x = -0.12f;
         } else if (currentAttack_ == AttackKind::VolcanicSlam) {
+            // プレスが体のクリップを使えないときは、跳躍で伸び、着地時に潰す。
             const float airborne = std::sin(progress * kPi);
             const float landing = SmoothStep01(std::clamp((progress - 0.86f) / 0.14f, 0.0f, 1.0f));
             targetScale = {
@@ -983,6 +1016,7 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
 
             targetRotation.x = -airborne * 0.075f;
         } else if (currentAttack_ == AttackKind::EruptionField) {
+            // 連続噴火の発動中は速い脈動と左右への傾きを加える。
             const float eruptionPulse = std::sin(progress * kPi * 18.0f);
             targetScale = {
                 baseScale_.x * (1.18f + std::abs(eruptionPulse) * 0.09f),
@@ -992,6 +1026,7 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
 
             targetRotation.z = eruptionPulse * 0.065f;
         } else if (currentAttack_ == AttackKind::LavaSpiral) {
+            // 渦の発動中は左右の幅と傾きを交互に変え、ねじる動きを加える。
             const float spiralPulse = std::sin(progress * kPi * 12.0f);
             targetScale = {
                 baseScale_.x * (1.22f + spiralPulse * 0.08f),
@@ -1019,6 +1054,7 @@ void EnemyMagmaSlime::ApplySlimeAnimation(float deltaTime) {
                                              GetRotation().y - kMagmaSlimeModelYawOffset, 3.4f, 0.065f, 0.045f);
     }
 
+    // 計算した姿勢に被弾反応を重ね、フレーム時間で補間して急な形の変化を抑える。
     ApplyDamageReactionPose(targetScale, targetRotation);
     const float rate = 1.0f - std::exp(-deltaTime * 12.0f);
     const engine::Vector3 currentScale = GetScale();

@@ -6,7 +6,7 @@
 #include <vector>
 #include <string>
 
-class DirectXCommon;
+namespace engine { class DirectXCommon; }
 
 // 担当：描画済み画面へブルーム・色調補正・輪郭などの画面効果を適用する。
 // 関連：DirectXCommon（GPU基盤）、Game（合成経路）、PostEffectEditor（編集）
@@ -59,6 +59,7 @@ public:
 
 
         // --- Radial Blur ---
+        // 放射ブラーの中心を画像内の正規化UV座標で指定します。
         float radialCenterX = 0.5f;         // 放射ブラー中心X
         float radialCenterY = 0.5f;         // 放射ブラー中心Y
         float radialIntensity = 0.0f;       // 放射ブラー強度
@@ -66,23 +67,24 @@ public:
 
         // --- Color Grading & Action ---
         float lutIntensity = 0.0f;          // LUT適用強度
-        float colorExposure = 0.0f;         // Color grading exposure
+        float colorExposure = 0.0f;         // 露出の段数。1増えるごとに明るさを2倍にします。
         float colorContrast = 1.0f;         // Color grading contrast
         float colorSaturation = 1.0f;       // Color grading saturation
         float colorTemperature = 0.0f;      // Warm/cool color shift
         float colorTint = 0.0f;             // Green/magenta color shift
         float damageFlash = 0.0f;           // 被弾時の画面赤化
-        float cinemaBarHeight = 0.0f;       // シネマスコープ（上下黒帯）の高さ
+        float cinemaBarHeight = 0.0f;       // 上下それぞれの黒帯が画面高に占める割合。
         float wobbleIntensity = 0.0f;       // 画面の波打ち歪み
 
         // --- Retro ---
         float scanlineIntensity = 0.0f;     // ブラウン管走査線
-        float mosaicSize = 0.0f;            // ピクセルモザイクサイズ
+        float mosaicSize = 0.0f;            // モザイク一マスの大きさ（ピクセル）。1以下で無効。
         float dangerVignette = 0.0f;
         float blackout = 0.0f;
         float grayscaleIntensity = 0.0f;
         float sepiaIntensity = 0.0f;
         int32_t boxFilterSize = 0;          // 0:Off, 1:3x3, 2:5x5...
+        // ガウスのシグマに加え、何画素離れた位置まで参照するかをフィルターサイズで選びます。
         int32_t gaussianFilterSize = 0;     // 0:Off, 1:3x3, 2:5x5...
         float gaussianSigma = 1.0f;         // ガウス関数のシグマ
         float luminanceOutlineIntensity = 0.0f; // 輝度ベースのアウトライン
@@ -115,7 +117,7 @@ public:
     };
 
     /// <summary>画面効果の描画リソースとパイプラインを初期化する。</summary>
-    void Initialize(DirectXCommon* dxCommon);
+    void Initialize(engine::DirectXCommon* dxCommon);
 
     /// <summary>時間依存の画面効果パラメータを更新する。</summary>
     void Update(float deltaTime);
@@ -150,6 +152,7 @@ public:
 
     uint32_t GetGrabSrvHandle(int texIndex) const { return renderTextures_[texIndex].grabSrvHandle; }
 
+    // 初期化後のマップ済み領域を借用します。初期化前は nullptr です。
     Params* GetParams() { return paramsData_; }
 
     bool IsBloomEnabled() const { return bloomEnabled_; }
@@ -195,7 +198,7 @@ public:
     void ResizeRenderTextures(int width, int height);
 
 private:
-    // 全画面矩形、共通ルートシグネチャ、画面効果の各パイプラインを作る。
+    // 旧矩形描画用の宣言。現在の全画面描画はシェーダーが三角形を生成します。
     void CreateMesh();
 
     // 描画で使うルートパラメータとサンプラーを作る。
@@ -223,6 +226,7 @@ private:
         Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> dsvHeap;
         Microsoft::WRL::ComPtr<ID3D12Resource> grabResource;
         uint32_t srvHandle = 0;
+        // 深度SRVと背景コピーのSRVはカメラプレビュー用だけ用意し、未作成の枠は0を返します。
         uint32_t depthSrvHandle = 0;
         uint32_t grabSrvHandle = 0;
         D3D12_RESOURCE_STATES currentState = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
@@ -235,7 +239,7 @@ private:
     // 各パス（Copy, Composite, Blur, etc...）ごとのパイプラインステート
     std::vector<Microsoft::WRL::ComPtr<ID3D12PipelineState>> pipelineStates_;
 
-    DirectXCommon* dxCommon_ = nullptr;
+    engine::DirectXCommon* dxCommon_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_;
 
     // 定数バッファ関連

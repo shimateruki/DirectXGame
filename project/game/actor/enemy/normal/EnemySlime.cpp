@@ -141,6 +141,7 @@ void EnemySlime::ApplyManagedScale(const engine::Vector3& scale) {
 }
 
 void EnemySlime::Update(float deltaTime) {
+    // 休眠・撃破・投擲後は個別の追跡や攻撃を進めず、基底の更新へ切り替えます。
     if (IsDormant()) {
         BaseEnemy::Update(deltaTime);
         return;
@@ -152,6 +153,7 @@ void EnemySlime::Update(float deltaTime) {
         return;
     }
 
+    // 運搬中の位置はプレイヤー側に任せ、床の予兆だけを消します。
     if (IsCarried()) {
         HideAttackTelegraph();
         return;
@@ -190,6 +192,7 @@ void EnemySlime::Update(float deltaTime) {
     effectiveDetectionRange = (std::min)(effectiveDetectionRange, attack.maxRange);
     const bool canDiveAtTarget = targetDistance <= effectiveDetectionRange && targetDistance >= attack.minRange;
 
+    // 待機・徘徊中に敵を発見したら、溜めより先に気付き演出を終えます。
     if (moveState_ == MoveState::Wander &&
         UpdateNoticeReaction(deltaTime, targetDistance, effectiveDetectionRange, targetDirection)) {
         FaceDirection(targetDirection, deltaTime * 10.0f);
@@ -205,12 +208,16 @@ void EnemySlime::Update(float deltaTime) {
     }
 
     if (moveState_ == MoveState::Recover) {
+        // 着地後は勢いを落としてから次の行動を選びます。
         UpdateLandingRecovery(deltaTime);
     } else if (moveState_ == MoveState::Rise) {
+        // 上昇中は対象へ向き直り、頂点で突進へ切り替えます。
         UpdateRise(deltaTime);
     } else if (moveState_ == MoveState::Dive) {
+        // 突進中は過去の予兆を消し、追尾と体当たりの動きを維持します。
         UpdateDive(deltaTime);
     } else if (IsGrounded()) {
+        // 接地中の待機・溜めだけ、射程に応じて次の攻撃か徘徊を選びます。
         if (canDiveAtTarget) {
             UpdateCharge(deltaTime, targetDirection, targetDistance);
         } else {
@@ -253,13 +260,13 @@ void EnemySlime::ResetVisualPose() {
     visualRotation_ = {0.0f, 0.0f, 0.0f};
     visualRotationVelocity_ = {0.0f, 0.0f, 0.0f};
 
-    if (MeshRenderer* renderer = GetMeshRenderer()) {
+    if (engine::MeshRenderer* renderer = GetMeshRenderer()) {
         renderer->ResetVisualTransform();
     }
 }
 
 engine::Vector3 EnemySlime::CalculateGroundedVisualOffset(const engine::Vector3& visualScale) const {
-    const Model* model = GetModel();
+    const engine::Model* model = GetModel();
 
     if (!model) {
         return {0.0f, 0.0f, 0.0f};
@@ -274,7 +281,7 @@ engine::Vector3 EnemySlime::CalculateGroundedVisualOffset(const engine::Vector3&
 }
 
 engine::Vector3 EnemySlime::CalculateDiveVisualOffset(const engine::Vector3& visualScale, const engine::Vector3& visualRotation) const {
-    const Model* model = GetModel();
+    const engine::Model* model = GetModel();
 
     if (!model) {
         return {0.0f, 0.0f, 0.0f};
@@ -401,6 +408,7 @@ void EnemySlime::UpdateCharge(float deltaTime, const engine::Vector3& direction,
     const EnemyAttackDefinition& attack = GetAttackDefinition(kDiveAttackId);
     const float chargeDuration = (std::max)(0.01f, attack.windupDuration);
     const float chargeRate = Clamp01(chargeTimer_ / chargeDuration);
+    // 床へ投影した位置に突進の幅と到達予定を表示します。
     const engine::Vector3 telegraphCenter = ResolveSlimeGroundEffectPosition(GetTranslate(), 0.05f);
     const float predictedDistance =
         std::clamp(distance + attack.radius, (std::max)(2.4f, attack.minRange), attack.maxRange);
@@ -415,6 +423,7 @@ void EnemySlime::UpdateCharge(float deltaTime, const engine::Vector3& direction,
     SetVelocityZ(0.0f);
     chargeTimer_ += deltaTime;
 
+    // 警告の強調は設定の残り時間に入った時の一回に限り、溜めの満了後に飛びます。
     const float remainingChargeTime = (std::max)(0.0f, chargeDuration - chargeTimer_);
 
     if (!attackWarningTriggered_ && remainingChargeTime <= attack.warningLeadTime) {
@@ -521,6 +530,7 @@ void EnemySlime::UpdateDive(float deltaTime) {
     SetVelocityZ(LerpFloat(GetVelocity().z, diveDirection_.z * targetSpeed, velocityRate));
 
     const float diveRate = Easing::SmoothStep01(diveTimer_ / activeDuration);
+    // 突進開始時の下向き速度から終盤の目標速度へ近づけ、横方向の追尾と独立して落下を加速します。
     const float targetYSpeed = LerpFloat(kDiveStartDownSpeed, kDiveDropSpeed, diveRate);
     SetVelocityY(LerpFloat(GetVelocity().y, targetYSpeed, deltaTime * 22.0f));
 
@@ -714,6 +724,7 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
     };
 
     if (moveState_ == MoveState::Charge) {
+        // 溜めが深くなるほど縦に縮め、離陸直前の踏ん張りを見せます。
         const float windupDuration = (std::max)(0.01f, GetAttackDefinition(kDiveAttackId).windupDuration);
         const float chargeRate = Easing::SmoothStep01(chargeTimer_ / windupDuration);
         const float finalCompression = Easing::SmoothStep01((chargeRate - 0.76f) / 0.24f);
@@ -725,6 +736,7 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
         targetVisualRotation.x = -diveDirection_.z * wobble;
         targetVisualRotation.z = diveDirection_.x * wobble;
     } else if (moveState_ == MoveState::Rise) {
+        // 離陸直後の勢いと上昇速度に合わせ、頭上方向への伸びを作ります。
         const float release = 1.0f - Easing::SmoothStep01(riseTimer_ / 0.30f);
         const float verticalSpeedRate = Clamp01(std::abs(GetVelocity().y) / kRiseJumpSpeed);
         const float riseStretch = 0.34f + verticalSpeedRate * 0.16f + release * 0.10f;
@@ -768,6 +780,7 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
         targetVisualRotation.x = -diveDirection_.z * shake;
         targetVisualRotation.z = diveDirection_.x * shake;
     } else if (!IsGrounded()) {
+        // 攻撃動作に該当しない空中姿勢は、共通の跳ねアニメーションを使います。
         targetVisualScale =
             toVisualScale(SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, false, bounceParams));
     } else {
@@ -779,6 +792,7 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
     targetVisualScale.y = std::clamp(targetVisualScale.y, 0.48f, 1.55f);
     targetVisualScale.z = std::clamp(targetVisualScale.z, 0.62f, 1.96f);
 
+    // 拡縮と傾きに別の減衰を掛け、行動状態を切り替えても見た目が急変しないようにします。
     SlimeBounceAnimator::StepDampedSpring(visualScale_, visualScaleVelocity_, targetVisualScale, deltaTime, 23.0f,
                                           0.58f);
     SlimeBounceAnimator::StepDampedSpring(visualRotation_, visualRotationVelocity_, targetVisualRotation, deltaTime,
@@ -788,6 +802,7 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
     visualScale_.y = std::clamp(visualScale_.y, 0.44f, 1.60f);
     visualScale_.z = std::clamp(visualScale_.z, 0.58f, 2.02f);
 
+    // 被弾の変形をばねの現在値に重ねます。ばね自体の状態には被弾姿勢を持ち越しません。
     engine::Vector3 renderedScale = visualScale_;
     engine::Vector3 renderedRotation = visualRotation_;
     engine::Vector3 reactionOffset = engine::Vector3::ZERO;
@@ -800,7 +815,8 @@ void EnemySlime::ApplySlimeAnimation(float deltaTime) {
     const float yaw = GetRotation().y;
     SetRotation({0.0f, yaw, 0.0f});
 
-    if (MeshRenderer* renderer = GetMeshRenderer()) {
+    // 描画側だけを補正します。突進では顔側、接地中は底面を固定して身体の伸縮を見せます。
+    if (engine::MeshRenderer* renderer = GetMeshRenderer()) {
         const bool keepGroundContact =
             IsGrounded() || moveState_ == MoveState::Charge || moveState_ == MoveState::Recover;
         engine::Vector3 visualOffset = engine::Vector3::ZERO;

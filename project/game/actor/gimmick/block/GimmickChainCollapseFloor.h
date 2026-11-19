@@ -63,6 +63,7 @@ class GimmickChainCollapseFloor : public BaseGimmick {
 
     float GetGravity() const;
 
+
     State state_ = State::Idle;
     engine::Vector3 startPosition_ = engine::Vector3::ZERO;
     engine::Vector3 startRotation_ = engine::Vector3::ZERO;

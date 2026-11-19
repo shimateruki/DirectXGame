@@ -94,6 +94,7 @@ inline nlohmann::json Serialize(const engine::Object3D& object) {
 // Scene JSON の既存項目だけを param に反映する。
 // 共通ステータス管理対象のHPや移動値を上書きせず、個体値は有効範囲へ補正する。
 inline void Apply(engine::Object3D& object, const nlohmann::json& source) {
+    // パラメータがオブジェクト形式の場合だけ読み込み、未初期化なら既定値を用意します。
     if (!source.is_object())
         return;
     if (!object.GetParameters())
@@ -129,6 +130,7 @@ inline void Apply(engine::Object3D& object, const nlohmann::json& source) {
     SCENE_PARAM_READ(switchMode);
     SCENE_PARAM_READ(actionMode);
     SCENE_PARAM_READ(targetScene);
+    // 演出指定などの文字列は、異なる型の値が混在していても対象項目を読み飛ばします。
     if (source.contains("cinematicPath") && source["cinematicPath"].is_string())
         p.cinematicPath = source["cinematicPath"].get<std::string>();
     SCENE_PARAM_READ(moveAmount);
@@ -169,6 +171,7 @@ inline void Apply(engine::Object3D& object, const nlohmann::json& source) {
         p.copyMemoryActivationRadius = (std::max)(0.1f, p.copyMemoryActivationRadius);
     if (source.contains("ringWaveSpeed"))
         p.ringWaveSpeed = (std::clamp)(p.ringWaveSpeed, 0.25f, 4.0f);
+    // 個体HPを使う場合、最大HPだけを指定した個体は満タンから始め、現在HPの方が大きい旧データでは最大値を広げます。
     if (!managed) {
         p.maxHp = (std::max)(p.maxHp, 1.0f);
         if (hasMaxHp && !hasHp)
@@ -181,6 +184,7 @@ inline void Apply(engine::Object3D& object, const nlohmann::json& source) {
             p.morphDuration = (std::max)(p.morphDuration, 0.1f);
         }
     }
+    // 各項目の読込と補正が済んでから、本体のパラメータをまとめて入れ替えます。
     object.SetParameters(p);
 }
 

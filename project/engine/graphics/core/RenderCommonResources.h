@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 
-class DirectXCommon;
+namespace engine { class DirectXCommon; }
 
 namespace engine {
 class Object3DCommon;
@@ -23,7 +23,7 @@ public:
     RenderCommonResources& operator=(const RenderCommonResources&) = delete;
 
     /// <summary>GPU生成はまだ行わず、Framework所有のDirectX基盤を借用する。</summary>
-    void Initialize(DirectXCommon* dxCommon);
+    void Initialize(engine::DirectXCommon* dxCommon);
     /// <summary>初回起動・直接遷移用。必要範囲の準備が終わるまで進める。</summary>
     void Prepare(RenderPreparation preparation);
     /// <summary>ロード画面用に一段ずつ準備する。準備済みなら生成せずtrueを返す。</summary>
@@ -41,7 +41,7 @@ public:
 
 private:
     // 所有しない。Frameworkは全Sceneとこの管理器の終了後にDirectXを解放する。
-    DirectXCommon* dxCommon_ = nullptr;
+    engine::DirectXCommon* dxCommon_ = nullptr;
     // Sceneは借用するだけで、シーン遷移時には破棄しない。
     std::unique_ptr<Object3DCommon> object3dCommon_;
     std::unique_ptr<SpriteCommon> spriteCommon_; // 全シーンで共有するSprite描画基盤。

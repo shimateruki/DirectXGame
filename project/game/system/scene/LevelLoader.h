@@ -40,7 +40,7 @@ class LevelLoader {
 
   private:
     /// <summary>現在の配置JSONから残り件数内のObjectを生成する。</summary>
-    /// <returns>ファイルの読み取りとObject生成を続行できた場合はtrue。</returns>
+    /// <returns>現在のファイルを処理し終えたら true。件数上限で同じファイルを次回も処理する場合は false。</returns>
     bool LoadSingleJson(BaseScene* scene, const std::string& filename, size_t& remainingObjects);
 
   private:

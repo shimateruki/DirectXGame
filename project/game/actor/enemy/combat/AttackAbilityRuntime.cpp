@@ -27,6 +27,7 @@ AttackAbilityUpdateResult AttackAbilityRuntime::Update(float deltaTime) {
     result.previousPhase = phase_;
     result.currentPhase = phase_;
 
+    // 未開始・再使用可能な状態では位相を進めず、遷移のない結果を返します。
     if (!hasDefinition_ || phase_ == AttackAbilityPhase::Ready) {
         return result;
     }
@@ -37,6 +38,7 @@ AttackAbilityUpdateResult AttackAbilityRuntime::Update(float deltaTime) {
         const float duration = definition_.GetPhaseDuration(phase_);
         const float timeToBoundary = (std::max)(0.0f, duration - phaseTime_);
 
+        // 現在の段階内で使い切るフレームは経過時間だけを加え、段階を変えません。
         if (duration > 0.0f && remainingTime < timeToBoundary) {
             phaseTime_ += remainingTime;
             remainingTime = 0.0f;
@@ -47,6 +49,7 @@ AttackAbilityUpdateResult AttackAbilityRuntime::Update(float deltaTime) {
             remainingTime = (std::max)(0.0f, remainingTime - timeToBoundary);
         }
 
+        // 残り時間が境界に届いた、または長さがゼロの段階を抜け、通過した段階を通知に積みます。
         phase_ = NextPhase(phase_);
         phaseTime_ = 0.0f;
 
@@ -55,6 +58,7 @@ AttackAbilityUpdateResult AttackAbilityRuntime::Update(float deltaTime) {
         result.enteredCooldown |= phase_ == AttackAbilityPhase::Cooldown;
         result.becameReady |= phase_ == AttackAbilityPhase::Ready;
 
+        // 再使用可能になった場合か、次の有時間段階を進める余りが無くなった場合に止めます。
         if (phase_ == AttackAbilityPhase::Ready ||
             (remainingTime <= 0.0f && definition_.GetPhaseDuration(phase_) > 0.0f)) {
             break;

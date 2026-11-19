@@ -49,7 +49,7 @@ class Player : public Character {
     /// <param name="common">3D描画の共通基盤。</param>
     /// <param name="inputManager">操作入力の参照元。</param>
     /// <param name="particleSystem">プレイヤー演出に使う粒子システム。</param>
-    /// <param name="spriteCommon">UIスプライトの描画基盤。省略可能です。</param>
+    /// <param name="spriteCommon">既存呼び出しとの互換用。現在の初期化では参照しません。</param>
     void Initialize(engine::Object3DCommon* common, engine::InputManager* inputManager, engine::ParticleSystem* particleSystem,
                     engine::SpriteCommon* spriteCommon = nullptr);
 
@@ -62,11 +62,11 @@ class Player : public Character {
 
     /// <summary>指定カメラ向けにプレイヤーの表示物を描画します。</summary>
     /// <param name="previewBufferIndex">プレビュー用の描画バッファ番号。</param>
-    void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource,
+    void DrawForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource,
                        int previewBufferIndex = 0) override;
 
     /// <summary>指定カメラ向けに特殊マテリアルの描画パスを実行します。</summary>
-    void DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
+    void DrawSpecialMaterialForCamera(engine::Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
                                       int previewBufferIndex = 0) override;
 
     /// <summary>プレイヤーが追加の特殊マテリアル表示物を所有するか返します。</summary>
@@ -76,10 +76,10 @@ class Player : public Character {
     void DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t grabSrvHandle) override;
 
     /// <summary>指定カメラ向けに所有する特殊マテリアル表示物を描画します。</summary>
-    void DrawOwnedSpecialMaterialVisualsForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
+    void DrawOwnedSpecialMaterialVisualsForCamera(engine::Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
                                                   int previewBufferIndex = 0) override;
 
-    /// <summary>プレイヤー専用のUIを描画します。</summary>
+    /// <summary>HUD はシーン側が描くため、現在この入口では描画を行いません。</summary>
     void DrawUi();
 
     /// <summary>管理対象の本体スケールを変更し、現在の姿に反映します。</summary>
@@ -200,6 +200,12 @@ class Player : public Character {
     /// <param name="turnMultiplier">旋回速度の倍率。</param>
     void ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier);
 
+    // UI がパネルの加速状態を読む入口。通常ダッシュやコピー技の状態は含まない。
+    bool IsDashPanelBoostActive() const;
+
+    // 接触被弾が成立した時に、パネル加速だけを終える。
+    void CancelDashPanelBoost();
+
     /// <summary>衝撃ゲートを壊せる通常攻撃またはコピー突進の最中か返します。</summary>
     bool IsImpactBreakActive() const;
 
@@ -273,6 +279,7 @@ class Player : public Character {
     /// <summary>隔離Actorの能力セッションを保存前の設定で準備します。</summary>
     void SetCopyPreviewProfile(const EnemyAttackProfile& profile) {
         if (IsEditorInternal() && copyAbilityController_) {
+            // 古い能力の一時的な表示と判定を片付け、同じ能力を編集値で作り直します。
             copyAbilityController_->Cancel(*this);
             copyAbilityController_->Activate(static_cast<int>(enemyMorphType_), profile);
         }
@@ -605,8 +612,8 @@ class Player : public Character {
     // 被弾後・ダッシュ・回避の無敵と、無敵を伴わないピンクガードの構え。
     float damageCooldownTimer_ = 0.0f;
     float hurtFaceRemaining_ = 0.0f; // 被弾顔の残り秒数。
-    Model* hurtFaceBaseModel_ = nullptr; // 被弾モデルの対応を確認した通常モデル。
-    Model* hurtFaceModel_ = nullptr; // ModelManagerが所有する描画差し替え用モデル。
+    engine::Model* hurtFaceBaseModel_ = nullptr; // 被弾モデルの対応を確認した通常モデル。
+    engine::Model* hurtFaceModel_ = nullptr; // ModelManagerが所有する描画差し替え用モデル。
     bool hurtFaceIncludesBand_ = false; // 被弾モデルにコピー用装飾が含まれる場合は別描画を省く。
     float guardContactCooldownTimer_ = 0.0f; // ガード接触の再発生までの残り秒数。
     bool isDamageInvincible_ = false;

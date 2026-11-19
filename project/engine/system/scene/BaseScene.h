@@ -16,7 +16,7 @@ namespace engine { class SpriteCommon; }
 namespace engine { class ParticleSystem; }
 namespace engine { class SceneRenderCommands; }
 class DebugEditor;
-class Camera;
+namespace engine { class Camera; }
 class BulletManager;
 class Skybox;
 class ScenePreloadData;
@@ -248,7 +248,7 @@ public:
     virtual void DrawUi() {}
 
     /// <summary>指定カメラから見たシーンを独立バッファへ描画する。</summary>
-    virtual void DrawCameraPreview(Camera* camera, int previewBufferIndex = 0);
+    virtual void DrawCameraPreview(engine::Camera* camera, int previewBufferIndex = 0);
 
     /// <summary>現在読み込んだ3D配置ファイル名を設定・取得する。</summary>
     void SetLoadedFilename(const std::string& name) { loadedFilename_ = name; }
@@ -304,7 +304,7 @@ protected:
     /// <summary>GPU粒子を描画し、背景色コピーが済んでいるか返す。</summary>
     /// <param name="grabAlreadyUpdated">先行する特殊材質パスで背景色をコピー済みならtrue。</param>
     /// <returns>呼び出し後に背景色コピーが済んでいればtrue。</returns>
-    bool DrawGpuParticles(Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated = false);
+    bool DrawGpuParticles(engine::Camera* camera, uint32_t textureHandle, bool grabAlreadyUpdated = false);
 
     /// <summary>派生シーンが利用するエディターと事前読込結果を借用する。</summary>
     DebugEditor* GetDebugEditor() const { return debugEditor_; }

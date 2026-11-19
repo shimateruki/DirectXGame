@@ -12,6 +12,7 @@
 void Character::Update(float deltaTime) {
     engine::Object3D::Update(deltaTime);
 
+    // 物理用の設定がなければ共通オブジェクトの更新だけを行います。
     if (!GetParameters().has_value()) {
         return;
     }
@@ -29,6 +30,7 @@ void Character::Update(float deltaTime) {
     characterMotor_.BeginFrame(isGrounded_);
     characterMotor_.ApplyGravity(velocity_, GetParameters()->gravity, GetParameters()->maxFallSpeed, deltaTime);
 
+    // 水平の外力は残り時間に応じて弱め、鉛直速度の上書きは付与後の最初の更新だけにします。
     if (externalImpulseTimer_ > 0.0f) {
         const float duration = (std::max)(externalImpulseDuration_, 0.001f);
         const float remaining = std::clamp(externalImpulseTimer_ / duration, 0.0f, 1.0f);
@@ -44,6 +46,7 @@ void Character::Update(float deltaTime) {
         externalImpulseTimer_ = (std::max)(0.0f, externalImpulseTimer_ - deltaTime);
     }
 
+    // 確定した速度からモーターで移動位置を求め、接触補正も含めて本体へ反映します。
     engine::Vector3 position = GetTranslate();
     characterMotor_.Move(*this, position, velocity_, isGrounded_, deltaTime);
     SetTranslate(position);
@@ -78,6 +81,7 @@ void Character::ApplyExternalImpulse(const engine::Vector3& velocity, float dura
         return;
     }
 
+    // 既存と新規の水平速度を二乗で比べ、弱い追加衝撃で軌道が急に変わらないようにします。
     const float currentPlanarSq = externalImpulseVelocity_.x * externalImpulseVelocity_.x +
                                   externalImpulseVelocity_.z * externalImpulseVelocity_.z;
     const float nextPlanarSq = velocity.x * velocity.x + velocity.z * velocity.z;
@@ -88,6 +92,7 @@ void Character::ApplyExternalImpulse(const engine::Vector3& velocity, float dura
         externalImpulseVelocity_.y = (std::max)(externalImpulseVelocity_.y, velocity.y);
     }
 
+    // 連続被弾で効果時間が短くならないようにし、鉛直成分の再適用を予約します。
     externalImpulseDuration_ = (std::max)(externalImpulseDuration_, safeDuration);
     externalImpulseTimer_ = (std::max)(externalImpulseTimer_, safeDuration);
     externalImpulseVerticalPending_ = true;
@@ -129,6 +134,7 @@ void Character::ApplyPhysicsCollision(const CollisionInfo& info, uint32_t attrib
 
 // 編集用の複製ではステータスと移動設定を引き継ぎ、経路レコーダーは新しい実体として初期化します。
 std::unique_ptr<engine::Object3D> Character::Clone() const {
+    // 派生クラスのコピーは派生側に任せ、Character の実体以外はこの関数でコピーしません。
     if (typeid(*this) != typeid(Character)) {
         return nullptr;
     }

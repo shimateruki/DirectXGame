@@ -63,7 +63,12 @@ class EnemyWindSlime : public BaseEnemy {
     // 攻撃中は通常の水平移動を止め、状態ごとの高度・予告・発射だけを更新する。
     void UpdateAttackState(float deltaTime, engine::Vector3& velocity, const engine::Vector3& direction, float distance);
 
-    // 二つの魔法の開始処理。狙い方向は開始時に固定します。
+    // 照準確定から押し出し終了まで突風の状態を進める。
+    void UpdateGustAttack(float deltaTime, const engine::Vector3& direction, float distance);
+
+    // 予兆付きの離陸、空中連射、着地の順に進める。
+    void UpdateAerialVolley(float deltaTime, engine::Vector3& velocity, const engine::Vector3& direction, float distance);
+
     /// 対象方向を固定して突風の予備動作を開始する。
     void StartGustBreath(const engine::Vector3& direction);
 

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "bbb7d9f15b83a5693ba9741d37e1ed87",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/15-bomb-place.dds",
+  "version": 1
+}

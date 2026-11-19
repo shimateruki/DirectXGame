@@ -51,7 +51,7 @@ private:
 
 public:
     /// <summary>DirectX基盤を保持してテクスチャ転送に備える。</summary>
-    void Initialize(DirectXCommon* dxCommon);
+    void Initialize(engine::DirectXCommon* dxCommon);
 
     // Sceneロード中のテクスチャ転送をCopy Queueへまとめ、描画を止めずに完了を監視します。
     bool BeginAsyncUploadBatch();
@@ -138,11 +138,12 @@ private:
     // 完了したバッチの中間バッファなどを解放する。
     void ReleaseCompletedAsyncUploadBatch();
 
-    DirectXCommon* dxCommon_ = nullptr;
+    engine::DirectXCommon* dxCommon_ = nullptr;
     Microsoft::WRL::ComPtr<ID3D12Device> device_;
 
     // キーを SRV ハンドル、値をテクスチャデータとして保持する。
     std::map<uint32_t, TextureData> textureDatas_;
+    // 再生元を照合する識別子。オブジェクトとして参照せず、借用した映像面を同じ所有元だけが操作できるようにします。
     const void* videoOwner_ = nullptr;
     std::optional<uint32_t> videoHandle_;
     std::optional<uint64_t> videoUploadFence_; // 前回の転送が含まれるフレーム終端の値。
@@ -157,6 +158,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12Fence> copyFence_;
     Microsoft::WRL::ComPtr<ID3D12CommandAllocator> asyncUploadAllocator_;
     Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> asyncUploadCommandList_;
+    // まとめて送信した転送先と中間バッファを、コピーキューのフェンス完了まで保持します。
     std::vector<AsyncTextureUpload> asyncTextureUploads_;
     uint64_t copyFenceValue_ = 0; // 転送キューのフェンス発行値。
     uint64_t pendingCopyFenceValue_ = 0; // 現在の転送完了判定で待つ値。

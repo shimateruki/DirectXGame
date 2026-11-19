@@ -57,6 +57,7 @@ public:
     // 登録順を保持した一覧です。Quick SearchやCommand一覧表示で利用します。
     std::vector<const EditorCommand*> GetCommands() const;
 
+    // 検索候補に使う世代番号。登録内容が変わったら EditorQuickSearch が候補を収集し直す。
     uint64_t GetRevision() const { return revision_; }
 
 private:

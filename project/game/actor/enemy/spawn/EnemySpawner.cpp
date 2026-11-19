@@ -2,6 +2,7 @@
 #include "game/actor/enemy/spawn/EnemyFactory.h"
 
 void EnemySpawner::Initialize(engine::Object3DCommon* common, const std::string& enemyType, float interval, int maxCount) {
+    // 配置物として初期化し、敵種別と通知間隔を保持します。
     engine::Object3D::Initialize(common);
     common_ = common;
     enemyType_ = enemyType;
@@ -32,6 +33,7 @@ void EnemySpawner::Update(float deltaTime) {
 }
 
 void EnemySpawner::Spawn() {
+    // 生成は登録されたコールバックの担当です。通知先が無ければ何も行いません。
     if (onSpawnCallback_) {
         // 自分の配置座標をスポーン位置として使う
         engine::Vector3 spawnPos = engine::Vector3::ZERO;

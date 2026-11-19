@@ -142,6 +142,7 @@ namespace {
         std::transform(childText.begin(), childText.end(), childText.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
         std::transform(parentText.begin(), parentText.end(), parentText.begin(), [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
 
+        // ルート名の末尾に区切りを付け、同じ名前で始まる兄弟ディレクトリを配下と誤認しないようにする。
         if (!parentText.empty() && parentText.back() != L'\\' && parentText.back() != L'/') {
             parentText.push_back(fs::path::preferred_separator);
         }
@@ -192,6 +193,7 @@ void DebugEditor::UpdateCrashRecovery(float deltaTime) {
 
     const bool dirty = HasAnyDirty();
 
+    // 最初の編集では次の間隔を待たずに初回ドラフトを作る。その後は deltaTime の秒を足して更新間隔を測る。
     if (dirty && !crashRecoveryLastDirty_) {
         crashRecoveryAutosaveTimer_ = kCrashRecoveryAutosaveInterval;
     }
@@ -205,6 +207,7 @@ void DebugEditor::UpdateCrashRecovery(float deltaTime) {
         crashRecoveryHeartbeatTimer_ = 0.0f;
     }
     else if (!dirty && (crashRecoveryLastDirty_ || crashRecoveryHeartbeatTimer_ >= kCrashRecoveryHeartbeatInterval)) {
+        // 通常保存で未保存状態がなくなったら、古いドラフトを復元候補に残さないようファイル一覧も空にする。
         crashRecoveryLastFiles_ = nlohmann::json::array();
         WriteCrashRecoverySession(false, false);
         crashRecoveryHeartbeatTimer_ = 0.0f;
@@ -467,6 +470,7 @@ bool DebugEditor::RestoreCrashRecoveryDraft() {
         const fs::path source = projectRoot / fs::path(sourceText);
         const fs::path draft = projectRoot / fs::path(draftText);
         const fs::path draftRoot = projectRoot / fs::path(draftRootText);
+        // 復元先・退避元・セッションのドラフトルートを別々に照合し、一件でも必要なパス条件を欠けばそのファイルを飛ばす。
         if (draftRootText.empty() ||
             !IsPathInside(draftRoot, recoveryRoot) ||
             !IsPathInside(source, jsonRoot) ||
@@ -497,6 +501,7 @@ bool DebugEditor::RestoreCrashRecoveryDraft() {
             continue;
         }
 
+        // 現行ファイルがあれば退避した後でドラフトを戻す。ここまでの処理で失敗したファイルは上書きしない。
         fs::copy_file(draft, source, fs::copy_options::overwrite_existing, ec);
 
         if (ec) {

@@ -62,7 +62,7 @@ class EnemySlime : public BaseEnemy {
     /// 対象方向へ急降下する段階を開始する。
     void BeginDive(const engine::Vector3& direction, float distance);
 
-    /// 急降下中の移動と着地判定を進める。
+    /// 急降下中の追尾と加速を進める。接地から着地へ切り替えるのは Update()。
     void UpdateDive(float deltaTime);
 
     /// 着地後の硬直と見た目の回復を開始する。

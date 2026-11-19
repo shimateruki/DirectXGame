@@ -42,11 +42,13 @@ void GameAudioSettings::Initialize() {
 void GameAudioSettings::Load() {
     // 壊れた項目は飛ばし、Editor で登録した項目だけを読み込みます。
     entries_.clear();
+    // 旧登録の音声ハンドルは持ち越さず、読み込み後の項目から再び取得させる。
     handles_.clear();
 
     nlohmann::json data;
     std::ifstream file(filePath_);
 
+    // 読めない登録表は空扱いにし、不完全な音声情報を再生器へ渡しません。
     if (file.is_open()) {
         try {
             file >> data;
@@ -60,6 +62,7 @@ void GameAudioSettings::Load() {
             return item.contains(key) && item[key].is_string() ? item[key].get<std::string>() : fallback;
         };
 
+        // 同じIDを重複登録しないよう、この読込中に採用したIDを記録する。
         std::unordered_set<std::string> usedIds;
 
         for (const auto& item : data["entries"]) {
@@ -67,6 +70,7 @@ void GameAudioSettings::Load() {
                 continue;
             }
 
+            // 表示名はIDで補い、音量やループが省略された項目にも再生用の既定値を与える。
             SoundEntry entry;
             entry.id = readString(item, "id", "");
             entry.displayName = readString(item, "displayName", entry.id);
@@ -77,6 +81,7 @@ void GameAudioSettings::Load() {
                                : 1.0f;
             entry.loop = item.contains("loop") && item["loop"].is_boolean() ? item["loop"].get<bool>() : false;
 
+            // 実際に再生先を辿れるように、IDとパスが揃った最初の項目だけ採用する。
             if (!entry.id.empty() && !entry.path.empty() && usedIds.insert(entry.id).second) {
                 entries_.push_back(entry);
             }
@@ -91,6 +96,7 @@ void GameAudioSettings::Save() const {
     nlohmann::json data;
     data["entries"] = nlohmann::json::array();
 
+    // アセットへの参照と項目ごとの再生設定を、次回の読込に必要な形で保存する。
     for (const auto& entry : entries_) {
         data["entries"].push_back({{"id", entry.id},
                                    {"displayName", entry.displayName},
@@ -167,6 +173,7 @@ AudioPlayer::AudioHandle GameAudioSettings::LoadHandle(const SoundEntry& entry) 
         return cached->second;
     }
 
+    // ファイルがないIDは失敗を返し、後から配置された場合は次回の再生時に調べ直します。
     if (!std::filesystem::exists(entry.path)) {
         return AudioPlayer::kInvalidAudioHandle;
     }
@@ -222,6 +229,7 @@ void GameAudioSettings::Stop(const std::string& id) {
         return;
     }
 
+    // 再生用のハンドルがまだ作られていない音には停止要求を送りません。
     auto cached = handles_.find(entry->id);
 
     if (cached == handles_.end()) {

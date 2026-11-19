@@ -18,6 +18,7 @@
 #include <memory>
 namespace {
 engine::Vector3 GetWhipPullAnchor(engine::Object3D* enemy) {
+    // 巨大スライムは専用の接続点を使い、他の敵は取得できる場合にモデルの中心をワールド座標へ変換します。
     if (const auto* giant = dynamic_cast<EnemyGiantSlime*>(enemy)) return giant->GetHookAttachmentPosition();
     if (enemy->GetModel()) return engine::Math::Transform(enemy->GetModel()->GetCenter(), enemy->GetWorldMatrix());
     return enemy->GetWorldPosition();
@@ -45,6 +46,7 @@ engine::Vector3 GetStablePullEnemyScale(engine::Object3D* enemy) {
         return scale;
     }
 
+    // 三軸の倍率の積と同じ体積倍率になるよう立方根を取り、各軸に同じ倍率を使います。
     const float stableScale = std::cbrt(absX * absY * absZ);
     return {stableScale, stableScale, stableScale};
 }
@@ -58,10 +60,12 @@ void PlayerStatePullEnemy::Enter(Player* player) {
     if (!player || !targetEnemy_)
         return;
 
+    // 引き寄せ中は操作と速度を止め、掴んだ敵へ向けてフックの姿勢を作る。
     player->SetIsControlActive(false);
     player->SetVelocity({0.0f, 0.0f, 0.0f}); // プレイヤー自身はその場で停止
     player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::ShootHook);
     player->SetSlimeAnimationDirection(targetEnemy_->GetWorldPosition() - player->GetWorldPosition());
+    // 重量級は専用の抵抗処理を使う。敵の姿勢と大きさは、拘束を解いたときに戻せるよう控える。
     isHeavyPullTarget_ = dynamic_cast<EnemyGiantSlime*>(targetEnemy_) != nullptr;
     enemyPullStartScale_ = targetEnemy_->GetScale();
     enemyBaseScale_ = GetStablePullEnemyScale(targetEnemy_);
@@ -72,6 +76,7 @@ void PlayerStatePullEnemy::Enter(Player* player) {
         enemyBaseQuaternionMaster_ = enemyTransform->isQuaternionMaster;
     }
 
+    // すでに当たっている場合は敵の位置、射出前なら手元を先端位置の基準にする。
     phase_ = Phase::ShootHook;
     hookTipPos_ = alreadyHit_ && targetEnemy_ ? targetEnemy_->GetWorldPosition() : player->GetWorldPosition();
     heavyPullBasePlayerPos_ = hookTipPos_;
@@ -81,6 +86,7 @@ void PlayerStatePullEnemy::Enter(Player* player) {
 
     engine::Object3D* marker = player->GetHookMarker();
 
+    // 鞭の曲線を引き継いでいない場合だけ簡易マーカーで先端を表示する。
     if (marker && !whipVisual_) {
         marker->SetIsVisible(true);
         marker->SetColor({0.10f, 0.82f, 1.0f, 1.0f});
@@ -120,6 +126,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             alreadyHit_ = false;
             hookTipPos_ = enemyPos;
 
+            // 拘束に耐性のある敵には命中表示だけを出し、位置や衝突設定は変更せずに通常操作へ戻します。
             if (auto* enemyBase = dynamic_cast<BaseEnemy*>(targetEnemy_); enemyBase && enemyBase->IsPullImmune()) {
                 HitEffectDirector::SpawnPullBindHit(enemyPos);
 
@@ -245,6 +252,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             bool hasSplit = giantSlime->UpdateHookSplitPull(deltaTime, playerPos, player->GetParticleSystem());
             float progress = giantSlime->GetHookSplitProgress();
 
+            // 分裂に抵抗する間の足元を一度だけ控え、細かな踏ん張りをその位置に足します。
             if (!hasHeavyPullBasePlayerPos_) {
                 heavyPullBasePlayerPos_ = playerPos;
                 hasHeavyPullBasePlayerPos_ = true;
@@ -309,6 +317,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             return;
         }
 
+        // 通常の敵はここから手元へ運び、分裂用の進捗は使いません。
         const float kPullDuration = 0.62f; // 少しだけ時間を長くしてタメを作る
         float t = pullTimer_ / kPullDuration;
         if (t > 1.0f)
@@ -323,6 +332,7 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
             hasNormalPullBasePlayerPos_ = true;
         }
 
+        // 踏ん張りは敵と開始位置を結ぶ水平線に沿わせ、元の高さは保ちます。
         engine::Vector3 flatPullDir = enemyStartPos_ - normalPullBasePlayerPos_;
         flatPullDir.y = 0.0f;
         float flatPullLength = engine::Math::Length(flatPullDir);
@@ -362,13 +372,14 @@ void PlayerStatePullEnemy::Update(Player* player, float deltaTime) {
                            engine::Math::Lerp(enemyStartPos_.y, headPos.y, easeT),
                            engine::Math::Lerp(enemyStartPos_.z, headPos.z, easeT)};
 
-        // サイン波でY軸に放物線のアーチを加える（easeTではなく純粋なtで綺麗なアーチにする）
+        // 移動速度を決める Ease-In と高さを分け、補間前の進行率で正弦波の弧を加える。
         float arcHeight = 7.8f;
         basePos.y += std::sin(t * std::numbers::pi_v<float>) * arcHeight;
 
         targetEnemy_->SetTranslate(basePos);
         player->SetSlimePullDirection(basePos - playerPos);
 
+        // 通常の敵が手元へ届いたら踏ん張り前の位置を戻し、運搬側へ敵を引き渡します。
         if (t >= 1.0f) {
             HitEffectDirector::SpawnPullCatchHit(headPos);
 
@@ -441,9 +452,11 @@ void PlayerStatePullEnemy::Exit(Player* player) {
         return;
     }
 
+    // 運搬や巻き戻しへ引き継いだ状態を除き、拘束中に使った表示と操作制限を解除します。
     if (whipVisual_) { whipVisual_->Finish(player); whipVisual_.reset(); }
     player->SetIsControlActive(true);
     {
+        // 運搬に渡す前に中断した敵だけ、拘束を外して開始時の姿勢へ戻します。
         if (targetEnemy_ && player->GetCarriedEnemy() != targetEnemy_) {
             if (auto* enemyBase = dynamic_cast<BaseEnemy*>(targetEnemy_)) {
                 if (enemyBase->IsCarried()) {
@@ -460,6 +473,7 @@ void PlayerStatePullEnemy::Exit(Player* player) {
             }
         }
 
+        // 踏ん張りで動かしたプレイヤーの位置を戻し、分裂が未成立なら巨大スライムの抵抗演出も取り消します。
         if (isHeavyPullTarget_) {
             if (hasHeavyPullBasePlayerPos_) {
                 player->SetTranslate(heavyPullBasePlayerPos_);
@@ -478,6 +492,7 @@ void PlayerStatePullEnemy::Exit(Player* player) {
             player->UpdateWorldMatrix();
         }
 
+        // 簡易フックの見た目は次回の発射に備えて非表示・基準姿勢へ戻します。
         engine::Object3D* marker = player->GetHookMarker();
 
         if (marker && !whipVisual_) {

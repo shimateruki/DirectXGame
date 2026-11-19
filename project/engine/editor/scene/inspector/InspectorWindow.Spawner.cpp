@@ -19,6 +19,7 @@ void InspectorWindow::DrawSpawnerSettings() {
         selectedObject->ResetParameters();
     }
 
+    // 編集用コピーへ変更を集め、発生間隔の秒数や最大数と一緒に選択Objectへ書き戻します。
     auto p = selectedObject->GetParameters().value();
 
     using Registry = EditorObjectFactoryRegistry;

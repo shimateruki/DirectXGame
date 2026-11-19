@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "db3647ff65d4ec9d97cddb3f01845311",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/17-bomb-throw.dds",
+  "version": 1
+}

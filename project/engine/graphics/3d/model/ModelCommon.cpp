@@ -5,7 +5,7 @@
 
 #include <cassert>
 
-void ModelCommon::Initialize(DirectXCommon* dxCommon) {
+void ModelCommon::Initialize(engine::DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
     CreateComputeSkinningPipeline();

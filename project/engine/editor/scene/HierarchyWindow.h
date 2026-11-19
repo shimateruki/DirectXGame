@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SceneAssetPanel.h"
+
 #include <string>
 #include <vector>
 
@@ -7,7 +9,7 @@ class DebugEditor;
 class BaseScene;
 namespace engine { class Object3D; }
 
-// 担当：シーンの親子階層・選択と、Object生成・Scene Asset操作を表示する。
+// 担当：シーンの親子階層・選択・Object生成を表示し、Scene Asset操作はSceneAssetPanelに渡す。
 // 関連：DebugEditor（選択・操作）、InspectorWindow（詳細表示）、SceneManager（配置）
 // 主な入口：Initialize / Draw / DrawCreateContextMenu
 class HierarchyWindow {
@@ -43,15 +45,6 @@ private:
 
     bool HasMatchingCategory(engine::Object3D* obj);
 
-    // Scene Asset一覧と開く・管理する操作を表示する。
-    void DrawSceneAssetManager();
-
-    // Scene Assetの作成・操作確認ダイアログを表示する。
-    void DrawSceneAssetDialogs();
-
-    // 現在のAssetを再指定した場合も、実行クラスの整合を確認して開きます。
-    void RequestOpenSceneAsset(const std::string& filename);
-
     // DebugEditor本体への参照。HierarchyWindowは所有しない。
     DebugEditor* editor_ = nullptr;
 
@@ -68,35 +61,5 @@ private:
     int currentCategoryFilter_ = 0;
     int currentLayerFilter_ = 0;
 
-    std::string selectedSceneAssetFilename_;
-    std::string pendingOpenSceneAssetFilename_;
-
-    std::string sceneAssetStatusMessage_;
-    bool sceneAssetStatusIsError_ = false;
-
-    bool requestCreateScenePopup_ = false;
-    bool requestDuplicateScenePopup_ = false;
-    bool requestRenameScenePopup_ = false;
-    bool requestDeleteScenePopup_ = false;
-    bool requestUnsavedOpenPopup_ = false;
-    bool requestRuntimeSettingsPopup_ = false;
-
-    char createSceneId_[96] = "new_scene";
-    char createSceneDisplayName_[128] = "New Scene";
-
-    char duplicateSceneId_[96] = "";
-    char duplicateSceneDisplayName_[128] = "";
-
-    char renameSceneId_[96] = "";
-    char renameSceneDisplayName_[128] = "";
-
-    int createSceneTemplate_ = 0;
-    int createRuntimeSceneIndex_ = 0;
-
-    int runtimeSettingsControllerIndex_ = 0;
-
-    char runtimeBgmPath_[260] = "";
-    char runtimeLightPath_[260] = "";
-    char runtimeCameraPath_[260] = "";
-    char runtimeSkyboxPath_[260] = "";
+    SceneAssetPanel sceneAssetPanel_;
 };

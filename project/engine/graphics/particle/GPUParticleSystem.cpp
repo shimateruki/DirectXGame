@@ -15,7 +15,7 @@
 
 #pragma comment(lib, "d3dcompiler.lib")
 
-void GpuParticleSystem::Initialize(DirectXCommon* dxCommon, uint32_t maxParticles) {
+void GpuParticleSystem::Initialize(engine::DirectXCommon* dxCommon, uint32_t maxParticles) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
     maxParticles_ = std::clamp(maxParticles, kMinParticles, kMaxParticles);
@@ -48,6 +48,7 @@ void GpuParticleSystem::CreateBuffer() {
     );
     assert(SUCCEEDED(hr));
 
+    // 再利用可能な粒子枠の先頭を整数一つで管理し、枠番号の配列とは別のバッファにします。
     resDesc.Width = sizeof(int32_t);
     hr = device->CreateCommittedResource(
         &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
@@ -68,6 +69,7 @@ void GpuParticleSystem::CreateBuffer() {
     );
     assert(SUCCEEDED(hr));
 
+    // ComputeがDrawInstancedと同じ引数形式を作り、描画時はGPUメモリのまま参照します。
     resDesc.Width = sizeof(D3D12_DRAW_ARGUMENTS);
     hr = device->CreateCommittedResource(
         &heapProps, D3D12_HEAP_FLAG_NONE, &resDesc,
@@ -128,6 +130,7 @@ void GpuParticleSystem::CreateBuffer() {
     cameraBuffer_ = dxCommon_->CreateBufferResource(sizeof(CameraData));
     cameraBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&cameraData_));
 
+    // メッシュを持たない発生や更新でも、ルートシグネチャが要求する頂点・ボーンの入力を有効な代替資源で揃えます。
     dummyVertexBuffer_ = dxCommon_->CreateBufferResource(64);
     engine::Vector3 dummyPos = engine::Vector3::ZERO;
     void* mapped = nullptr;
@@ -244,8 +247,8 @@ void GpuParticleSystem::CreateGraphicsPipeline() {
     rsBuilder.AddStaticSampler(0, 0, D3D12_SHADER_VISIBILITY_PIXEL, D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_TEXTURE_ADDRESS_MODE_WRAP);
     rsBuilder.Build(device, graphicsRootSignature_.GetAddressOf());
 
-    auto vsBlob = DirectXCommon::GetInstance()->CompileShader(L"Resources/shader/particle/GPUParticleVS.hlsl", L"vs_6_0");
-    auto psBlob = DirectXCommon::GetInstance()->CompileShader(L"Resources/shader/particle/GPUParticlePS.hlsl", L"ps_6_0");
+    auto vsBlob = engine::DirectXCommon::GetInstance()->CompileShader(L"Resources/shader/particle/GPUParticleVS.hlsl", L"vs_6_0");
+    auto psBlob = engine::DirectXCommon::GetInstance()->CompileShader(L"Resources/shader/particle/GPUParticlePS.hlsl", L"ps_6_0");
 
     GraphicsPipelineBuilder psoBuilder;
     psoBuilder.SetRootSignature(graphicsRootSignature_.Get());
@@ -382,6 +385,7 @@ void GpuParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
         commandList->SetPipelineState(computePipelineStateResetDrawArguments_.Get());
         commandList->Dispatch(1, 1, 1);
         engine::RenderStats::GetInstance()->RecordComputeDispatch(1);
+        // 生存粒子を数える更新シェーダーが古い描画引数へ加算しないよう、カウンターのゼロ書き込みを先に完了させます。
         commandList->ResourceBarrier(1, &resetArgumentBarrier);
 
         commandList->SetPipelineState(computePipelineStateUpdate_.Get());
@@ -452,6 +456,7 @@ void GpuParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
                 SrvManager::GetInstance()->SetComputeRootDescriptorTable(commandList, 4, dummyTex);
             }
 
+            // 1グループ256スレッドで端数を切り上げ、要求数が256の倍数でなくても末尾まで処理します。
             UINT groupCountEmit = (req.config.emitCount + 255) / 256;
             commandList->Dispatch(groupCountEmit, 1, 1);
             engine::RenderStats::GetInstance()->RecordComputeDispatch(groupCountEmit);
@@ -474,6 +479,7 @@ void GpuParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
     frameDeltaTime_ = 0.0f;
 
     // --- Graphics Shader ---
+    // 逆ビューからカメラの向きを取り出します。平行移動を消すと、各粒子の位置を保ったまま板だけをカメラに向けられます。
     engine::Matrix4x4 billboard = math.Inverse(viewMatrix);
     billboard.m[3][0] = 0.0f;
     billboard.m[3][1] = 0.0f;
@@ -500,6 +506,7 @@ void GpuParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
     cameraData_->lightDirection = lightDirection_;
     cameraData_->lightColor = lightColor_;
 
+    // Compute用の書き込み状態から、粒子本体と生存番号は頂点シェーダー入力、描画引数は間接命令入力へ切り替えます。
     D3D12_RESOURCE_BARRIER drawBarriers[3] = {};
     drawBarriers[0].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     drawBarriers[0].Transition.pResource = particleBuffer_.Get();
@@ -563,6 +570,7 @@ void GpuParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
 
     SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 5, aliveParticleIndexSrv_);
 
+    // 生存数をGPUが描画引数へ書くため、CPUへ読み戻すことなく生きている粒子分だけ描画します。
     commandList->ExecuteIndirect(
         indirectDrawCommandSignature_.Get(),
         1,
@@ -573,6 +581,7 @@ void GpuParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
     engine::RenderStats::GetInstance()->RecordNonIndexedIndirectDraw();
     engine::RenderStats::GetInstance()->RecordGpuParticleSystem(maxParticles_);
 
+    // 次回の粒子更新に備え、描画用に読み取りへ切り替えた三つの資源をUAVへ戻します。
     for (D3D12_RESOURCE_BARRIER& barrier : drawBarriers) {
         std::swap(barrier.Transition.StateBefore, barrier.Transition.StateAfter);
     }
@@ -581,6 +590,7 @@ void GpuParticleSystem::Draw(ID3D12GraphicsCommandList* commandList, const engin
 }
 
 void GpuParticleSystem::EmitFromConfig(const GpuParticleConfig& config) {
+    // 要求ごとに定数バッファの一枠を使うため、予約した枠数に達したフレームでは追加を受け付けません。
     if (emitRequests_.size() >= kMaxEmitRequests)
         return;
 
@@ -631,6 +641,7 @@ void GpuParticleSystem::EmitFromConfig(const GpuParticleConfig& config) {
     reqConfig.fieldStrength = config.fieldStrength;
     reqConfig.fieldRadius = (std::max)(config.fieldRadius, 0.001f);
     reqConfig.fieldFalloff = (std::max)(config.fieldFalloff, 0.01f);
+    // プリセット上の相対位置を発生地点に足し、力場の中心をワールド座標にします。
     reqConfig.fieldPosition = config.emitPos + config.fieldPosition;
 
     EmitRequest request;
@@ -687,7 +698,7 @@ size_t GpuParticleSystem::GetEstimatedMemoryBytes() const {
 
 void GpuParticleSystem::SetCurrentTexture(const std::string& path) {
     if (!path.empty()) {
-        // 描画ループ中のLoadはGPUクラッシュを引き起こすため、GetSrvHandleを使用
+        // 先読みしたSRVを優先し、未登録で画像が存在する場合だけ通常のロードを試します。
         uint32_t handle = TextureManager::GetInstance()->GetSrvHandle(path);
 
         if (handle == 0 && std::filesystem::exists(path)) {

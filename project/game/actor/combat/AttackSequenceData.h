@@ -13,6 +13,7 @@ struct AttackFireAppearance {
     float trailInterval = 0.030f, trailSpeedScale = 1.0f; // trailIntervalは粒子の発生間隔（秒）、trailSpeedScaleは速度倍率。
 };
 
+
 // 発射する弾の構成。未指定の旧JSONでは攻撃全体の設定を引き継ぎます。
 struct AttackProjectileComponent {
     bool configured = false; // falseならこの部品の値を使わず、攻撃全体の旧設定を引き継ぐ。
@@ -153,11 +154,13 @@ struct AttackSequenceDefinition {
             return fail("炎弾の透明度または軌跡間隔が範囲外です。");
         if ((events.empty() && tracks.empty()) || events.size() > 128 || tracks.size() > 64)
             return fail("命令またはトラックが必要です。命令は128件、トラックは64件までです。");
+        // 個別の設定を先に検証し、その後に親子関係と分岐元を調べます。
         for (const auto& track : tracks)
             if (!track.Validate(duration, error))
                 return false;
         for (size_t i = 0; i < tracks.size(); ++i) {
             const auto& track = tracks[i];
+            // 親表示の有効期間が、子の当たり判定を使う時間をすべて含むようにします。
             if (track.parentTrack >= 0) {
                 if (track.type != "hitbox" || static_cast<size_t>(track.parentTrack) >= i)
                     return fail("判定の親は一覧で自身より前にある表示Objectを指定してください。");
@@ -165,6 +168,7 @@ struct AttackSequenceDefinition {
                 if (parent.type != "mesh_vfx" || !parent.enabled || parent.begin > track.begin || parent.end < track.end)
                     return fail("親Objectは有効で、判定の区間全体を含む必要があります。");
             }
+            // 当たったかどうかで分岐するなら、分岐元の判定が先に終わる必要があります。
             if (track.condition == "contact" || track.condition == "no_contact" || track.condition == "track_completed") {
                 if (track.conditionTrack < 0 || static_cast<size_t>(track.conditionTrack) >= tracks.size())
                     return fail("分岐の参照元となる判定トラックを選んでください。");
@@ -180,6 +184,7 @@ struct AttackSequenceDefinition {
                         tracks[j].begin < track.end && track.begin < tracks[j].end)
                         return fail("本体アニメーションの区間は重ねられません。");
         }
+        // 単発命令では起動時刻、弾数、座標と速度を確認し、再生時に不正値を使わせません。
         for (const auto& event : events) {
             if (!event.projectile.Validate())
                 return fail("弾部品の半径・寿命・速度・見た目を確認してください。");

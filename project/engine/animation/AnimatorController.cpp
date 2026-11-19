@@ -90,6 +90,7 @@ bool AnimatorControllerAsset::Save(const std::string& filePath) const {
         });
     }
 
+    // 再生状態の設定と、状態内のイベント位置（クリップ内の0～1）を同じ要素に保存します。
     for (const auto& state : states) {
         json stateJson = {
             { "name", state.name },
@@ -136,6 +137,7 @@ bool AnimatorControllerAsset::Save(const std::string& filePath) const {
         root["transitions"].push_back(item);
     }
 
+    // 保存ファイルの親を必要に応じて先に作成し、末尾では実際に書き出せたかを返します。
     const std::filesystem::path path(filePath);
 
     if (path.has_parent_path()) {
@@ -228,6 +230,7 @@ bool AnimatorControllerAsset::Load(const std::string& filePath) {
         return false;
     }
 
+    // 開始状態を指定していないファイルでは、最初に定義された状態から始めます。
     if (entryState.empty() && !states.empty()) {
         entryState = states.front().name;
     }
@@ -242,6 +245,7 @@ void AnimatorControllerRuntime::SetController(const AnimatorControllerAsset* con
 }
 
 void AnimatorControllerRuntime::Reset(bool playEntryState) {
+    // 先に現在・遷移元の添字と経過秒を無効化します。パラメータを既定値に戻してから、必要に応じて入口イベントを予約します。
     currentStateIndex_ = -1;
     previousStateIndex_ = -1;
     currentTime_ = 0.0f;
@@ -284,8 +288,10 @@ void AnimatorControllerRuntime::Update(float deltaTime, const DurationResolver& 
 
     if (IsTransitioning()) {
         AdvanceStateTime(previousTime_, GetPreviousState(), deltaTime, durationResolver);
+        // ブレンド時間は実時間の秒です。各クリップの再生速度は姿勢の時刻だけに掛かります。
         transitionElapsed_ += deltaTime;
 
+        // ブレンドの終了時に遷移元を外し、次回から遷移先の姿勢だけを評価します。
         if (transitionElapsed_ >= transitionDuration_) {
             previousStateIndex_ = -1;
             previousTime_ = 0.0f;
@@ -318,6 +324,7 @@ bool AnimatorControllerRuntime::Play(const std::string& stateName, float timeSec
         return false;
     }
 
+    // 指定された状態へ直接移るため、以前のブレンドと発火待ちイベントを破棄します。開始位置は秒です。
     currentStateIndex_ = stateIndex;
     previousStateIndex_ = -1;
     currentTime_ = std::max(0.0f, timeSeconds);
@@ -343,6 +350,7 @@ bool AnimatorControllerRuntime::CrossFade(const std::string& stateName, float du
         return false;
     }
 
+    // 同じ状態を通常再生中は進行時刻とイベントを初期化せず、そのまま成功として扱います。
     if (destination == currentStateIndex_ && !IsTransitioning()) {
         return true;
     }
@@ -364,6 +372,7 @@ bool AnimatorControllerRuntime::CrossFade(const std::string& stateName, float du
     if (easing < 0)
         easing = destinationState.blendEasing;
 
+    // 現在の状態番号と再生秒を遷移元へ移し、遷移先は0秒から評価できるようにします。
     previousStateIndex_ = currentStateIndex_;
     previousTime_ = currentTime_;
     currentStateIndex_ = destination;
@@ -372,6 +381,7 @@ bool AnimatorControllerRuntime::CrossFade(const std::string& stateName, float du
     transitionDuration_ = std::max(0.0f, duration);
     transitionEasing_ = std::clamp(easing, 0, 4);
 
+    // 遷移元がない場合や補間時間が0秒の場合は旧姿勢を混ぜず、遷移先だけを使用します。
     if (previousStateIndex_ < 0 || transitionDuration_ <= 0.0f) {
         previousStateIndex_ = -1;
         previousTime_ = 0.0f;
@@ -511,6 +521,7 @@ void AnimatorControllerRuntime::RestoreSnapshot(const Snapshot& snapshot) {
     transitionElapsed_ = snapshot.transitionElapsed;
     transitionDuration_ = snapshot.transitionDuration;
     transitionEasing_ = snapshot.transitionEasing;
+    // 巻き戻し前に溜まった通知を捨て、復元後の時刻から発火し直せるようにします。
     pendingEvents_.clear();
 }
 
@@ -597,6 +608,7 @@ void AnimatorControllerRuntime::CollectCrossedEvents(
 
     for (int loopIndex = firstLoop; loopIndex <= lastLoop; ++loopIndex) {
         for (const AnimatorEventDefinition* event : sortedEvents) {
+            // クリップ内の割合を秒へ換算し、その周の起点を足して未折り返しの時間軸で比較します。
             const float eventTime =
                 std::clamp(event->normalizedTime, 0.0f, 1.0f) * duration +
                 static_cast<float>(loopIndex) * duration;
@@ -721,6 +733,7 @@ bool AnimatorControllerRuntime::AreConditionsMet(const AnimatorTransitionDefinit
 
     for (const auto& condition : transition.conditions) {
         switch (condition.mode) {
+        // 条件はすべて満たした場合に成立します。Floatはしきい値をそのまま比較し、Intの判定だけ整数へ変換します。
         case AnimatorConditionMode::Greater:
             if (!(GetFloat(condition.parameter) > condition.threshold))
                 return false;

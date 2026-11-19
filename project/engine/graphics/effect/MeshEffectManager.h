@@ -121,6 +121,7 @@ private:
 
     // 現在再生中のエフェクトリスト
     std::vector<std::unique_ptr<EffectObject3D>> activeEffects_;
+    // activeEffects_ が所有するインスタンスを停止対象のグループIDへ対応付けます。
     std::unordered_map<EffectObject3D*, EffectScopeId> effectScopes_;
     std::unordered_set<EffectScopeId> timelineScopes_; // 時間軸再生から作成したエフェクト範囲ID。
     EffectScopeId nextEffectScopeId_ = 1;

@@ -10,7 +10,7 @@ void BaseGimmick::Initialize(engine::Object3DCommon* common, const std::string& 
     SetModel(modelName);
 
     // デフォルトの当たり判定設定 (OBB想定)
-    ColliderConfig config;
+    engine::ColliderConfig config;
     config.type = ColliderType::Obb;
     config.size = {1.0f, 1.0f, 1.0f}; // 仮のサイズ
     SetColliderConfig(config);

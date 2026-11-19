@@ -24,6 +24,7 @@ struct Scheme {
 
 // タイトルとセーブ選択は矢印・Spaceを使い、他画面のWASD・Enter割当とは分ける。
 inline Scheme Make(Screen screen) {
+    // タイトルとセーブ選択はWASDやEnterを追加しない。共通の方向キーとパッドから基準の割り当てを作る。
     const bool title = screen == Screen::Title || screen == Screen::SaveSelect;
     Scheme scheme;
     scheme.bindings.up = {{{DIK_UP, static_cast<BYTE>(title ? 0 : DIK_W)}}, {{XINPUT_GAMEPAD_DPAD_UP}}, XINPUT_GAMEPAD_DPAD_UP};
@@ -33,20 +34,24 @@ inline Scheme Make(Screen screen) {
     scheme.bindings.confirm = {{{DIK_SPACE, static_cast<BYTE>(title ? 0 : DIK_RETURN)}}, {{XINPUT_GAMEPAD_A}}};
     switch (screen) {
     case Screen::Title:
+        // 決定の案内はタイトルの既存メニュー表示を使う。
         scheme.confirmHint = {"mainMenuPrompt", "mainMenuPrompt"};
         break;
     case Screen::SaveSelect:
+        // 閉じる入力に加えて削除を割り当て、デバイスに応じたフッターを選べるようにする。
         scheme.bindings.cancel = {{{DIK_ESCAPE}}, {{XINPUT_GAMEPAD_B}}};
         scheme.bindings.remove = {{{DIK_D}}, {{XINPUT_GAMEPAD_X}}};
         scheme.footerHint = {"ui/menu_hints/save_keyboard.png", "ui/menu_hints/save_gamepad.png"};
         break;
     case Screen::Settings:
+        // 設定画面から戻る入力と、決定・閉じる表示の部品名を登録する。
         scheme.bindings.cancel = {{{DIK_ESCAPE, DIK_TAB}}, {{XINPUT_GAMEPAD_B}}};
         scheme.confirmHint = {"settings_footer_confirm_text", "settings_footer_confirm_text"};
         scheme.closeHint = {"settings_footer_close_text", "settings_footer_close_text"};
         break;
     case Screen::Pause:
     case Screen::Guide:
+        // ポーズとガイドは表示素材を共有するが、閉じるパッドキーは画面ごとに切り替える。
         scheme.bindings.cancel = {{{DIK_TAB}}, {{XINPUT_GAMEPAD_B,
             static_cast<WORD>(screen == Screen::Pause ? XINPUT_GAMEPAD_START : XINPUT_GAMEPAD_BACK)}}};
         scheme.confirmHint = {"generated/text/pause_guide/footer_confirm_keyboard.png", "generated/text/pause_guide/footer_confirm_gamepad.png"};

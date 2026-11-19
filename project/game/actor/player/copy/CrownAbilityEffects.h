@@ -19,7 +19,7 @@ class CrownAbilityEffects {
         float age, duration, size; // 経過秒数・寿命秒数・表示倍率。ageが負なら発生待ち。
         bool fragments;
     };
-    std::unique_ptr<Model> ring_;
+    std::unique_ptr<engine::Model> ring_;
     std::deque<Pulse> pulses_;
     float hitCooldown_ = 0.0f;
     static Vec Unit(Vec v) {
@@ -29,14 +29,14 @@ class CrownAbilityEffects {
     // 初回だけXZ平面の輪メッシュを生成・保持します。commonが未指定なら生成しません。
     void EnsureRing(engine::Object3DCommon* common) {
         if (ring_ || !common) return;
-        std::vector<Model::VertexData> vertices;
+        std::vector<engine::Model::VertexData> vertices;
         std::vector<uint32_t> indices;
         constexpr int kCount = 96;
         constexpr float kFullTurn = 2.0f * std::numbers::pi_v<float>; // 1周分の角度（ラジアン）。
         for (int i = 0; i <= kCount; ++i) {
             const float a = float(i) / kCount * kFullTurn;
             for (int side = 0; side < 2; ++side) {
-                Model::VertexData v{};
+                engine::Model::VertexData v{};
                 const float radius = side ? 1.0f : 0.95f;
                 v.position = {std::cos(a) * radius, 0, std::sin(a) * radius, 1};
                 v.normal = {0, 1, 0}; v.texcoord = {float(i) / kCount, float(side)};
@@ -47,7 +47,7 @@ class CrownAbilityEffects {
                 for (auto v : {n,n+2,n+1,n+1,n+2,n+3}) indices.push_back(v);
             }
         }
-        ring_ = std::make_unique<Model>();
+        ring_ = std::make_unique<engine::Model>();
         ring_->CreateFromVertices(ModelManager::GetInstance()->GetModelCommon(), vertices, indices);
     }
 public:
@@ -57,6 +57,7 @@ public:
         if (!particles || !particles->IsInitialized()) return;
         const auto& presets = particles->GetPresets();
         const auto found = presets.find(name); if (found == presets.end()) return;
+        // 発生領域と粒の寸法を同じ倍率で補正し、元の速度の大きさだけを指定方向へ向ける。
         auto c = found->second;
         c.emitPos = position;
         c.baseSize *= size; c.midSize *= size; c.endSize *= size;
@@ -70,6 +71,7 @@ public:
         auto* scene = SceneManager::GetInstance()->GetCurrentScene();
         auto* common = scene ? scene->GetObject3DCommon() : nullptr;
         EnsureRing(common); if (!ring_ || !common) return;
+        // 同時に所有できる輪の数を制限し、上限に達していれば新しい輪だけ省く。
         if (pulses_.size() >= 8) return;
         Pulse pulse;
         pulse.visual = std::make_unique<EffectObject3D>();
@@ -107,9 +109,11 @@ public:
         for (auto& pulse : pulses_) {
             const float before = pulse.age;
             pulse.age += deltaTime;
+            // 遅延中と寿命切れの表示は触らず、表示開始を跨いだときだけ破片を出す。
             if (pulse.age < 0 || pulse.age >= pulse.duration) continue;
             if (before <= 0 && pulse.fragments)
                 Emit("player/copy/crown/player_crown_melee_shards", pulse.position, pulse.normal, 1.2f);
+            // 輪の外周を広げながら透明にし、同じ経過時間で材質の消散も進める。
             const float t = pulse.age / pulse.duration;
             const float radius = pulse.size * (0.18f + 0.82f * (1 - (1-t)*(1-t)));
             pulse.visual->SetTranslate(pulse.position);
@@ -121,7 +125,7 @@ public:
         }
         std::erase_if(pulses_, [](const Pulse& pulse) { return pulse.age >= pulse.duration; });
     }
-    void Draw(ID3D12Resource* point, ID3D12Resource* spot, Camera* camera, int index) {
+    void Draw(ID3D12Resource* point, ID3D12Resource* spot, engine::Camera* camera, int index) {
         for (auto& pulse : pulses_) {
             if (!pulse.visual->GetIsVisible()) continue;
             pulse.visual->UpdateWorldMatrix(true);

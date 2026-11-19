@@ -70,7 +70,7 @@ inline constexpr const char* kElectricShockAuraEffectPath =
 
 // 描画用の液体には固体Colliderがないため、液面を直接評価します。
 // Water.hlsli / Magma.VS.hlsl と同じ式。波の設定は既存のInspectorに追従します。
-inline float LiquidWaveHeight(const MeshRenderer::WaterParamForGpu& p, float x, float z, bool magma) {
+inline float LiquidWaveHeight(const engine::MeshRenderer::WaterParamForGpu& p, float x, float z, bool magma) {
     if (!magma) {
         // 穏やかな海はWater.VS.hlslと同じ固定液面で判定します。
         if (p.effectType >= 1.5f)
@@ -85,6 +85,7 @@ inline float LiquidWaveHeight(const MeshRenderer::WaterParamForGpu& p, float x, 
         auto profile = [](float phase) { return (std::sin(phase) - .18f * std::cos(2.0f * phase)) / 1.18f; };
         return std::max(p.waveHeight, 0.0f) * (.65f * profile(a) + .25f * profile(b) + .10f * profile(c));
     }
+    // マグマでは粘性に合わせて進行を遅らせ、流れの方向へ動くノイズを液面の高さに変換します。
     const float viscosity = std::max(p.effectScale, .1f);
     const float t = p.time * std::max(p.waveSpeed, .05f) / (.8f + viscosity * .65f);
     const float s = .04f * std::max(p.waveFrequency, .15f) / (.85f + viscosity * .4f);
@@ -98,6 +99,7 @@ inline float LiquidWaveHeight(const MeshRenderer::WaterParamForGpu& p, float x, 
         const float n = std::sin(nx * 12.9898f + nz * 78.233f) * 43758.5453123f;
         return n - std::floor(n);
     };
+    // 周囲四点のノイズを補間し、波の高さ設定を掛けて基準液面からのずれを返します。
     const float a = noise(ix, iz), b = noise(ix + 1, iz);
     const float c = noise(ix, iz + 1), d = noise(ix + 1, iz + 1);
     return (a + (b - a) * u + (c - a) * v * (1 - u) + (d - b) * u * v - .5f) * std::max(p.waveHeight, 0.0f) * .14f;
@@ -147,6 +149,7 @@ inline bool FindLethalLiquidSurface(Player& player, float& contactY) {
         // 海・溶岩池の水平面を対象にし、傾けた演出用モデルは除外します。
         if (std::abs(world.m[1][0]) > .001f || std::abs(world.m[1][2]) > .001f || world.m[1][1] <= .001f)
             continue;
+        // 水面の内外はローカル平面、マグマの内外はワールドのモデル範囲で確認します。
         const engine::Matrix4x4 inverse = engine::Math::Inverse(world);
         const Aabb bounds = liquid->GetModelWorldAabb();
         for (const engine::Vector3& probe : probes) {
@@ -162,6 +165,7 @@ inline bool FindLethalLiquidSurface(Player& player, float& contactY) {
                     continue;
                 surface = bounds.max.y + LiquidWaveHeight(*params, probe.x, probe.z, true) * world.m[1][1];
             }
+            // 波を含む高さへ足元が届いた候補だけ残し、複数候補では最も高い液面を返します。
             if (std::isfinite(surface) && body.min.y <= surface) {
                 contactY = std::max(contactY, surface);
                 touched = true;
@@ -200,6 +204,7 @@ inline engine::Vector3 GetStableEnemyCarryScale(engine::Object3D* enemy) {
         return scale;
     }
 
+    // 三軸の倍率の積と同じ体積倍率になるよう立方根を取り、各軸に同じ倍率を使います。
     const float stableScale = std::cbrt(absX * absY * absZ);
     return {stableScale, stableScale, stableScale};
 }

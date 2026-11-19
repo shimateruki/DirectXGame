@@ -41,6 +41,7 @@ Vector3 operator-(const Vector3& v)
 	return { -v.x, -v.y, -v.z };
 }
 
+// 各要素は左の行と右の列の内積です。点を左側に置くため、変換も左から順に適用します。
 Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2)
 {
 	Matrix4x4 result = {};
@@ -173,6 +174,7 @@ Matrix4x4 Math::Inverse(const Matrix4x4& m)
 	float a41 = m.m[3][0], a42 = m.m[3][1], a43 = m.m[3][2], a44 = m.m[3][3];
 
 
+	// 4×4行列の行列式です。ゼロなら変換で情報が失われ、一意に元の点へ戻せません。
 	float det = a11 * a22 * a33 * a44 + a11 * a23 * a34 * a42 + a11 * a24 * a32 * a43
 		- a11 * a24 * a33 * a42 - a11 * a23 * a32 * a44 - a11 * a22 * a34 * a43
 		- a12 * a21 * a33 * a44 - a13 * a21 * a34 * a42 - a14 * a21 * a32 * a43
@@ -186,6 +188,7 @@ Matrix4x4 Math::Inverse(const Matrix4x4& m)
 		return result;
 	}
 
+	// 余因子を転置して作る随伴行列の全要素に、同じ行列式の逆数を掛けます。
 	float invDet = 1.0f / det;
 
 	// 以下、各要素に対応する余因子を手動計算して代入（転置あり）
@@ -221,6 +224,7 @@ Matrix4x4 Math::MakePerspectiveFovMatrix(float fovY, float aspectRatio, float ne
 {
     // fovYはラジアンとし、DirectXの深度0～1へ写す透視投影を作ります。
 	Matrix4x4 result = {};
+	// 縦方向は半画角の正接の逆数で拡大します。横方向は画面の横幅と縦幅の比で割って補正します。
 	float f = 1.0f / tanf(fovY / 2.0f);
 	result.m[0][0] = f / aspectRatio;
 	result.m[0][1] = 0.0f;
@@ -234,6 +238,7 @@ Matrix4x4 Math::MakePerspectiveFovMatrix(float fovY, float aspectRatio, float ne
 
 	result.m[2][0] = 0.0f;
 	result.m[2][1] = 0.0f;
+	// 同次座標の w に視線方向の距離を入れ、透視除算後の深度が近面で0、遠面で1となるよう係数をそろえます。
 	result.m[2][2] = farClip / (farClip - nearClip);
 	result.m[2][3] = 1.0f;
 
@@ -277,6 +282,7 @@ Matrix4x4 Math::MakeViewportMatrix(float left, float top, float width, float hei
 	result.m[2][2] = maxDepth - minDepth;
 	result.m[2][3] = 0.0f;
 
+	// NDCの中心を、表示領域の左上に半幅と半高を足した画面上の中心へ移します。
 	result.m[3][0] = left + width / 2.0f;
 	result.m[3][1] = top + height / 2.0f;
 	result.m[3][2] = minDepth;
@@ -295,6 +301,7 @@ Matrix4x4 Math::MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, co
 	Matrix4x4 rotateMatrix = Multiply(Multiply(rotateXMatrix, rotateYMatrix), rotateZMatrix);
 	Matrix4x4 translateMatrix = MakeTranslateMatrix(translate);
 
+	// 点を行ベクトルとして左に置くため、左側の拡大と回転から適用されます。最後の移動量は拡大されません。
 	Matrix4x4 worldMatrix = Multiply(Multiply(scaleMatrix, rotateMatrix), translateMatrix);
 
 	return worldMatrix;
@@ -304,6 +311,7 @@ Vector3 Math::Normalize(const Vector3& v)
 {
 	float length = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 
+	// ほぼ長さ0の方向は除算で丸め誤差が増幅するため、単位化せずゼロ方向を返します。
 	if (length < 0.000001f) { // 適切な epsilon 値を設定してください
 		return { 0.0f, 0.0f, 0.0f };
 	}
@@ -322,6 +330,7 @@ Matrix4x4 Math::MakeRotateMatrix(const Vector3& rotate)
 Vector3 Math::TransformNormal(const Vector3& v, const Matrix4x4& m)
 {
     // 方向ベクトルには平行移動成分を適用しません。
+	// 実質的に同次座標のw=0を使い、行列の左上3×3だけで方向を変換します。
 	Vector3 result;
 	result.x = v.x * m.m[0][0] + v.y * m.m[1][0] + v.z * m.m[2][0];
 	result.y = v.x * m.m[0][1] + v.y * m.m[1][1] + v.z * m.m[2][1];
@@ -368,6 +377,7 @@ Matrix4x4 Math::MakeLookAtMatrix(const Vector3& eye, const Vector3& target, cons
 	result.m[2][0] = xaxis.z;
 	result.m[2][1] = yaxis.z;
 	result.m[2][2] = zaxis.z;
+	// 視点をカメラ各軸へ射影して引き、カメラ位置をビュー座標の原点へ移します。
 	result.m[3][0] = -Dot(eye, xaxis);
 	result.m[3][1] = -Dot(eye, yaxis);
 	result.m[3][2] = -Dot(eye, zaxis);
@@ -390,7 +400,7 @@ float Math::Clamp(float value, float min, float max)
 }
 
 float Math::Lerp(float v1, float v2, float t) {
-	// t (0.0f～1.0f) の値に応じて、v1 から v2 への間の値を返す
+	// t=0でv1、t=1でv2。範囲外を渡すと同じ直線上へ外挿します。
 	return v1 + (v2 - v1) * t;
 }
 
@@ -426,7 +436,7 @@ Vector3 Math::Transform(const Vector3& v, const Matrix4x4& m) {
 	result.z = v.x * m.m[0][2] + v.y * m.m[1][2] + v.z * m.m[2][2] + m.m[3][2];
 	float w = v.x * m.m[0][3] + v.y * m.m[1][3] + v.z * m.m[2][3] + m.m[3][3];
 
-	// wで割って正規化する（これが重要！）
+	// wが0なら透視除算できないため、割る前の座標を返します。
 	if (w != 0.0f) {
 		result.x /= w;
 		result.y /= w;
@@ -439,6 +449,7 @@ Vector3 Math::Transform(const Vector3& v, const Matrix4x4& m) {
 
 bool Math::IntersectRayAabb(const Ray& ray, const Vector3& minBox, const Vector3& maxBox, RayResult* hit) {
 	float tMin = 0.0f;
+	// 交差位置は origin + diff × t で表します。diff が単位長なら t は距離になります。
 	float tMax = 100000.0f; // 十分大きな値
 
 	// --- X軸の判定 ---
@@ -462,6 +473,7 @@ bool Math::IntersectRayAabb(const Ray& ray, const Vector3& minBox, const Vector3
 	}
 
 	// --- Y軸の判定 ---
+	// Y方向の移動成分がほぼ0の場合は除算せず、始点がYの範囲内かだけ調べます。
 	if (std::abs(ray.diff.y) < 1e-6f) {
 		if (ray.origin.y < minBox.y || ray.origin.y > maxBox.y)
 			return false;
@@ -479,6 +491,7 @@ bool Math::IntersectRayAabb(const Ray& ray, const Vector3& minBox, const Vector3
 	}
 
 	// --- Z軸の判定 ---
+	// Z成分がほぼ0の場合も、始点がZの範囲外なら他軸で交差していても棄却します。
 	if (std::abs(ray.diff.z) < 1e-6f) {
 		if (ray.origin.z < minBox.z || ray.origin.z > maxBox.z)
 			return false;
@@ -511,6 +524,7 @@ bool Math::IntersectRayAabb(const Ray& ray, const Vector3& minBox, const Vector3
 		Vector3 p = { hit->point.x - center.x, hit->point.y - center.y, hit->point.z - center.z };
 
 		// 正規化して比較 (どの軸の端に近いか)
+		// 検出点の丸め誤差を吸収するため、面と見なす境界を箱の内側へ少し寄せます。
 		float bias = 1.001f; // 誤差対策
 		hit->normal = { 0, 0, 0 };
 
@@ -531,7 +545,7 @@ float Math::LerpShortAngle(float a, float b, float t) {
 
 	constexpr float kTwoPi = std::numbers::pi_v<float> * 2.0f;
 
-	// 角度を [-std::numbers::pi_v<float>, std::numbers::pi_v<float>] の範囲に補正
+	// 差を±πラジアンへ畳み、どちら回りが短いかを符号に残します。
 	while (diff < -std::numbers::pi_v<float>)
 		diff += kTwoPi;
 	while (diff > std::numbers::pi_v<float>)
@@ -572,6 +586,7 @@ Quaternion Math::Slerp(const Quaternion& q0, const Quaternion& q1, float t) {
 		};
 	}
 
+	// 単位クォータニオン間の角度をラジアンで求め、弧の両側の長さに応じて正弦で重みを付けます。
 	float theta = std::acos(dot);
 	float sinTheta = std::sin(theta);
 
@@ -615,6 +630,7 @@ Matrix4x4 Math::MakeRotateQuaternionMatrix(const Quaternion& q) {
 	return m;
 }
 
+// 原点を画面中央とした正射影です。幅・高さの両端を±1、近面・遠面を深度0と1へ写します。
 Matrix4x4 Math::MakeOrthographicMatrix(float width, float height, float nearZ, float farZ) {
 	Matrix4x4 result{}; // ゼロ初期化
 
@@ -629,6 +645,7 @@ Matrix4x4 Math::MakeOrthographicMatrix(float width, float height, float nearZ, f
 
 Quaternion Math::EulerToQuaternion(const Vector3& rot) {
 	// 各軸の半角のサイン・コサインを計算
+	// 軸回転のクォータニオンは虚部に軸方向×sin(角度/2)、実部にcos(角度/2)を持ちます。角度はラジアンです。
 	float cx = std::cos(rot.x * 0.5f);
 	float sx = std::sin(rot.x * 0.5f);
 	float cy = std::cos(rot.y * 0.5f);
@@ -720,6 +737,7 @@ Quaternion Math::MatrixToQuaternion(const Matrix4x4& m) {
 
 	// 2. 純粋な回転行列からクォータニオンを抽出する
 	Quaternion q;
+	// 対角和が正なら w を先に、そのほかは最大の対角成分に対応する軸を先に求めます。小さな成分を分母にして誤差を広げないためです。
 	float tr = rmat.m[0][0] + rmat.m[1][1] + rmat.m[2][2];
 
 	if (tr > 0.0f) {
@@ -769,6 +787,7 @@ Quaternion Math::MatrixToQuaternion(const Matrix4x4& m) {
 
 
 Frustum Math::ExtractFrustumPlanes(const Matrix4x4& vp) {
+	// クリップ座標の左右・上下は −w～w、深度は 0～w です。各不等式が成り立つ範囲をワールド空間の面に戻します。
 	Frustum f;
 
 	// 左
@@ -844,7 +863,7 @@ bool Math::IntersectFrustumAabb(const Frustum& f, const Vector3& minBox, const V
 }
 
 float Math::DistanceSquaredPointAabb(const Vector3& point, const Vector3& minBox, const Vector3& maxBox) {
-    // 各軸の箱外距離だけを足し、平方根なしで交差比較に使えます。
+    // 箱の範囲内にある軸は距離0とし、残りの箱外距離を二乗して足します。
 	const float dx = point.x < minBox.x ? minBox.x - point.x : (point.x > maxBox.x ? point.x - maxBox.x : 0.0f);
 	const float dy = point.y < minBox.y ? minBox.y - point.y : (point.y > maxBox.y ? point.y - maxBox.y : 0.0f);
 	const float dz = point.z < minBox.z ? minBox.z - point.z : (point.z > maxBox.z ? point.z - maxBox.z : 0.0f);

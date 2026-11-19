@@ -30,6 +30,7 @@ public:
             return {};
         const float scaleX = static_cast<float>(width) / kClientWidth;
         const float scaleY = static_cast<float>(height) / kClientHeight;
+        // 先に画面端へ届く軸の倍率を両軸へ使い、縦横比を保ったまま映像全体を収める。
         const float scale = scaleX < scaleY ? scaleX : scaleY;
         const float viewWidth = kClientWidth * scale;
         const float viewHeight = kClientHeight * scale;
@@ -43,6 +44,7 @@ public:
             gameX = gameY = -1.0f;
             return false;
         }
+        // 表示矩形の左上と拡大率を除いて、実ピクセルをUIが使う1920×1080の座標へ戻す。
         gameX = (x - view.x) * kClientWidth / view.width;
         gameY = (y - view.y) * kClientHeight / view.height;
         return true;

@@ -56,6 +56,7 @@ void Player::CaptureReplayCustomState(json& state) const {
     state["playerControlActive"] = isControlActive_;
     state["playerCinematicLocked"] = isCinematicLocked_;
     state["playerPendingAttack2"] = pendingAttack2_;
+    // まだ消費していない攻撃入力も状態ごと保存し、巻き戻し時の次の入力受付を合わせます。
     const auto attackInput = attackInputBuffer_.Capture();
     state["playerComboWindowTimer"] = attackInput.comboWindowTimer;
     state["playerAttackInputBuffered"] = attackInput.buffered;
@@ -71,6 +72,7 @@ void Player::CaptureReplayCustomState(json& state) const {
     state["playerEvasionPortalEdge"] = evasionFeedback_ == EvasionFeedback::PortalEdge;
     state["playerInvincibleBlinkTimer"] = invincibleBlinkTimer_;
     state["playerDeathTimer"] = deathTimer_;
+    // 復帰位置とチェックポイント側に保持したコピー種別を、現在の変身とは別に記録します。
     state["playerRespawnPosition"] = ToJson(respawnPosition_);
     state["playerCheckpointActivated"] = checkpointActivated_;
     state["playerCheckpointObjectName"] = checkpointObjectName_;
@@ -86,6 +88,7 @@ void Player::CaptureReplayCustomState(json& state) const {
     state["playerMorphDuration"] = enemyMorphDuration_;
     state["playerMorphEffectTimer"] = enemyMorphEffectTimer_;
     state["playerMorphVisualTimer"] = enemyMorphVisualTimer_;
+    // 変身解除の途中で巻き戻せるよう、進行時刻に加えて外観・位置の基準値も記録します。
     state["playerMorphReleaseActive"] = enemyMorphReleaseActive_;
     state["playerMorphReleaseBurstStarted"] = enemyMorphReleaseBurstStarted_;
     state["playerMorphReleaseExpired"] = enemyMorphReleaseExpired_;
@@ -117,11 +120,13 @@ void Player::CaptureReplayCustomState(json& state) const {
 
 void Player::RestoreReplayCustomState(const json& state) {
     // 項目が欠けた旧記録は現在値を補完に使い、必要な能力だけ再構築する。
+    // 共通の速度と接地を基底クラスに戻させてから、プレイヤー固有の操作や攻撃の保存値を反映します。
     Character::RestoreReplayCustomState(state);
     isLockingOn_ = state.value("playerLockingOn", isLockingOn_);
     isControlActive_ = state.value("playerControlActive", isControlActive_);
     isCinematicLocked_ = state.value("playerCinematicLocked", isCinematicLocked_);
     pendingAttack2_ = state.value("playerPendingAttack2", pendingAttack2_);
+    // 保存済みの入力バッファに旧録画で欠けた項目だけ現在値を補い、まとめて戻します。
     auto attackInput = attackInputBuffer_.Capture();
     attackInput.comboWindowTimer = state.value("playerComboWindowTimer", attackInput.comboWindowTimer);
     attackInput.buffered = state.value("playerAttackInputBuffered", attackInput.buffered);
@@ -132,6 +137,7 @@ void Player::RestoreReplayCustomState(const json& state) {
     guardContactCooldownTimer_ = state.value("playerGuardContactCooldownTimer", 0.0f);
     isDamageInvincible_ = state.value("playerDamageInvincible", isDamageInvincible_);
     isDashInvincible_ = state.value("playerDashInvincible", isDashInvincible_);
+    // 旧録画のガード名にも対応し、回避の表示を新しい記録形式から復元します。
     isGuarding_ = state.value("playerGuarding", state.value("playerGuardInvincible", false));
     evasionInvincibleTimer_ = state.value("playerEvasionInvincibleTimer", evasionInvincibleTimer_);
     isEvasionInvincible_ = state.value("playerEvasionInvincible", isEvasionInvincible_);
@@ -154,10 +160,12 @@ void Player::RestoreReplayCustomState(const json& state) {
     isFirstUpdate_ = state.value("playerFirstUpdate", isFirstUpdate_);
     jumpCount_ = state.value("playerJumpCount", jumpCount_);
 
+    // 保存値は視覚補正を含まない移動角です。SetMoveYaw() で描画モデルの正面補正を加えます。
     if (state.contains("playerMoveYaw")) {
         SetMoveYaw(state["playerMoveYaw"].get<float>());
     }
 
+    // 能力を作り直す前に保存値が現行のコピー種別か検証します。
     const int morphType = state.value("playerEnemyMorphType", static_cast<int>(enemyMorphType_));
     const bool supportedMorphType = IsSupportedMorphTypeValue(morphType);
 
@@ -188,6 +196,7 @@ void Player::RestoreReplayCustomState(const json& state) {
         }
     }
 
+    // 解除の状態・時刻・発生位置をすべて戻してから、下の UpdateEnemyMorphRelease(0) でその時点の見た目を評価します。
     enemyMorphReleaseActive_ = state.value("playerMorphReleaseActive", false);
     enemyMorphReleaseBurstStarted_ = state.value("playerMorphReleaseBurstStarted", false);
     enemyMorphReleaseExpired_ = state.value("playerMorphReleaseExpired", false);
@@ -219,6 +228,7 @@ void Player::RestoreReplayCustomState(const json& state) {
         enemyMorphReleaseTint_ = ReadVector4(state["playerMorphReleaseTint"], enemyMorphReleaseTint_);
     }
 
+    // 解除途中ならその時点の表示を時間を進めずに反映し、解除中でなければ前回の演出を隠します。
     if (enemyMorphReleaseActive_) {
         UpdateEnemyMorphRelease(0.0f);
     } else if (enemyMorphReleaseVisual_) {
@@ -231,6 +241,7 @@ void Player::RestoreReplayCustomState(const json& state) {
     tutorialCarryThrowEnabled_ = state.value("playerTutorialCarryThrowEnabled", tutorialCarryThrowEnabled_);
     tutorialCarryAbsorbEnabled_ = state.value("playerTutorialCarryAbsorbEnabled", tutorialCarryAbsorbEnabled_);
 
+    // 通常近接の進行はコピー能力の再構築とは別に復元し、未保存の旧録画では初期状態を使います。
     if (baseCombatController_) {
         PlayerBaseCombatController::ReplayState combatState;
         combatState.phase = state.value("playerBaseCombatPhase", 0);

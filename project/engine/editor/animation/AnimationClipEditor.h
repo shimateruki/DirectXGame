@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-class DirectXCommon;
+namespace engine { class DirectXCommon; }
 namespace engine { class Object3D; }
 class SceneManager;
 class BaseScene;
@@ -23,7 +23,7 @@ class BaseScene;
 class AnimationClipEditor {
 public:
     /// シーンと描画基盤への非所有参照を設定する。
-    void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
+    void Initialize(SceneManager* sceneManager, engine::DirectXCommon* dxCommon);
 
     /// タイムライン再生とプレビュー姿勢を時間に合わせて更新する。
     void Update(float deltaTime);
@@ -226,9 +226,9 @@ private:
 
 private:
     SceneManager* sceneManager_ = nullptr; // 現在シーンの取得元。借用参照。
-    DirectXCommon* dxCommon_ = nullptr;
-    Model* previewModel_ = nullptr;
-    std::unique_ptr<Model> previewModelOwner_;
+    engine::DirectXCommon* dxCommon_ = nullptr;
+    engine::Model* previewModel_ = nullptr;
+    std::unique_ptr<engine::Model> previewModelOwner_;
     engine::Object3D* previewObject_ = nullptr;
 
     // プレビュー再生と表示オプション。

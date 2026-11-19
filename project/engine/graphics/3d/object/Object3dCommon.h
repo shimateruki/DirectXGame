@@ -2,6 +2,7 @@
 #include "DirectXCommon.h"
 #include <array>
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <wrl.h>
@@ -20,19 +21,24 @@ enum class BlendMode {
 /// <summary>3Dモデル、影、特殊マテリアル、スカイボックスの共通描画パイプラインを管理する。</summary>
 namespace engine {
 
-// 担当：通常・影・特殊材質の3D描画パイプラインと共有描画状態を管理する。
-// 関連：RenderCommonResources（所有）、MeshRenderer（利用）、DirectXCommon（GPU基盤）
+class SpecialMaterialPipelines;
+
+// 担当：通常3D描画のパイプラインを所有し、共有描画パスの初期化順と呼び出しを管理する。
+// 関連：RenderCommonResources（所有）、MeshRenderer（利用）、SpecialMaterialPipelines（水・特殊材質の準備と設定）
 // 主な入口：Initialize / BeginInitialize / InitializeStep / SetGraphicsCommand
 class Object3DCommon {
 public:
+    Object3DCommon();
+    ~Object3DCommon();
+
     /// <summary>DirectX基盤を受け取り、3D描画用の各パイプラインを作成する。</summary>
-    void Initialize(DirectXCommon* dxCommon);
+    void Initialize(engine::DirectXCommon* dxCommon);
 
     /// <summary>タイトルの初回表示に必要な描画経路を先に作り、残りは初回使用時に作る。</summary>
-    void InitializeForTitle(DirectXCommon* dxCommon);
+    void InitializeForTitle(engine::DirectXCommon* dxCommon);
 
     /// <summary>ロード画面を描画しながらパイプラインを一種類ずつ準備する。</summary>
-    void BeginInitialize(DirectXCommon* dxCommon);
+    void BeginInitialize(engine::DirectXCommon* dxCommon);
 
     /// 次の描画パイプラインを一段だけ作る。すべて済めば true を返す。
     bool InitializeStep();
@@ -53,7 +59,7 @@ public:
     void SetMaterialPipelineState(BlendMode blendMode, int materialType, const std::string& shaderMaterialId = {});
 
     /// <summary>所有しないDirectX基盤への参照を返す。</summary>
-    DirectXCommon* GetDxCommon() const { return dxCommon_; }
+    engine::DirectXCommon* GetDxCommon() const { return dxCommon_; }
 
     // 影描画のパイプライン。foliageが真なら葉用の影描画を選ぶ。
     void SetShadowPipelineState(bool foliage = false);
@@ -76,92 +82,23 @@ public:
 
     void SetEffectGraphicsCommand(BlendMode blendMode);
 
-    // 水面描画用のルートシグネチャ、パイプライン、描画コマンド。
-    void CreateWaterRootSignature();
-
-    // 水面用の描画パイプラインを作る。
-    void CreateWaterPipeline();
-
+    // 水・特殊材質の描画入口。PSOの準備とコマンド設定はSpecialMaterialPipelinesに任せる。
     void SetWaterGraphicsCommand();
-
-    // 以下のCreate*Pipelineは、各特殊マテリアル専用のPipelineStateを作る。
-    // 対応するSet*GraphicsCommandがそのPipelineStateと共通ルートシグネチャを設定する。
-    void CreateMagmaPipeline();
-
-    // 氷用の描画パイプラインを作る。
-    void CreateIcePipeline();
-
-    // 炎用の描画パイプラインを作る。
-    void CreateFirePipeline();
-
-    // ビームは加算合成し、深度テクスチャによる遮蔽をシェーダー側で判定する。
-    void CreateLaserPipeline();
-
-    // ゼリー状の表面は両面を半透明合成する。
-    void CreateSlimeGelPipeline();
-
-    // 地表の衝撃波は薄い面の裏側からも見えるよう両面描画する。
-    void CreateShockwavePipeline();
-
-    // 水面との接触表現は水と同じ定数バッファの配置を使う。
-    void CreateLiquidContactPipeline();
-
-    // ひび割れは地形の向きに依存せず見えるよう両面描画する。
-    void CreateDamageCrackPipeline();
-
-    // 上昇気流は視点が内側に入っても見える半透明の両面パスにする。
-    void CreateUpdraftPipeline();
-
-    // 拘束光は背景へ加算して発光させる。
-    void CreateStunBindPipeline();
-
-    // 王冠解除の光も加算合成し、暗い背景で消えないようにする。
-    void CreateCrownUnlockPipeline();
-
-    // 胞子の薄い面を両側から描けるようカリングを無効にする。
-    void CreatePoisonSporePipeline();
-
-    // 雲は半透明で描き、視点が内部に入っても面を残す。
-    void CreateCloudPipeline();
-
-    // ゲート面は通過前後の両側から見えるよう両面描画する。
-    void CreateGatePortalPipeline();
-    // 通常深度の背後にあるプレイヤーだけを薄く描く補助パス。
-    void CreateVisibilitySilhouettePipeline();
     void SetVisibilitySilhouetteGraphicsCommand();
-
-    // 風の球は閉じた形状なので裏面を除き、半透明で合成する。
-    void CreateWindOrbPipeline();
-
-    // 特殊マテリアルごとの描画コマンド設定。関数名と同じ種類のCreate*Pipelineに対応する。
     void SetMagmaGraphicsCommand();
-
     void SetIceGraphicsCommand();
-
     void SetFireGraphicsCommand();
-
     void SetLaserGraphicsCommand();
-
     void SetSlimeGelGraphicsCommand();
-
     void SetShockwaveGraphicsCommand();
-
     void SetLiquidContactGraphicsCommand();
-
     void SetDamageCrackGraphicsCommand();
-
     void SetUpdraftGraphicsCommand();
-
     void SetStunBindGraphicsCommand();
-
     void SetCrownUnlockGraphicsCommand();
-
     void SetPoisonSporeGraphicsCommand();
-
     void SetCloudGraphicsCommand();
-
     void SetGatePortalGraphicsCommand();
-
     void SetWindOrbGraphicsCommand();
 
     // スカイボックスのパイプラインと参照用アクセッサ。
@@ -177,10 +114,6 @@ private:
     /// </summary>
     void CreatePipelineStates();
 
-    /// <summary>シェーダー、合成方式、カリング方式を指定して特殊マテリアル用PipelineStateを作る。</summary>
-    /// <param name="outPipelineState">生成したパイプラインの出力先。</param>
-    void CreateSpecialMaterialPipeline(const wchar_t* vertexShaderPath, const wchar_t* pixelShaderPath, BlendMode blendMode, D3D12_CULL_MODE cullMode, ID3D12PipelineState** outPipelineState, bool shaderDepthTest = false);
-
     /// <summary>タイトルで先送りした特殊材質のパイプラインを初回使用時に作る。</summary>
     void EnsurePipelineState(Microsoft::WRL::ComPtr<ID3D12PipelineState>& state,
                              void (Object3DCommon::*createPipeline)());
@@ -193,13 +126,14 @@ private:
 
 private:
     // 段階初期化で実行するパイプライン生成処理の総数。進捗率の分母にも使う。
-    static constexpr size_t kInitializationStepCount = 24;
+    static constexpr size_t kCommonPreparationStepCount = 6;
+    static const size_t kInitializationStepCount;
 
     // 次に実行する初期化処理の番号。完了時は総数と等しくなる。
     size_t initializationStep_ = 0;
 
     // DirectX基盤への参照。Object3dCommonは所有しない。
-    DirectXCommon* dxCommon_ = nullptr;
+    engine::DirectXCommon* dxCommon_ = nullptr;
 
     // 通常3D描画のリソース結合定義。通常材質と材質別PSOから共有する。
     Microsoft::WRL::ComPtr<ID3D12RootSignature> rootSignature_;
@@ -234,29 +168,8 @@ private:
     // エフェクト描画の結合定義。合成別PSOは末尾の配列で保持する。
     Microsoft::WRL::ComPtr<ID3D12RootSignature> effectRootSignature_;
 
-    // 水面描画の結合定義とPSO。
-    Microsoft::WRL::ComPtr<ID3D12RootSignature> waterRootSignature_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> waterPipelineState_;
-
-    // 各特殊材質のPSO。対応するSet*GraphicsCommandで必要なものを選択する。
-    // 初回使用まで生成しない材質があるため、空のComPtrは未準備も表す。
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> magmaPipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> icePipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> firePipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> laserPipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> slimeGelPipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> shockwavePipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> liquidContactPipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> damageCrackPipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> updraftPipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> stunBindPipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> crownUnlockPipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> poisonSporePipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> cloudPipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> gatePortalPipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> visibilitySilhouettePipelineState_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> windOrbPipelineState_;
-
+    // 水系のルートシグネチャとPSOをまとめて所有する。
+    std::unique_ptr<SpecialMaterialPipelines> specialMaterialPipelines_;
     // スカイボックスだけが使用する結合定義とPSO。
     Microsoft::WRL::ComPtr<ID3D12RootSignature> skyboxRootSignature_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> skyboxPipelineState_;

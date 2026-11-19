@@ -120,13 +120,14 @@ SceneLoadManifest GameOverScene::BuildAsyncLoadManifest() const {
 
 void GameOverScene::Initialize() {
     // このシーン専用の描画・粒子・カメラを構築し、配置 JSON を読み込む。
-    dxCommon_ = DirectXCommon::GetInstance();
+    dxCommon_ = engine::DirectXCommon::GetInstance();
     inputManager_ = engine::InputManager::GetInstance();
 
     ModelManager::GetInstance()->LoadModel("Characters/player");
     LOG("GameOverScene Initialized!");
 
 
+    // 固定カメラの更新先に入力を接続し、配置を読む前に粒子とライトの描画基盤を用意します。
     CameraManager::GetInstance()->Initialize();
     CameraManager::GetInstance()->SetInputManager(inputManager_);
 
@@ -137,6 +138,7 @@ void GameOverScene::Initialize() {
 
     LightEditor::GetInstance()->SetObject3DCommon(GetObject3DCommon());
 
+    // ゲームオーバー専用の配置集合とルールを作り、弾の管理もこの集合の衝突環境へ接続します。
     objectManager_ = std::make_unique<ObjectManager>();
     levelLoader_ = std::make_unique<LevelLoader>();
     gameRule_ = std::make_unique<GameRule>();
@@ -147,6 +149,7 @@ void GameOverScene::Initialize() {
     PrepareGpuParticles();
     gpuParticleTexHandle_ = TextureManager::GetInstance()->Load("Resources/sprite/common/white.png");
 
+    // 配置とUIを展開した後で、名前を使ってタイトル文字とメニュー行を結び付けます。
     levelLoader_->LoadObjectLayout(this, "Resources/json/3Dobject/gameOverScene.json");
     levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/gameOverScene.json");
     BindLayoutSprites();
@@ -154,7 +157,8 @@ void GameOverScene::Initialize() {
     // 背景にも王冠があるため、前景へ重ねて降らせない。
     InitializeDizzyStars();
 
-    LightManager::GetInstance()->LoadState(ResolveSceneLightPath("Resources/json/light/gameOverScene.json"));
+    // 照明とカメラをシーンの設定へ合わせ、初回の描画前に視点を確定します。
+    engine::LightManager::GetInstance()->LoadState(ResolveSceneLightPath("Resources/json/light/gameOverScene.json"));
     CameraEditor::GetInstance()->Initialize();
     CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("gameOver_camera.json"));
     CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
@@ -178,11 +182,13 @@ void GameOverScene::OnActivated() {
         params->dangerVignette = 0.0f;
     }
 
+    // 役者の初期姿勢と視点を決めてから、文字とメニューの0秒時点を組み立てます。
     InitializeGameOverPresentation();
     UpdateGameOverCamera();
     CameraManager::GetInstance()->Update(0.0f);
     UpdateMenuSprites(0.0f);
 
+    // 初回フレームから切り替え後のカメラとUIが使われるよう、描画データをここで準備します。
     for (auto& object : objectManager_->GetObjects())
         object->RefreshRenderCameraData();
     for (auto& sprite : sprites_)
@@ -218,6 +224,7 @@ void GameOverScene::Update(float deltaTime) {
     sceneTime_ += introDeltaTime;
     titleRevealTimer_ = std::max(0.0f, sceneTime_ - presentationTuning_.titleRevealStartTime);
 
+    // フェードが終わり、タイトルとメニューが表示済みになった場合だけ入力を処理します。
     if (SceneManager::GetInstance()->IsPlaying() && canAdvanceIntro && !retryExitActive_ &&
         !retrySceneChangeRequested_ && IsTitleRevealComplete()) {
         UpdateMenuInput();
@@ -226,6 +233,7 @@ void GameOverScene::Update(float deltaTime) {
     UpdateMenuSprites(introDeltaTime);
     UpdateFallingCrowns(introDeltaTime);
 
+    // 配置物を通常の経過時間で進めた後に、演出用の時計で倒れたモデルの姿勢を重ねます。
     objectManager_->Update(deltaTime);
     UpdateGameOverPresentation(introDeltaTime);
 
@@ -239,6 +247,7 @@ void GameOverScene::Update(float deltaTime) {
         object->RefreshRenderCameraData();
     UpdateDizzyStars(introDeltaTime);
 
+    // 粒子は通常時間を使い、退場完了までの待ちは導入と同じ演出時計を使います。
     particleSystem_->Update(deltaTime);
     UpdateRetryExit(introDeltaTime);
 
@@ -246,24 +255,26 @@ void GameOverScene::Update(float deltaTime) {
         sprite->Update();
     }
 
+    // 最後に弾と衝突を更新し、このフレームの接触を判定します。
     BulletManager::GetInstance()->Update(deltaTime);
     CollisionManager::GetInstance()->Update();
 }
 
 void GameOverScene::Draw() {
     // 通常メッシュ、特殊マテリアル、粒子の順序を保ってゲーム画面へ合成する。
+    // 2D背景をモデルの背後に置くため、不透明物を描く前に描画します。
     DrawBackgroundSprite();
 
     bool isFirstPerson = false;
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 #ifndef _DEBUG
-    if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::FirstPerson) {
+    if (camera->GetFollowTarget() && camera->GetFollowMode() == engine::Camera::FollowMode::FirstPerson) {
         isFirstPerson = true;
     }
 #endif
 
-    ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
-    ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
+    ID3D12Resource* pointLightRes = engine::LightManager::GetInstance()->GetPointLightResource();
+    ID3D12Resource* spotLightRes = engine::LightManager::GetInstance()->GetSpotLightResource();
     GetObject3DCommon()->SetGraphicsCommand();
 
     auto& objects = objectManager_->GetObjects();
@@ -275,6 +286,7 @@ void GameOverScene::Draw() {
     BulletManager::GetInstance()->Draw(pointLightRes, spotLightRes);
     LightEditor::GetInstance()->Draw3D();
 
+    // 不透明の深度ができてから半透明物と粒子を重ねます。
     DrawSceneObjectPass(objects, MaterialRenderPolicy::Pass::Transparent, pointLightRes, spotLightRes,
         player_, isFirstPerson, false, {});
 
@@ -282,6 +294,7 @@ void GameOverScene::Draw() {
 
     DrawLocalFogObjects(objects, player_, isFirstPerson);
 
+    // 特殊材質で画面コピーを作ったかどうかをGPU粒子に渡し、同じ背景を再取得しないようにします。
     const bool grabUpdated =
         DrawSpecialMaterialObjects(objects, BulletManager::GetInstance(), player_, isFirstPerson);
     DrawGpuParticles(camera, gpuParticleTexHandle_, grabUpdated);
@@ -303,6 +316,7 @@ void GameOverScene::DrawUi() {
         }
     }
 
+    // 共通Spriteの所有配列には背景と動的な装飾も含まれるので、その名前を除いてから描きます。
     for (auto& sprite : sprites_) {
         if (!sprite) {
             continue;
@@ -387,6 +401,7 @@ void GameOverScene::RefreshLayoutSpritePointers() {
                                                        "gameover_letter_e1", "gameover_letter_o", "gameover_letter_v",
                                                        "gameover_letter_e2", "gameover_letter_r"};
 
+    // 生きている参照の基準値は保持し、再生成された文字だけ現在の配置を取り直します。
     for (size_t i = 0; i < kTitleNames.size(); ++i) {
         if (!IsAlive(titleLetters_[i])) {
             titleLetters_[i] = FindSprite(kTitleNames[i]);
@@ -403,6 +418,7 @@ void GameOverScene::RefreshLayoutSpritePointers() {
 
     constexpr std::array<const char*, 2> kRowPrefixes = {"gameover_retry", "gameover_title"};
 
+    // 行背景とラベルを別々に確認し、片方が欠けた場合も残った要素を表示できるようにします。
     for (size_t i = 0; i < kRowPrefixes.size(); ++i) {
         MenuRow& row = menuRows_[i];
         const std::string prefix = kRowPrefixes[i];
@@ -492,16 +508,19 @@ void GameOverScene::UpdateFallingCrowns(float deltaTime) {
             continue;
         }
 
+        // 王冠ごとの秒オフセットを周期の剰余で折り返し、全てが同時に画面へ戻らないようにする。
         float localTime = std::fmod(sceneTime_ + crown.timeOffset, crown.cycleDuration);
 
         if (localTime < 0.0f) {
             localTime += crown.cycleDuration;
         }
 
+        // 一周の時刻から落下量を求め、画面への入り際と出際では透明度を落とします。
         const float fallRate = localTime / crown.cycleDuration;
         const float y = crown.basePosition.y + crown.fallDistance * fallRate;
         const float x =
             crown.basePosition.x + std::sin(localTime * crown.driftSpeed + crown.phase) * crown.driftAmplitude;
+        // 上下のフェード率の小さい方を使い、入口と出口のどちらかに近付くと薄くする。
         const float fadeIn = Clamp01((y + 120.0f) / 220.0f);
         const float fadeOut = Clamp01((1180.0f - y) / 260.0f);
         const float alpha = std::min(fadeIn, fadeOut) * crown.alpha * presentationAlpha;
@@ -544,14 +563,16 @@ void GameOverScene::UpdateDizzyStars(float deltaTime) {
     engine::Vector2 center = {static_cast<float>(WinApp::GetClientWidth()) * 0.5f,
                       static_cast<float>(WinApp::GetClientHeight()) * 0.57f};
 
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
+    // 頭上の目印を投影できる場合だけ、画面内の既定位置をモデルに追従する座標へ切り替えます。
     if (camera && IsAlive(gameOverSlimeObject_)) {
         const engine::Vector3 headWorld = gameOverSlimeAnimator_.GetDizzyAnchorWorld();
 
         const engine::Matrix4x4 viewProjection = camera->GetViewProjectionMatrix();
         const engine::Matrix4x4 viewport = engine::Math::MakeViewportMatrix(0.0f, 0.0f, static_cast<float>(WinApp::GetClientWidth()),
                                                             static_cast<float>(WinApp::GetClientHeight()), 0.0f, 1.0f);
+        // 視点・射影にビューポートを合成してピクセル位置を求め、深度が0〜1のときだけ使う。
         const engine::Matrix4x4 screenMatrix = engine::Math::Multiply(viewProjection, viewport);
         const engine::Vector3 screen = engine::Math::Transform(headWorld, screenMatrix);
 
@@ -560,9 +581,11 @@ void GameOverScene::UpdateDizzyStars(float deltaTime) {
         }
     }
 
+    // スライムの時計を使い、頭上を回る角度と起き上がり時に消える透明度を同期します。
     const float animationTime = gameOverSlimeAnimator_.GetTimer();
     const float introAlpha = Easing::OutCubic01((animationTime - 0.16f) / 0.42f) * gameOverSlimeAnimator_.GetDizzyAlpha();
     const float orbitTime = animationTime * 2.45f;
+    // 1080ピクセルを基準に、星の画像サイズと楕円軌道の幅・高さを同じ割合で調整する。
     const float uiScale = static_cast<float>(WinApp::GetClientHeight()) / 1080.0f;
     const float radiusX = 46.0f * uiScale;
     const float radiusY = 15.0f * uiScale;
@@ -573,6 +596,7 @@ void GameOverScene::UpdateDizzyStars(float deltaTime) {
             continue;
         }
 
+        // 星ごとの初期角で周回をずらし、前側を通る星を少し大きく描きます。
         const float angle = orbitTime + star.baseAngle;
         const float depth = 0.5f + 0.5f * std::sin(angle);
         const float size = star.size * (1.0f + depth * 0.15f) * uiScale;
@@ -631,14 +655,16 @@ void GameOverScene::StartRetryExit() {
         FindGameOverSlimeObject();
     }
 
+    // ワールドの右を基準にし、カメラがあれば画面上の右と一致する方向へ変換します。
     engine::Vector3 exitDirection = {1.0f, 0.0f, 0.0f};
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
     if (camera) {
         const engine::Vector3 rotation = camera->GetRotation();
         exitDirection = {std::cos(rotation.y), 0.0f, -std::sin(rotation.y)};
     }
 
+    // 退場させるモデルがない場合は、動作の完了を待たず遷移を要求します。
     if (gameOverSlimeObject_) {
         gameOverSlimeAnimator_.StartExitRight(gameOverSlimeObject_, exitDirection, 11.5f);
     } else {
@@ -678,6 +704,7 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
         backgroundSprite_->SetColor({1.0f, 1.0f, 1.0f, 1.0f});
     }
 
+    // 文字は並び順で開始時刻をずらし、未到達の文字は非表示にします。
     const engine::Vector4 hiddenTitleColor = {0.72f, 0.94f, 1.0f, 0.0f};
 
     for (size_t i = 0; i < titleLetters_.size(); ++i) {
@@ -702,6 +729,7 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
             continue;
         }
 
+        // 表示開始時は上から落ちる拡大を使い、登場が終わると小さな脈動へ切り替えます。
         letter->SetVisible(true);
         const float revealRate = Clamp01(revealElapsed / kTitleLetterPopDuration);
         const float revealEase = Easing::OutCubic01(revealRate);
@@ -720,11 +748,13 @@ void GameOverScene::UpdateMenuSprites(float deltaTime) {
     const engine::Vector4 normalText = {0.18f, 0.20f, 0.34f, 1.0f};
     const engine::Vector4 selectedText = {0.10f, 0.12f, 0.23f, 1.0f};
     const float menuStartTime = static_cast<float>(titleLetters_.size()) * kTitleLetterInterval + kMenuRevealDelay;
+    // タイトルの後でメニューを表示し、リトライ中は退場するモデルを見せるために先に消します。
     const float retryMenuFade =
         retryExitActive_ && !layoutPreview ? (1.0f - Easing::OutCubic01(retryExitTimer_ / 0.28f)) : 1.0f;
     const float menuAlpha = Easing::OutCubic01((visibleTitleTime - menuStartTime) / 0.28f) * retryMenuFade;
     const bool menuVisible = menuAlpha > 0.0f;
 
+    // 選択画像と基準サイズの倍率を背景とラベルに分けて適用し、同じ透明度で開閉します。
     for (int i = 0; i < static_cast<int>(MenuItem::Count); ++i) {
         MenuRow& row = menuRows_[static_cast<size_t>(i)];
         const bool selected = selectedIndex_ == i;
@@ -774,12 +804,12 @@ void GameOverScene::InitializeGameOverPresentation() {
     }
 
     gameOverSlimeAnimator_.Reset(gameOverSlimeObject_);
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
     if (camera) {
         camera->SetFollowTarget(nullptr);
         camera->SetInputEnabled(false);
-        camera->SetFollowMode(Camera::FollowMode::FixedPoint);
+        camera->SetFollowMode(engine::Camera::FollowMode::FixedPoint);
     }
 
     UpdateGameOverPresentation(0.0f);
@@ -826,6 +856,7 @@ void GameOverScene::UpdateGameOverPresentation(float deltaTime) {
         return;
     }
 
+    // 置き直したモデルを基準に演出時間を進め、姿勢を適用してから画面効果を整えます。
     gameOverPresentationTimer_ += std::max(0.0f, deltaTime);
     gameOverSlimeAnimator_.Update(gameOverSlimeObject_, deltaTime);
 
@@ -838,7 +869,7 @@ void GameOverScene::UpdateGameOverPresentation(float deltaTime) {
 }
 
 void GameOverScene::UpdateGameOverCamera() {
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!camera || !gameOverSlimeObject_)
         return;
 
@@ -848,7 +879,7 @@ void GameOverScene::UpdateGameOverCamera() {
     const engine::Vector3 rotation = MakeLookAtEuler(eye, target);
     camera->SetInputEnabled(false);
     camera->SetFollowTarget(nullptr);
-    camera->SetFollowMode(Camera::FollowMode::FixedPoint);
+    camera->SetFollowMode(engine::Camera::FollowMode::FixedPoint);
     camera->ConfigFixedPoint(eye, rotation);
     camera->SetEye(eye);
     camera->SetTarget(target);
@@ -869,7 +900,7 @@ void GameOverScene::EmitGameOverImpactCue() {
     }
 
     VfxSequencer::PlayOneShot(kGameOverImpactCue, gameOverSlimeObject_->GetWorldPosition());
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
     if (camera) {
         camera->StartShake(0.24f, presentationTuning_.impactShake, 28.0f, {0.85f, 0.55f, 0.35f});
@@ -936,10 +967,12 @@ void GameOverScene::ConfirmSelection() {
     }
 
     switch (static_cast<MenuItem>(selectedIndex_)) {
+    // リトライは退場の動きを開始し、遷移は動きの終了または時間上限まで待ちます。
     case MenuItem::Retry:
         StartRetryExit();
         break;
 
+    // タイトルへは残機が保存できた場合だけ即座に遷移します。
     case MenuItem::Title:
         if (!TryResetLivesForExit()) {
             return;

@@ -84,6 +84,7 @@ void GameDataDebugEditor::SyncSlotState() {
     GameDataManager* save = GameDataManager::GetInstance();
     const int activeSlot = save->GetActiveSlot();
 
+    // 同じスロットを編集中は入力した王冠数を保持し、編集対象が切り替わったときだけ同期します。
     if (lastActiveSlot_ != activeSlot) {
         lastActiveSlot_ = activeSlot;
         crownTarget_ = save->GetClearedStageCount();
@@ -289,6 +290,7 @@ void GameDataDebugEditor::DrawCurrentSlotEditor() {
         lastStatus_ = "プレイ時間を変更しました。";
     }
 
+    // 進行管理では通常ステージと同じ入口を使い、チュートリアルは予約番号−1で参照します。
     bool tutorialCleared = save->IsStageCleared(-1);
 
     if (ImGui::Checkbox("チュートリアル完了", &tutorialCleared)) {
@@ -473,6 +475,7 @@ void GameDataDebugEditor::ApplyCrownCountToStages() {
         save->SetStageCleared(stageIndex, stageIndex < target);
     }
 
+    // 入力欄を適用後の範囲内の値へ揃え、セーブの要約とステージ選択の表示を更新します。
     crownTarget_ = target;
     SyncSlotState();
     RefreshStageSelectScene();

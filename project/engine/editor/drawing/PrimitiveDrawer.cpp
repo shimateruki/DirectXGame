@@ -9,7 +9,7 @@ PrimitiveDrawer::~PrimitiveDrawer() {
     Finalize();
 }
 
-void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
+void PrimitiveDrawer::Initialize(engine::DirectXCommon* dxCommon) {
     dxCommon_ = dxCommon;
     assert(dxCommon_);
     ID3D12Device* device = dxCommon_->GetDevice();
@@ -17,6 +17,7 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
 
     D3D12_ROOT_SIGNATURE_DESC rsDesc{};
     rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+    // 頂点側の b0 に変換行列、ピクセル側の b1 に表示色を割り当てます。
     D3D12_ROOT_PARAMETER params[2] = {};
     params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
     params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
@@ -52,6 +53,7 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
     psoDesc.PS = { psBlob->GetBufferPointer(), psBlob->GetBufferSize() };
     psoDesc.RasterizerState = rasterDesc;
     psoDesc.NumRenderTargets = 1;
+    // シーンのHDR描画先に形式を合わせ、深度を使って手前の形状に隠れる枠線を遮蔽します。
     psoDesc.RTVFormats[0] = DXGI_FORMAT_R16G16B16A16_FLOAT;
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
     psoDesc.SampleDesc.Count = 1;
@@ -182,6 +184,7 @@ void PrimitiveDrawer::Initialize(DirectXCommon* dxCommon) {
 }
 
 void PrimitiveDrawer::Finalize() {
+    // 書き込み用に保持したCPUマップを閉じ、以後の参照を無効にします。GPUリソース参照はメンバーのComPtrが保持します。
     if (primitiveWvpData_) {
         primitiveWvpBuffer_->Unmap(0, nullptr);
         primitiveWvpData_ = nullptr;
@@ -200,46 +203,49 @@ void PrimitiveDrawer::PreDraw(ID3D12GraphicsCommandList* commandList) {
     commandList->IASetIndexBuffer(&cubeIndexBufferView_);
 }
 
-void PrimitiveDrawer::DrawWireCube(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& worldMatrix, const engine::Vector4& color, int instanceIndex) {
-    // インスタンスごとの行列・色を定数バッファへ書き、枠線用の24インデックスを描く。
+namespace {
+// 指定したスロットのWVPと色をGPUへ渡す。カメラが未設定なら描画できない。
+bool BindWireDrawConstants(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& worldMatrix,
+    const engine::Vector4& color, int instanceIndex, AlignedMatrix4x4* wvpData, AlignedVector4* colorData,
+    ID3D12Resource* wvpBuffer, ID3D12Resource* colorBuffer) {
     engine::Math math;
-    const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    const engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!camera)
-        return;
+        return false;
 
-    primitiveWvpData_[instanceIndex].matrix = math.Multiply(worldMatrix, math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix()));
+    // 行ベクトルのため、ローカル点はワールド、ビュー、投影の順に変換されます。
+    wvpData[instanceIndex].matrix = math.Multiply(worldMatrix, math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix()));
 
     engine::Vector4 opaqueColor = color;
     opaqueColor.w = 1.0f;
-    primitiveColorData_[instanceIndex].vector = opaqueColor;
+    colorData[instanceIndex].vector = opaqueColor;
 
-    D3D12_GPU_VIRTUAL_ADDRESS wvpGpuAddress = primitiveWvpBuffer_->GetGPUVirtualAddress() + (static_cast<UINT64>(instanceIndex) * sizeof(AlignedMatrix4x4));
-    D3D12_GPU_VIRTUAL_ADDRESS colorGpuAddress = primitiveColorBuffer_->GetGPUVirtualAddress() + (static_cast<UINT64>(instanceIndex) * sizeof(AlignedVector4));
+    // 描画番号を256バイト間隔の定数バッファ位置へ換算し、行列と色の対応する範囲を指定します。
+    D3D12_GPU_VIRTUAL_ADDRESS wvpGpuAddress = wvpBuffer->GetGPUVirtualAddress() + (static_cast<UINT64>(instanceIndex) * sizeof(AlignedMatrix4x4));
+    D3D12_GPU_VIRTUAL_ADDRESS colorGpuAddress = colorBuffer->GetGPUVirtualAddress() + (static_cast<UINT64>(instanceIndex) * sizeof(AlignedVector4));
 
     commandList->SetGraphicsRootConstantBufferView(0, wvpGpuAddress);
     commandList->SetGraphicsRootConstantBufferView(1, colorGpuAddress);
+    return true;
+}
+}
+
+void PrimitiveDrawer::DrawWireCube(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& worldMatrix, const engine::Vector4& color, int instanceIndex) {
+    // インスタンスごとの行列・色を定数バッファへ書き、枠線用の24インデックスを描く。
+    if (!BindWireDrawConstants(commandList, worldMatrix, color, instanceIndex,
+        primitiveWvpData_, primitiveColorData_, primitiveWvpBuffer_.Get(), primitiveColorBuffer_.Get())) {
+        return;
+    }
 
     commandList->DrawIndexedInstanced(24, 1, 0, 0, 0);
     engine::RenderStats::GetInstance()->RecordIndexedDraw(24);
 }
 
 void PrimitiveDrawer::DrawWireSphere(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& worldMatrix, const engine::Vector4& color, int instanceIndex) {
-    engine::Math math;
-    const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-    if (!camera)
+    if (!BindWireDrawConstants(commandList, worldMatrix, color, instanceIndex,
+        primitiveWvpData_, primitiveColorData_, primitiveWvpBuffer_.Get(), primitiveColorBuffer_.Get())) {
         return;
-
-    primitiveWvpData_[instanceIndex].matrix = math.Multiply(worldMatrix, math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix()));
-
-    engine::Vector4 opaqueColor = color;
-    opaqueColor.w = 1.0f;
-    primitiveColorData_[instanceIndex].vector = opaqueColor;
-
-    D3D12_GPU_VIRTUAL_ADDRESS wvpGpuAddress = primitiveWvpBuffer_->GetGPUVirtualAddress() + (static_cast<UINT64>(instanceIndex) * sizeof(AlignedMatrix4x4));
-    D3D12_GPU_VIRTUAL_ADDRESS colorGpuAddress = primitiveColorBuffer_->GetGPUVirtualAddress() + (static_cast<UINT64>(instanceIndex) * sizeof(AlignedVector4));
-
-    commandList->SetGraphicsRootConstantBufferView(0, wvpGpuAddress);
-    commandList->SetGraphicsRootConstantBufferView(1, colorGpuAddress);
+    }
 
     // 球体専用のバッファをセットして描画
     commandList->IASetVertexBuffers(0, 1, &sphereVertexBufferView_);
@@ -256,22 +262,10 @@ void PrimitiveDrawer::DrawWireSphere(ID3D12GraphicsCommandList* commandList, con
 
 
 void PrimitiveDrawer::DrawWireCylinder(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& worldMatrix, const engine::Vector4& color, int instanceIndex) {
-    engine::Math math;
-    const Camera* camera = CameraManager::GetInstance()->GetMainCamera();
-    if (!camera)
+    if (!BindWireDrawConstants(commandList, worldMatrix, color, instanceIndex,
+        primitiveWvpData_, primitiveColorData_, primitiveWvpBuffer_.Get(), primitiveColorBuffer_.Get())) {
         return;
-
-    // 定数バッファの更新（WVP行列と色）
-    primitiveWvpData_[instanceIndex].matrix = math.Multiply(worldMatrix, math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix()));
-    engine::Vector4 opaqueColor = color;
-    opaqueColor.w = 1.0f;
-    primitiveColorData_[instanceIndex].vector = opaqueColor;
-
-    D3D12_GPU_VIRTUAL_ADDRESS wvpGpuAddress = primitiveWvpBuffer_->GetGPUVirtualAddress() + (static_cast<UINT64>(instanceIndex) * sizeof(AlignedMatrix4x4));
-    D3D12_GPU_VIRTUAL_ADDRESS colorGpuAddress = primitiveColorBuffer_->GetGPUVirtualAddress() + (static_cast<UINT64>(instanceIndex) * sizeof(AlignedVector4));
-
-    commandList->SetGraphicsRootConstantBufferView(0, wvpGpuAddress);
-    commandList->SetGraphicsRootConstantBufferView(1, colorGpuAddress);
+    }
 
     // 円柱専用のバッファをセットして描画
     commandList->IASetVertexBuffers(0, 1, &cylinderVertexBufferView_);

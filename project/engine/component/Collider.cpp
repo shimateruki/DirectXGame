@@ -5,6 +5,8 @@
 #include <limits>
 #include <map>
 
+namespace engine {
+
 namespace {
 // XZ断面の分離軸。輪郭と相手の断面の両方の辺を調べ、角の空白も除外する。
 bool OverlapOnAxes(const std::vector<engine::Vector3>& a, const std::vector<engine::Vector3>& b,
@@ -153,6 +155,7 @@ void Collider::UpdateWorldHullCache() const {
     for (auto& face : worldHull_) {
         for (auto& point : face)
             point = engine::Math::Transform(point, world);
+        // 反転した行列では頂点の巡回順も逆になるため、面の外向き法線を維持するよう入れ替える。
         if (mirrored)
             std::swap(face[1], face[2]);
         const auto normal = ConvexCollision::Normal(face);
@@ -204,6 +207,7 @@ bool Collider::RaycastModelVolume(const engine::Vector3& start, const engine::Ve
 CollisionInfo Collider::CheckModelVolume(const Collider* other) const {
     // 戻す法線は通常のCheckCollisionと同様、このColliderを押し出す方向。
     CollisionInfo result;
+    // 外接箱が交差しなければ、面と辺を使う凸包の判定を省く。
     if (!CheckAabbCollision(GetAabb(),other->GetAabb()).isColliding)
         return result;
     UpdateWorldHullCache();
@@ -400,6 +404,7 @@ Aabb Collider::GetAabb() const {
         obb.center + axisX + axisY + axisZ
     };
 
+    // 傾いた箱は8頂点の各ワールド軸の最小・最大から外接箱を作る。
     engine::Vector3 minPos = corners[0];
     engine::Vector3 maxPos = corners[0];
 
@@ -447,6 +452,7 @@ bool Collider::ContainsFootprintPoint(const engine::Vector3& worldPoint) const {
         const engine::Vector3& b = vertices[(i + 1) % vertices.size()];
         const float cross = (b.x - a.x) * (worldPoint.z - a.z) -
                             (b.z - a.z) * (worldPoint.x - a.x);
+        // 辺上に十分近い点は符号の判定から外し、境界として内側扱いにする。
         if (std::abs(cross) < 0.0001f)
             continue;
         const int sign = cross > 0.0f ? 1 : -1;
@@ -471,6 +477,7 @@ bool Collider::SampleModelSurface(const engine::Vector3& worldPoint, float& outH
         const engine::Vector3 a = engine::Math::Transform(triangle.a, world);
         const engine::Vector3 b = engine::Math::Transform(triangle.b, world);
         const engine::Vector3 c = engine::Math::Transform(triangle.c, world);
+        // XZに射影した三角形の面積に比例する分母。ほぼ線になる面は高さを安定して補間できないため除く。
         const float denominator = (b.z - c.z) * (a.x - c.x) + (c.x - b.x) * (a.z - c.z);
         if (std::abs(denominator) < 0.000001f)
             continue;
@@ -478,9 +485,11 @@ bool Collider::SampleModelSurface(const engine::Vector3& worldPoint, float& outH
                          (c.x - b.x) * (worldPoint.z - c.z)) / denominator;
         const float v = ((c.z - a.z) * (worldPoint.x - c.x) +
                          (a.x - c.x) * (worldPoint.z - c.z)) / denominator;
+        // 三頂点に対する重みの合計を1にする。どれかの重みが負ならその点は三角形の外。
         const float w = 1.0f - u - v;
         if (u < -0.0001f || v < -0.0001f || w < -0.0001f)
             continue;
+        // XZ上で求めた三頂点の割合をワールドYへ掛け、三角形内部の表面高度を得る。
         const float height = u * a.y + v * b.y + w * c.y;
 
         if (!found || height > bestHeight) {
@@ -512,6 +521,7 @@ bool Collider::RaycastModelSurface(const engine::Vector3& start, const engine::V
         const engine::Vector3 edge1 = b - a;
         const engine::Vector3 edge2 = c - a;
         const engine::Vector3 p = CrossSurface(direction, edge2);
+        // 値が0に近い場合はレイが面と平行に近く、交点を求める際の除算が不安定なので調べない。
         const float determinant = DotSurface(edge1, p);
         if (std::abs(determinant) < 0.000001f)
             continue;
@@ -589,6 +599,7 @@ bool Collider::OverlapsFootprint(const Collider* other, engine::Vector3* normal,
             }
 
             const float projectedCenter = center.x * axis.x + center.z * axis.z;
+            // 円の射影は中心の射影から半径だけ両側へ広がる。どの軸でも正の重なりが必要。
             const float overlap = (std::min)(maximum, projectedCenter + radius) -
                                   (std::max)(minimum, projectedCenter - radius);
             if (overlap <= 0.0f)
@@ -613,10 +624,12 @@ bool Collider::OverlapsFootprint(const Collider* other, engine::Vector3* normal,
                         { box.max.x, 0.0f, box.max.z }, { box.min.x, 0.0f, box.max.z } };
         }
 
+        // 箱はXZの断面を用意し、床と箱の両方の辺を分離軸の候補にする。
         if (!OverlapOnAxes(polygon, section, minimumDepth, outward))
             return false;
     }
 
+    // 呼び出し側が必要とする場合に、輪郭の外向き法線と XZ 平面上の押し出し距離を返す。
     if (normal)
         *normal = outward;
     if (depth)
@@ -723,6 +736,7 @@ bool Collider::SampleTerrain(const Collider* terrain, const engine::Vector3& wor
     const float scaleX = std::max(0.0001f, std::abs(terrainScale.x));
     const float scaleY = std::max(0.0001f, std::abs(terrainScale.y));
     const float scaleZ = std::max(0.0001f, std::abs(terrainScale.z));
+    // 原点は地形の中央なので、ローカル座標を格子の0～1に直すとき半分ずらす。
     const float localX = (worldPosition.x - terrainPos.x) / scaleX;
     const float localZ = (worldPosition.z - terrainPos.z) / scaleZ;
     const float u = localX / std::max(0.0001f, data.sizeX) + 0.5f;
@@ -730,6 +744,7 @@ bool Collider::SampleTerrain(const Collider* terrain, const engine::Vector3& wor
     if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f)
         return false;
 
+    // 解像度はセルの数。端点を含む頂点格子で周囲の 4 点を選び、セル内の比率を求める。
     const float fx = u * static_cast<float>(data.resolution);
     const float fz = v * static_cast<float>(data.resolution);
     const int x0 = std::clamp(static_cast<int>(std::floor(fx)), 0, data.resolution);
@@ -747,11 +762,13 @@ bool Collider::SampleTerrain(const Collider* terrain, const engine::Vector3& wor
     const float h10 = heightAt(x1, z0);
     const float h01 = heightAt(x0, z1);
     const float h11 = heightAt(x1, z1);
+    // X 方向の補間を 2 本計算してから Z 方向で補間し、地形の Y スケールと位置を戻す。
     const float hx0 = h00 + (h10 - h00) * tx;
     const float hx1 = h01 + (h11 - h01) * tx;
     const float localHeight = hx0 + (hx1 - hx0) * tz;
     outHeight = terrainPos.y + localHeight * scaleY;
 
+    // 隣接頂点の高さ差をワールド距離で割り、横方向の勾配から上向き法線を近似する。
     const int xm = std::clamp(x0 - 1, 0, data.resolution);
     const int xp = std::clamp(x0 + 1, 0, data.resolution);
     const int zm = std::clamp(z0 - 1, 0, data.resolution);
@@ -785,6 +802,7 @@ CollisionInfo Collider::CheckSphereTerrainCollision(const engine::Vector3& spher
     const float bottom = spherePos.y - radius;
     const float top = spherePos.y + radius;
 
+    // 球が高さを跨ぐ場合に加え、球の上端が面から半径の1/4以内まで下にある場合も許容する。
     if (bottom <= terrainHeight && top >= terrainHeight - radius * 0.25f) {
         collision.isColliding = true;
         collision.normal = normal;
@@ -930,6 +948,7 @@ CollisionInfo Collider::CheckCollision(const Collider* other) const {
         collision.normal = collision.normal * -1.0f;
     }
 
+    // 箱同士などの判定で接触していても、実際の輪郭から外れた接触はここで除く。
     if (collision.isColliding && (myType == ColliderType::Aabb || myType == ColliderType::Obb) &&
         config_.footprint.size() >= 3) {
         engine::Vector3 horizontalNormal;
@@ -945,6 +964,7 @@ CollisionInfo Collider::CheckCollision(const Collider* other) const {
         }
     }
 
+    // 相手にも輪郭があれば調べ、法線をこの Collider の押し出し方向へ揃える。
     if (collision.isColliding && (otherType == ColliderType::Aabb || otherType == ColliderType::Obb) &&
         other->config_.footprint.size() >= 3) {
         engine::Vector3 horizontalNormal;
@@ -988,3 +1008,5 @@ CollisionInfo Collider::CheckCollision(const Collider* other) const {
 
     return collision;
 }
+
+} // namespace engine

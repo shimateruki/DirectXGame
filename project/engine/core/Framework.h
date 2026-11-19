@@ -7,6 +7,8 @@
 #include <memory>
 #include "engine/graphics/core/RenderCommonResources.h"
 
+namespace engine {
+
 // 担当：起動・メインループ・終了と、基盤サービスの寿命を管理する。
 // 関連：Game（更新・描画を実装）、WinApp、DirectXCommon、RenderCommonResources
 // 主な入口：Initialize / Run / Finalize
@@ -57,3 +59,5 @@ private:
     DirectXCommon* dxCommon_ = nullptr; // 共有DirectX基盤への参照。
     AudioPlayer* audioPlayer_ = nullptr; // 共有音声管理への参照。
 };
+
+} // namespace engine

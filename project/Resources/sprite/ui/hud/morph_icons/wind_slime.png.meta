@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "9920cdf786c42015c962b753748a52e6",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/hud/morph_icons/wind_slime.png",
+  "version": 1
+}

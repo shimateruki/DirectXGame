@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7c315aac3f06a2bd8d207621a2431e23",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/cards/condition.png",
+  "version": 1
+}

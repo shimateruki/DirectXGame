@@ -31,6 +31,7 @@ struct MenuButtonBinding {
             if (button && input.IsGamepadButtonPressed(button)) return true;
         const auto stick = input.GetLeftStick();
         // メニューの方向判定と同じ、主軸優先の閾値を使う。
+        // 横と縦の倒し量が同じときは横を優先し、斜め入力で選択を二方向へ動かさない。
         switch (stickDirection) {
         case XINPUT_GAMEPAD_DPAD_LEFT: return stick.x <= -.45f && std::abs(stick.x) >= std::abs(stick.y);
         case XINPUT_GAMEPAD_DPAD_RIGHT: return stick.x >= .45f && std::abs(stick.x) >= std::abs(stick.y);

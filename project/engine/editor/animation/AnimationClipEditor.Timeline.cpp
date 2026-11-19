@@ -13,6 +13,7 @@ void AnimationClipEditor::SeekTimeline(float time) {
     currentTime_ = std::clamp(time, 0.0f, (std::max)(0.01f, duration_));
     play_ = false;
     bodyEditOverrideActive_ = false;
+    // 入力中の一時姿勢を外してから秒指定の姿勢を適用し、その結果をInspectorへ読み戻す。
     ClearAllEditOverrides();
     ApplyTimelinePose();
     SyncBodyUiFromTimeline();
@@ -22,6 +23,7 @@ void AnimationClipEditor::SeekTimeline(float time) {
 
 void AnimationClipEditor::DrawTimelineControls() {
 #ifdef USE_IMGUI
+    // 終端で開始を選んだときだけ先頭へ戻す。途中から再開する場合も手動の姿勢上書きを解除する。
     if (ImGui::Button(play_ ? "停止" : "再生")) {
         if (!play_ && currentTime_ >= duration_)
             SeekTimeline(0.0f);
@@ -34,6 +36,7 @@ void AnimationClipEditor::DrawTimelineControls() {
     if (ImGui::Button("先頭"))
         SeekTimeline(0.0f);
     ImGui::SameLine();
+    // 1コマの移動量は設定FPSの逆数秒。クリップ自体の時間は秒のまま保持する。
     if (ImGui::Button("-1F"))
         SeekTimeline(currentTime_ - 1.0f / timelineFps_);
     ImGui::SameLine();
@@ -79,6 +82,7 @@ void AnimationClipEditor::DrawTimelineControls() {
     ImGui::SetNextItemWidth(120);
     ImGui::SliderFloat("拡大", &timelineZoom_, 30.0f, 1200.0f, "%.0f px/s");
     ImGui::SameLine();
+    // ラベル分を引いた画面幅へクリップ全体を収めるよう、1 秒あたりの表示幅を再計算する。
     if (ImGui::Button("全体表示"))
         timelineZoom_ = std::clamp((ImGui::GetWindowWidth() - 220.0f) / (std::max)(0.05f, duration_), 1.0f, 1200.0f);
 #endif
@@ -93,6 +97,7 @@ void AnimationClipEditor::DrawTimelinePanel() {
 
     ImGui::TextUnformatted("時間軸で選択 → 右側で姿勢を編集 → キー登録 → 再生・保存");
     DrawTimelineControls();
+    // 身体・関節の編集対象がそろうまで、キー登録だけを無効にする。
     ImGui::BeginDisabled(!previewModel_ || (!editBodyTransform_ && selectedJointIndex_ < 0));
 
     if (ImGui::Button("現在の姿勢をキー登録")) {
@@ -158,6 +163,7 @@ void AnimationClipEditor::DrawTimelinePanel() {
     // 時刻から画面座標への変換と吸着をここで統一し、目盛りとキー操作のずれを防ぐ。
     const float timeOrigin = origin.x + kLabelWidth;
     auto screenX = [&](float time) { return timeOrigin + time * timelineZoom_; };
+    // 秒数にFPSを掛けたコマ番号を丸め、再び秒に戻す。吸着を切った場合もクリップ内へ制限する。
     auto quantize = [&](float time) {
         if (timelineSnap_)
             time = std::round(time * timelineFps_) / timelineFps_;
@@ -190,6 +196,7 @@ void AnimationClipEditor::DrawTimelinePanel() {
     }
 
     // 可視範囲だけ目盛りを描画し、長いクリップでも描画負荷を一定にする。
+    // 1目盛りを約75ピクセル以上にする最小の2のべきの秒間隔を選び、ズームに合わせて増減させる。
     const float step = std::pow(2.0f, std::ceil(std::log2(75.0f / (std::max)(1.0f,timelineZoom_))));
     const float visibleStart = (std::max)(0.0f, (ImGui::GetScrollX()-kLabelWidth) / timelineZoom_);
     const float visibleEnd = (std::min)(duration_, (ImGui::GetScrollX()+ImGui::GetWindowWidth()) / timelineZoom_);
@@ -212,6 +219,7 @@ void AnimationClipEditor::DrawTimelinePanel() {
         draw->AddQuadFilled({p.x,p.y-6},{p.x+6,p.y},{p.x,p.y+6},{p.x-6,p.y},selected ? IM_COL32(255,255,255,255) : color);
         if (isNearKey)
             ImGui::SetTooltip("%.3f 秒 / %d F\nドラッグして時間を移動",time,static_cast<int>(std::round(time*timelineFps_)));
+        // 複数の項目がクリック範囲に重なっても、このフレームに一つだけ選択する。
         if (clicked && isNearKey && !hit) {
             hit = true;
 
@@ -254,6 +262,7 @@ void AnimationClipEditor::DrawTimelinePanel() {
             quantize(timelineDragTime_ + (mouse.x-timelineDragMouseX_)/timelineZoom_);
         draw->AddLine({screenX(target),origin.y},{screenX(target),origin.y+height},IM_COL32(255,218,120,255),2);
 
+        // -2はドラッグ取消後の解放待ち。押したままシーク操作へ切り替わるのを防ぐ。
         if (ImGui::IsKeyPressed(ImGuiKey_Escape,false)) {
             timelineDragKind_ = -2;
             timelineDragIndex_ = -1;
@@ -263,6 +272,7 @@ void AnimationClipEditor::DrawTimelinePanel() {
             const int index=timelineDragIndex_, kind=timelineDragKind_;
             bool collision=false;
 
+            // 身体は全体、ボーンは同じ関節内のキーとの重複を避ける。イベントは同時刻へ置ける。
             if (kind == 0 && index < static_cast<int>(bodyKeys_.size())) {
                 for (int i=0;i<static_cast<int>(bodyKeys_.size());++i)
                     if (i!=index && std::abs(bodyKeys_[i].time-target)<0.001f)
@@ -289,9 +299,11 @@ void AnimationClipEditor::DrawTimelinePanel() {
                 events_[index].time=target;
             }
 
+            // 移動に失敗したキーは元の時刻、確定したキーは新しい時刻でプレビューし直す。
             SeekTimeline(collision ? timelineDragTime_ : target);
             timelineDragKind_ = timelineDragIndex_ = -1;
         }
+    // キーを掴んでいない時間領域のドラッグは、データを動かさずプレビュー時計だけを移動する。
     } else if (timelineDragKind_ == -1 && active && ImGui::IsMouseDown(ImGuiMouseButton_Left) && mouse.x >= timeOrigin && !hit) {
         SeekTimeline(quantize((mouse.x-timeOrigin)/timelineZoom_));
     }

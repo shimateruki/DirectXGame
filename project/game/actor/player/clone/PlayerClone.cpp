@@ -12,6 +12,7 @@ void PlayerClone::Initialize(engine::Object3DCommon* common, const engine::Vecto
     // プレイヤーと同じモデルを設定
     SetModel("Characters/slime");
 
+    // 生成元から渡された位置と初速で、出現直後の軌道を決めます。
     SetTranslate(position);
     SetVelocity(velocity);
 
@@ -34,6 +35,7 @@ void PlayerClone::Initialize(engine::Object3DCommon* common, const engine::Vecto
 }
 
 void PlayerClone::Update(float deltaTime) {
+    // 寿命を使い切った分身は、この関数での移動と物理更新を止めます。
     if (lifetimeTimer_ <= 0.0f)
         return;
 

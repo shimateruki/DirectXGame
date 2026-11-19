@@ -9,6 +9,7 @@ using namespace EnemyFalseKingSlimeImplementation;
 // Editorでは配置値を復元し、Play中の待機・登場だけ通常AIより先に処理します。
 bool EnemyFalseKingSlime::UpdateEncounterState(float deltaTime) {
     // この関数が待機・登場を処理した場合は通常 AI の更新を抑止します。
+    // 入口イベント管理の指定がない個体は、待機や登場を挟まず通常AIに渡します。
     if (!IsEncounterControlled()) {
         encounterState_ = EncounterState::Normal;
         initializedForPlay_ = false;
@@ -17,15 +18,18 @@ bool EnemyFalseKingSlime::UpdateEncounterState(float deltaTime) {
 
     SceneManager* sceneManager = SceneManager::GetInstance();
 
+    // 編集時は毎回配置姿勢へ戻し、プレイ中の状態を編集画面に持ち込みません。
     if (!sceneManager || !sceneManager->IsPlaying()) {
         ResetForEditor();
         return true;
     }
 
+    // プレイ開始時だけ配置値を退避して、待機か登場かを選びます。
     if (!initializedForPlay_) {
         InitializeEncounterState();
     }
 
+    // 入口イベントを待つ間は移動を止め、攻撃の表示を残しません。
     if (encounterState_ == EncounterState::Dormant) {
         SetVelocity({0.0f, 0.0f, 0.0f});
         ClearTransientVisuals();
@@ -33,6 +37,7 @@ bool EnemyFalseKingSlime::UpdateEncounterState(float deltaTime) {
         return true;
     }
 
+    // 登場を済ませた個体の毎フレーム処理は通常AIに任せます。
     if (encounterState_ != EncounterState::Appearing) {
         return false;
     }
@@ -55,6 +60,7 @@ bool EnemyFalseKingSlime::UpdateEncounterState(float deltaTime) {
     SetEmissive(1.0f + std::sin(std::min(progress / 0.72f, 1.0f) * kPi) * 2.2f);
     SyncCollisionBounds();
 
+    // 専用ポータルの登場では配置時の材質を使い、Timeline再生中は戦闘開始を待ちます。
     if (introPortalEnabled_) { SetColor(authoredColor_); SetEmissive(authoredEmissive_); }
     if (progress >= 1.0f && !introPresentationActive_) {
         FinishAppearance();
@@ -78,10 +84,12 @@ void EnemyFalseKingSlime::CaptureAuthoredState(bool force) {
     authoredCollisionMask_ = GetCollisionMask();
     authoredMaterialType_ = GetMaterialType();
     authoredEmissive_ = GetEmissive();
+    // 退避した衝突設定がゼロの場合は、戦闘開始後に使う敵属性と判定対象を補います。
     if (authoredCollisionAttribute_ == 0)
         authoredCollisionAttribute_ = CollisionCategories::Get("enemy");
     if (authoredCollisionMask_ == 0)
         authoredCollisionMask_ = CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet");
+    // 描画の伸縮とは別に、当たり判定用の基準スケールを記録します。
     baseScale_ = authoredScale_;
     hasBaseScale_ = true;
     authoredStateCaptured_ = true;
@@ -95,6 +103,7 @@ void EnemyFalseKingSlime::InitializeEncounterState() {
     ResetCrownFinale();
     initializedForPlay_ = true;
     CaptureAuthoredState(true);
+    // 形態・技の巡回順・クールダウンは第一形態の初期状態から始めます。
     battlePhase_ = 1;
     pendingBattlePhase_ = 1;
     attackCyclePhase_ = 0;
@@ -107,6 +116,7 @@ void EnemyFalseKingSlime::InitializeEncounterState() {
     attackCooldown_ = 1.05f;
     const bool startActive = GetParameters().has_value() && GetParameters()->startActive;
 
+    // 配置で開始済みか、起動要求を受けていれば登場に進み、それ以外は入口を待ちます。
     if (startActive || activationRequested_) {
         BeginAppearance();
     } else {
@@ -124,6 +134,7 @@ void EnemyFalseKingSlime::ResetForEditor() {
     ClearBossAura();
     ResetCrownFinale();
 
+    // 実際にプレイを開始していた場合だけ、プレイ前に退避した姿勢と材質を戻します。
     if (initializedForPlay_) {
         SetTranslate(authoredPosition_);
         SetScale(authoredScale_);
@@ -133,6 +144,7 @@ void EnemyFalseKingSlime::ResetForEditor() {
         SetEmissive(authoredEmissive_);
     }
 
+    // 復元後の値を配置基準として取得し直し、次回のプレイで入口から始められるようにします。
     CaptureAuthoredState(true);
     initializedForPlay_ = false;
     activationRequested_ = false;
@@ -150,6 +162,7 @@ void EnemyFalseKingSlime::ResetForEditor() {
     SetVelocity({0.0f, 0.0f, 0.0f});
     SetCollisionAttribute(authoredCollisionAttribute_);
     SetCollisionMask(authoredCollisionMask_);
+    // 編集画面で選択できるよう表示を戻し、残っていた予兆を消して当たり判定を同期します。
     SetIsVisible(true);
     ClearTransientVisuals();
     HideAttackTelegraph();
@@ -172,6 +185,7 @@ void EnemyFalseKingSlime::BeginAppearance() {
 }
 
 void EnemyFalseKingSlime::SetIntroPresentationActive(bool active, float duration) {
+    // シーンがTimelineの開始と終了を知らせます。終了時はポータルも閉じ、再生中だけ専用の登場尺を使います。
     introPresentationActive_ = active;
     if (!active) EnableIntroPortal(false);
     if (active) {
@@ -186,6 +200,7 @@ void EnemyFalseKingSlime::ApplyDormantState() {
     ResetLocomotion();
     encounterState_ = EncounterState::Dormant;
     encounterTimer_ = 0.0f;
+    // 再登場の基準がずれないよう、配置位置・形・材質へ戻します。
     SetTranslate(authoredPosition_);
     SetScale(authoredScale_);
     SetRotation(authoredRotation_);
@@ -193,6 +208,7 @@ void EnemyFalseKingSlime::ApplyDormantState() {
     SetMaterialType(authoredMaterialType_);
     SetEmissive(authoredEmissive_);
     SetVelocity({0.0f, 0.0f, 0.0f});
+    // 開始前はボスに触れないよう衝突を無効にし、見た目と攻撃予兆も隠します。
     SetCollisionAttribute(0);
     SetCollisionMask(0);
     SetIsVisible(false);
@@ -206,6 +222,7 @@ void EnemyFalseKingSlime::FinishAppearance() {
     ResetLocomotion();
     encounterState_ = EncounterState::Active;
     encounterTimer_ = 0.0f;
+    // Timelineで変わった姿勢を戦闘開始位置の設定に戻し、退避した衝突属性を復元します。
     SetTranslate(authoredPosition_);
     SetScale(authoredScale_);
     SetRotation(authoredRotation_);
@@ -216,13 +233,14 @@ void EnemyFalseKingSlime::FinishAppearance() {
     SetCollisionMask(authoredCollisionMask_);
     SetVelocity({0.0f, 0.0f, 0.0f});
     SetIsVisible(true);
+    // 登場の直後に技が起きないよう待ち時間を置き、復元したスケールで判定を確定します。
     attackCooldown_ = 0.82f;
     SyncCollisionBounds();
 }
 
 void EnemyFalseKingSlime::SyncCollisionBounds() {
     // 描画用の伸縮で接地判定が上下しないよう、OBBは配置時のスケールへ固定します。
-    if (Collider* collider = GetCollider()) {
+    if (engine::Collider* collider = GetCollider()) {
         collider->SetScaleOverride(hasBaseScale_ ? baseScale_ : GetScale());
     }
 
@@ -366,10 +384,12 @@ void EnemyFalseKingSlime::CancelFinalDefeat() {
 
 // 登場表示をまとめて所有し、途中終了とEditor停止でも残さないようにします。
 void EnemyFalseKingSlime::EnableIntroPortal(bool enabled) {
+    // 開始・再開に備えて粒子タイマーと前回再生時刻をリセットします。
     introPortalEnabled_ = enabled;
     bossAuraTimer_ = 0.0f;
     introPreviousTime_ = 0.0f;
     if (enabled) ClearBossAura();
+    // 終了時はボスにかかったクリップを外し、ゲートと着地輪を破棄します。
     if (!enabled) {
         ClearPortalClip();
         introPortal_.reset();
@@ -378,6 +398,7 @@ void EnemyFalseKingSlime::EnableIntroPortal(bool enabled) {
 }
 
 void EnemyFalseKingSlime::ConfigureIntroTiming(float start, float landing, float pose, float closing, float auraEnd) {
+    // 時刻はTimeline開始からの秒数です。着地・ポーズ・閉鎖の順序を保ち、オーラの引き継ぎもポーズ以降にします。
     introStartTime_ = start;
     introLandTime_ = (std::max)(start + .7f, landing);
     introPoseTime_ = (std::max)(introLandTime_ + .1f, pose);
@@ -387,6 +408,7 @@ void EnemyFalseKingSlime::ConfigureIntroTiming(float start, float landing, float
 
 // timeは登場Timelineの再生秒、dtは経過秒。有効かつ開始時刻以降のポータル・着地演出を更新します。
 void EnemyFalseKingSlime::UpdateIntroPortal(float time, float frameDeltaTime) {
+    // ゲートが無効か登場時刻より前なら、描画物の生成と再生を省きます。
     if (!introPortalEnabled_ || time < introStartTime_) return;
     const auto& style = BossIntroSettings::Get();
     // 最初の全身寸法を保持し、本体の伸縮でゲートまで揺れないようにします。
@@ -395,6 +417,7 @@ void EnemyFalseKingSlime::UpdateIntroPortal(float time, float frameDeltaTime) {
         introWidth_ = (std::max)(2.0f, bounds.max.x - bounds.min.x);
         introHeight_ = (std::max)(2.0f, bounds.max.y - bounds.min.y);
     }
+    // 配置位置と初回に記録した全身寸法を起点に、ゲートと着地輪を必要になった時だけ生成します。
     const float width = introWidth_, height = introHeight_;
     const engine::Vector3 center = authoredPosition_ + engine::Vector3{0, height * .72f, -4};
     auto ensureVisual = [this](std::unique_ptr<engine::Object3D>& visual) {
@@ -413,6 +436,7 @@ void EnemyFalseKingSlime::UpdateIntroPortal(float time, float frameDeltaTime) {
     ensureVisual(introPortal_);
     ensureVisual(introShockwave_);
 
+    // 開口で横幅を広げ、閉鎖は材質にも進行率を渡して見た目と同期させます。
     const float opening = SmoothStep01((time - introStartTime_) / .65f);
     const float closing = SmoothStep01((time - introCloseTime_) / style.closeDuration);
     introPortal_->SetIsVisible(closing < 1.0f && opening > .001f);
@@ -425,6 +449,7 @@ void EnemyFalseKingSlime::UpdateIntroPortal(float time, float frameDeltaTime) {
         v->effectScaleX = v->effectScaleY = 1; v->effectScaleZ = .12f;
         v->uvOffsetX = opening; v->uvOffsetY = 1; v->flowSpeedX = closing; v->billboardScale = 1;
     }
+    // 着地直後までボス本体をゲートの面で切り取り、通り抜けた後はクリップを解除します。
     if (time < introLandTime_ + .1f) {
         engine::Object3D::PortalClipSettings clip;
         clip.enabled = true; clip.center = center; clip.normal = {0, 0, -1};
@@ -455,6 +480,7 @@ void EnemyFalseKingSlime::UpdateIntroPortal(float time, float frameDeltaTime) {
     if (auto* v = introShockwave_->GetMeshRenderer()->GetWaterParamData()) {
         v->effectType = -4; v->billboardScale = 1; v->effectScaleX = v->effectScaleY = v->effectScaleZ = 1;
     }
+    // 発生ごとに登録済みの粒子設定をコピーし、位置・速度・大きさだけを演出に合わせます。
     auto* particles = GpuParticleManager::GetInstance();
     auto emit = [&](const char* name, const engine::Vector3& position, const engine::Vector3& velocity,
                     float size, int count, const engine::Vector3& area) {
@@ -477,6 +503,7 @@ void EnemyFalseKingSlime::UpdateIntroPortal(float time, float frameDeltaTime) {
                  direction * 5.0f + engine::Vector3{0, 1.5f, 0}, style.impactScale, 4, {.1f,.1f,.1f});
         }
     }
+    // 着地とは別に、ポーズの時刻をまたいだときにボスの体から上向きの粒子を出します。
     if (introPreviousTime_ < introPoseTime_ && time >= introPoseTime_)
         emit("enemy/false_king/false_king_intro_gold", GetWorldPosition() + engine::Vector3{0,height*.52f,0},
              {0,4,0}, 1.35f * style.auraScale, 32, {width*.35f,height*.2f,.4f});
@@ -490,6 +517,7 @@ void EnemyFalseKingSlime::UpdateIntroPortal(float time, float frameDeltaTime) {
                  1-closing*.65f, 2, {.08f,.08f,.08f});
         }
     }
+    // 次の更新で時刻をまたいだか判断できるようにし、最後に二つの描画物へ変形を反映します。
     introPreviousTime_ = time;
     for (auto* visual : {introPortal_.get(), introShockwave_.get()}) {
         visual->Update(frameDeltaTime);
@@ -505,6 +533,7 @@ void EnemyFalseKingSlime::ClearBossAura() {
 }
 
 void EnemyFalseKingSlime::UpdateBossAura(float frameDeltaTime) {
+    // 編集時や撃破処理中は戦闘オーラを破棄し、描画・粒子の更新を止めます。
     const auto* manager = SceneManager::GetInstance();
     if (!manager || !manager->IsPlaying() || IsDead() || !GetIsVisible() ||
         finalDefeatHeld_ || ShouldHandleDefeatEffect()) {
@@ -517,6 +546,7 @@ void EnemyFalseKingSlime::UpdateBossAura(float frameDeltaTime) {
         ClearBossAura();
         return;
     }
+    // 待機・攻撃・形態移行・幕間で目標の強さを選び、急に明るさを切り替えないよう補間します。
     const auto& style = BossIntroSettings::Get();
     const bool sealAttacking = battlePhase_ == 2 &&
         (sealState_ == SealState::Chant || sealState_ == SealState::Attack);
@@ -525,6 +555,7 @@ void EnemyFalseKingSlime::UpdateBossAura(float frameDeltaTime) {
         attackState_ == AttackState::PhaseShift ? (std::max)(1.0f, style.attackAuraStrength) :
         attacking ? style.attackAuraStrength : style.idleAuraStrength;
     bossAuraStrength_ += (target - bossAuraStrength_) * (1.0f - std::exp(-5.0f * frameDeltaTime));
+    // 幕間に入ってオーラが十分薄くなったら描画物を解放します。
     if (crownInterlude_ && bossAuraStrength_ < .002f) {
         ClearBossAura();
         return;
@@ -532,8 +563,9 @@ void EnemyFalseKingSlime::UpdateBossAura(float frameDeltaTime) {
     UpdateAuraVisual(bossAuraStrength_, 0.0f, frameDeltaTime);
 }
 
-void EnemyFalseKingSlime::AlignBossAura(Camera* camera) {
+void EnemyFalseKingSlime::AlignBossAura(engine::Camera* camera) {
     if (!bossAura_ || !camera) return;
+    // カメラ方向を水平面に投影し、縦に立てたまま板を視点へ向けます。
     const auto position = GetWorldPosition();
     auto forward = camera->GetEye() - position;
     forward.y = 0;
@@ -548,11 +580,13 @@ void EnemyFalseKingSlime::AlignBossAura(Camera* camera) {
 
 void EnemyFalseKingSlime::UpdateAuraVisual(float strength, float poseBurst, float frameDeltaTime) {
     const auto& style = BossIntroSettings::Get();
+    // 登場演出を経ずに戦闘に来た場合も、先にモデルからオーラの基準寸法を取得します。
     if (introWidth_ <= 0) {
         const auto bounds = GetModelWorldAabb();
         introWidth_ = (std::max)(2.0f,bounds.max.x-bounds.min.x);
         introHeight_ = (std::max)(2.0f,bounds.max.y-bounds.min.y);
     }
+    // オーラの板は初回だけ作り、当たり判定を持たない専用材質として扱います。
     if (!bossAura_) {
         bossAura_ = std::make_unique<engine::Object3D>();
         bossAura_->Initialize(GetObjectCommon());
@@ -567,6 +601,7 @@ void EnemyFalseKingSlime::UpdateAuraVisual(float strength, float poseBurst, floa
         auto* v = bossAura_->GetMeshRenderer()->GetWaterParamData();
         v->effectType=-3;v->billboardScale=1;v->effectScaleX=v->effectScaleY=v->effectScaleZ=1;
     }
+    // 現在の強さとポーズの瞬間的な強調から、不透明度と横幅を調整します。
     bossAuraTime_ += frameDeltaTime;
     const float breath = introPresentationActive_ ? 1.0f : .96f + .04f*std::sin(bossAuraTime_*2);
     bossAura_->SetIsVisible(strength*style.auraScale*style.auraOpacity > .001f);
@@ -574,6 +609,7 @@ void EnemyFalseKingSlime::UpdateAuraVisual(float strength, float poseBurst, floa
                         introHeight_*.72f*style.auraScale,1});
     bossAura_->SetColor({.35f,.13f,.92f,strength*style.auraOpacity*(.85f+.25f*poseBurst)*breath});
     bossAura_->Update(frameDeltaTime);
+    // 板を視点に向けてから粒子の発生を判定し、不可視・停止中・間隔待ちでは粒子を出しません。
     auto* camera=CameraManager::GetInstance()->GetMainCamera();
     AlignBossAura(camera);
     bossAuraTimer_ -= frameDeltaTime;
@@ -587,6 +623,7 @@ void EnemyFalseKingSlime::UpdateAuraVisual(float strength, float poseBurst, floa
     const engine::Vector3 right{forward.z,0,-forward.x};
     auto* particles=GpuParticleManager::GetInstance();
     if (!particles || !particles->IsInitialized()) return;
+    // カメラに対して左右の輪郭に発生位置を置き、各プリセットを現在のオーラの強さに合わせます。
     for (float side:{-1.0f,1.0f}) {
         const auto pos=GetWorldPosition()+right*(side*introWidth_*(.43f+.04f*std::sin(bossAuraTime_*2.6f+side)))+
             engine::Vector3{0,introHeight_*.18f,0}+forward*.12f;

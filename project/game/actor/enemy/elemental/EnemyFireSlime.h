@@ -74,7 +74,7 @@ class EnemyFireSlime : public BaseEnemy, public ISequencePreviewEnemy {
     void StartFireballWindup(const engine::Vector3& direction, float distance);
 
     /// 予備動作の時間を進め、発射段階へ移す。
-    void UpdateFireballWindup(float deltaTime, engine::Vector3& velocity, const engine::Vector3& direction, float distance);
+    void UpdateFireballAttack(float deltaTime, engine::Vector3& velocity, const engine::Vector3& direction, float distance);
 
     // ブレス範囲内の対象へダメージを通知します。
     void DispatchBreathDamage(const engine::Vector3& direction, float distance);

@@ -18,6 +18,7 @@
 #include <game/actor/player/state/PlayerState.h>
 #include <algorithm>
 #include <cmath>
+#include <unordered_set>
 
 namespace {
 constexpr const char* kCheckpointLoweredModel = "Gimmicks/checkpoint_flag";
@@ -57,12 +58,12 @@ class CheckpointRule {
     void Initialize(BaseScene* scene) {
         scene_ = scene;
         activeCheckpoint_ = nullptr;
-        raisingCheckpoint_ = nullptr;
+        rewardedCheckpoints_.clear();
+        pendingFlagRaises_.clear();
         checkpointBaseEmissive_ = 1.0f;
         checkpointPresentationTimer_ = 0.0f;
         checkpointParticleTimer_ = 0.0f;
         checkpointAmbientRingTimer_ = 0.0f;
-        checkpointRaiseDelay_ = 0.0f;
     }
 
     void Activate(Player* player, engine::Object3D* checkpoint);
@@ -72,12 +73,23 @@ class CheckpointRule {
   private:
     BaseScene* scene_ = nullptr;
     engine::Object3D* activeCheckpoint_ = nullptr;
-    engine::Object3D* raisingCheckpoint_ = nullptr;
+    static const std::string& CheckpointKey(const engine::Object3D& checkpoint) {
+        const auto& guid = checkpoint.GetPersistentGuid();
+        return guid.empty() ? checkpoint.GetName() : guid;
+    }
+
+    struct PendingFlagRaise {
+        engine::Object3D* checkpoint;
+        float secondsRemaining;
+    };
+
+    // 旗の永続GUIDを記録し、演出中に再接触しても報酬を重ねない。
+    std::unordered_set<std::string> rewardedCheckpoints_;
+    std::vector<PendingFlagRaise> pendingFlagRaises_;
     float checkpointBaseEmissive_ = 1.0f;
     float checkpointPresentationTimer_ = 0.0f;
     float checkpointParticleTimer_ = 0.0f;
     float checkpointAmbientRingTimer_ = 0.0f;
-    float checkpointRaiseDelay_ = 0.0f;
 };
 
 // チェックポイント、属性効果、ダメージ適用のゲーム規則を管理します。見た目の通知より先に有効性を判定します。
@@ -98,6 +110,7 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
         id = EventManager::kInvalidSubscriptionId;
     }
 
+    // 前シーンの継続効果を捨て、チェックポイント処理の参照を新しいシーンへ付け替えます。
     scene_ = scene;
     editorOnly_ = editorOnly;
     activeStatusEffects_.clear();
@@ -110,12 +123,14 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
         engine::Object3D* whoHit = event.me;           // プレイヤー
         engine::Object3D* objectHit = event.hitObject; // 当たった物
 
+        // 実戦以外の接触や参照のないイベントから、ワープや進行通知を起こさないようにします。
         if (editorOnly_ || !whoHit || !objectHit || whoHit->IsEditorInternal() || objectHit->IsEditorInternal())
             return;
 
         EventType type = objectHit->GetEventType();
 
         switch (type) {
+        // ワープ先は接触物の配置位置ではなく、TargetIDが指す出口から取得します。
         case EventType::Warp: {
             int targetId = objectHit->GetTargetId();
             if (scene_ && targetId != -1) {
@@ -132,6 +147,7 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
             ApplyDamage(whoHit, 10.0f);
             break;
 
+        // 橋の落下はゲーム用シーンだけが扱うため、実体を確認してから開始します。
         case EventType::MovieBridge:
             if (scene_) {
                 if (GamePlayScene* gps = dynamic_cast<GamePlayScene*>(scene_)) {
@@ -146,6 +162,7 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
             }
         } break;
 
+        // ゴールを受け付けるかどうかは、現在のシーンの進行条件に委ねます。
         case EventType::Goal: {
             if (auto* progress = dynamic_cast<IStageProgressScene*>(scene_)) {
                 if (!progress->TryStartGoalFromContact(whoHit, objectHit))
@@ -199,6 +216,7 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
 
     // HP 減算が成立したときだけ、打撃演出・状態異常・ノックバックへ進む。
     eventSubscriptions_[1] = EventManager::GetInstance()->Subscribe([this](const DamageEvent& event) {
+        // 実戦とエディター内部の対象を分け、異なる区画をまたぐ攻撃は無視します。
         if (!event.target || event.target->IsEditorInternal() != editorOnly_ ||
             (event.attacker && event.attacker->IsEditorInternal() != event.target->IsEditorInternal()))
             return;
@@ -226,6 +244,7 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
             finalDamage *= kPinkGuardDamageRate;
         }
 
+        // 減算前のHPを記録し、無敵などで不成立なら演出や状態異常を開始しません。
         const auto& before = event.target->GetParameters();
         const float previousHp = before ? before->hp : 0.0f;
         const bool damageApplied = ApplyDamage(event.target, finalDamage, event.bypassPlayerInvincibility);
@@ -239,12 +258,14 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
             HitEffectDirector::SpawnDamageEventHit(event.target, event.attacker, event.knockbackVelocity, damageType);
         }
 
+        // 敵の被弾反応は、減算処理を通ったうえで実際にHPが下がったときだけ再生します。
         const auto& after = event.target->GetParameters();
         const bool hpDecreased = after && after->hp < previousHp;
         if (auto* enemyTarget = dynamic_cast<BaseEnemy*>(event.target); enemyTarget && hpDecreased) {
             enemyTarget->PlayDamageReaction(event.attacker, event.knockbackVelocity, event.damageAmount);
         }
 
+        // 継続ダメージには攻撃者の攻撃力を倍率として渡し、この一撃の最終ダメージは持ち越さない。
         if (event.statusEffect.IsValid()) {
             ApplyStatusEffect(event.target, event.statusEffect,
                               event.attacker && event.attacker->GetParameters().has_value()
@@ -252,6 +273,7 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
                                   : 1.0f);
         }
 
+        // 感電は専用の反応へ任せ、通常の被弾反応と二重に開始しないようにします。
         if (isElectricPlayerHit) {
             playerTarget->StartElectricShockFeedback(0.78f, 1.0f);
         } else if (playerTarget && !guarded) {
@@ -279,6 +301,7 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
             (std::abs(event.knockbackVelocity.x) > 0.001f || std::abs(event.knockbackVelocity.y) > 0.001f ||
              std::abs(event.knockbackVelocity.z) > 0.001f)) {
             if (Character* character = dynamic_cast<Character*>(event.target)) {
+                // ガード成功では押し出しも弱める。感電時の移動制御は上で始めた専用反応に任せる。
                 const float knockbackRate = guarded ? kPinkGuardKnockbackRate : 1.0f;
                 character->SetVelocity(event.knockbackVelocity * knockbackRate);
             }
@@ -301,6 +324,7 @@ void GameRule::Initialize(BaseScene* scene, bool editorOnly) {
 // チェックポイント演出と継続効果を進め、死亡・消失した対象を解除します。
 // 1フレームの継続ダメージ回数には上限を置きます。
 void GameRule::Update(float deltaTime) {
+    // 未初期化や停止フレームでは、チェックポイントと継続効果の時間を進めない。
     if (!scene_ || deltaTime <= 0.0f) {
         return;
     }
@@ -310,11 +334,13 @@ void GameRule::Update(float deltaTime) {
     for (auto it = activeStatusEffects_.begin(); it != activeStatusEffects_.end();) {
         ActiveStatusEffect& status = *it;
 
+        // 対象が消えていたら効果を破棄し、後続のダメージや描画で参照しない。
         if (!IsStatusTargetAlive(status.target)) {
             it = activeStatusEffects_.erase(it);
             continue;
         }
 
+        // 効果の寿命、ダメージ間隔、粒子間隔は別々のタイマーで進める。
         status.remainingTime -= deltaTime;
         status.tickTimer -= deltaTime;
         status.visualTimer -= deltaTime;
@@ -333,6 +359,7 @@ void GameRule::Update(float deltaTime) {
             ++processedTicks;
         }
 
+        // 時間切れに加え、今回の継続ダメージで倒れた対象の効果もこの更新で取り除く。
         if (status.remainingTime <= 0.0f || !IsStatusTargetAlive(status.target)) {
             it = activeStatusEffects_.erase(it);
         } else {
@@ -352,20 +379,17 @@ void CheckpointRule::Activate(Player* player, engine::Object3D* checkpoint) {
         return;
     }
 
-    const bool firstActivation = checkpoint->GetModelName() == kCheckpointLoweredModel;
+    // 別の旗へ切り替えると復帰地点を更新します。報酬は、未取得の旗を初めて有効化した実プレイヤーだけに与えます。
+    const bool firstActivation = checkpoint->GetModelName() == kCheckpointLoweredModel &&
+        rewardedCheckpoints_.insert(CheckpointKey(*checkpoint)).second;
     player->ActivateCheckpoint(checkpoint->GetWorldPosition() + engine::Vector3{0.0f, 0.35f, 0.0f}, checkpoint->GetName());
 
     if (firstActivation && !player->IsEditorInternal()) {
-        // 取得済みの旗への再接触と死亡後の復元では、残機を重ねて付与しません。
-        GameDataManager* gameData = GameDataManager::GetInstance();
-
-        if (gameData->GetLives() < GameDataManager::kMaxLives) {
-            gameData->SetLives(gameData->GetLives() + 1);
-        }
-
+        GameDataManager::GetInstance()->AwardCheckpointLife();
         player->RestoreHpToFull();
     }
 
+    // 切替前の旗が残っていれば元の発光へ戻し、新しい旗だけ取得演出を始めます。
     if (activeCheckpoint_ && scene_ && scene_->IsAlive(activeCheckpoint_)) {
         activeCheckpoint_->SetEmissive(checkpointBaseEmissive_);
     }
@@ -374,9 +398,8 @@ void CheckpointRule::Activate(Player* player, engine::Object3D* checkpoint) {
     checkpointBaseEmissive_ = checkpoint->GetEmissive();
     checkpointPresentationTimer_ = 0.0f;
 
-    if (checkpoint->GetModelName() == kCheckpointLoweredModel) {
-        raisingCheckpoint_ = checkpoint;
-        checkpointRaiseDelay_ = kCheckpointFlagRaiseDelay;
+    if (firstActivation) {
+        pendingFlagRaises_.push_back({checkpoint, kCheckpointFlagRaiseDelay});
     }
 
     // 素材色を残し、到達した瞬間だけ控えめに明るくします。
@@ -412,9 +435,12 @@ void CheckpointRule::Restore(const std::string& checkpointObjectName) {
         checkpoint->RestoreAnimationPlayback("Idle", 0.0f, true);
         checkpoint->SetColliderConfig(collider);
 
+        // すでに取得済みとして記録し、遅延中の旗上げを消して演出の途中から再開しないようにします。
         activeCheckpoint_ = checkpoint;
-        raisingCheckpoint_ = nullptr;
-        checkpointRaiseDelay_ = 0.0f;
+        rewardedCheckpoints_.insert(CheckpointKey(*checkpoint));
+        std::erase_if(pendingFlagRaises_, [checkpoint](const PendingFlagRaise& pending) {
+            return pending.checkpoint == checkpoint;
+        });
         checkpointBaseEmissive_ = checkpoint->GetEmissive();
         checkpointPresentationTimer_ = kCheckpointFlagRaiseDelay + 0.60f;
         checkpoint->SetEmissive((std::max)(0.28f, checkpointBaseEmissive_));
@@ -463,22 +489,26 @@ void CheckpointRule::Update(float deltaTime) {
             checkpointAmbientRingTimer_ = 1.35f;
     }
 
-    if (raisingCheckpoint_) {
-        if (!scene_ || !scene_->IsAlive(raisingCheckpoint_)) {
-            raisingCheckpoint_ = nullptr;
-        } else {
-            checkpointRaiseDelay_ -= deltaTime;
-
-            if (checkpointRaiseDelay_ <= 0.0f) {
-                // SetModelはコライダーを自動調整するため、起動前の当たり判定を復元します。
-                const engine::Object3D::ColliderConfig collider = raisingCheckpoint_->GetColliderConfig();
-                raisingCheckpoint_->SetModel(kCheckpointRaisedModel);
-                raisingCheckpoint_->RestoreAnimationPlayback("Activate", 0.0f, false);
-                raisingCheckpoint_->SetColliderConfig(collider);
-                raisingCheckpoint_ = nullptr;
-            }
+    // 演出のタイミングに合わせてモデルを切り替え、削除済みの旗や処理済みの予約はリストから外します。
+    std::erase_if(pendingFlagRaises_, [this, deltaTime](PendingFlagRaise& pending) {
+        auto* checkpoint = pending.checkpoint;
+        if (!scene_ || !scene_->IsAlive(checkpoint)) {
+            return true;
         }
-    }
+
+        pending.secondsRemaining -= deltaTime;
+        if (pending.secondsRemaining > 0.0f) {
+            return false;
+        }
+
+        // SetModelによるコライダーの自動調整を元に戻す。
+        const auto collider = checkpoint->GetColliderConfig();
+        checkpoint->SetModel(kCheckpointRaisedModel);
+        checkpoint->RestoreAnimationPlayback(checkpoint == activeCheckpoint_ ? "Activate" : "Idle",
+            0.0f, checkpoint != activeCheckpoint_);
+        checkpoint->SetColliderConfig(collider);
+        return true;
+    });
 
     if (!activeCheckpoint_) {
         return;
@@ -489,6 +519,7 @@ void CheckpointRule::Update(float deltaTime) {
         return;
     }
 
+    // 取得演出の終了時刻をまたぐ一回だけ待機モーションへ切り替えます。
     const float previousTime = checkpointPresentationTimer_;
     checkpointPresentationTimer_ += deltaTime;
     if (previousTime < kCheckpointFlagRaiseDelay + 0.60f &&
@@ -497,6 +528,7 @@ void CheckpointRule::Update(float deltaTime) {
         activeCheckpoint_->RestoreAnimationPlayback("Idle", 0.0f, true);
     }
 
+    // 待機中の明滅には開始からの秒数を使い、保存していた発光量より暗くしない。
     const float emissivePulse = 0.12f + std::sin(checkpointPresentationTimer_ * 2.0f) * 0.025f;
     activeCheckpoint_->SetEmissive((std::max)(checkpointBaseEmissive_, emissivePulse));
 }
@@ -507,6 +539,7 @@ void GameRule::ApplyStatusEffect(engine::Object3D* target, const StatusEffectApp
         return;
     }
 
+    // tickIntervalは秒単位。繰り返し間隔を最低0.05秒にし、威力は負なら0にする。
     const float interval = (std::max)(0.05f, application.tickInterval);
     const float tickDamage = (std::max)(0.0f, application.tickDamage * damageScale);
     const auto existing = std::find_if(activeStatusEffects_.begin(), activeStatusEffects_.end(),
@@ -518,6 +551,7 @@ void GameRule::ApplyStatusEffect(engine::Object3D* target, const StatusEffectApp
         // 同種の状態異常は重複させず、残り時間と威力を弱めないよう更新する。
         existing->remainingTime = (std::max)(existing->remainingTime, application.duration);
         existing->tickInterval = interval;
+        // 再付与で次の発生時刻を先送りしない。新しい間隔が短ければ次回を早める。
         existing->tickTimer = (std::min)(existing->tickTimer, interval);
         existing->tickDamage = (std::max)(existing->tickDamage, tickDamage);
 
@@ -528,6 +562,7 @@ void GameRule::ApplyStatusEffect(engine::Object3D* target, const StatusEffectApp
         return;
     }
 
+    // 新規の継続効果は初回ダメージまで待ちます。表示だけはすぐ出せるよう時計をゼロにします。
     ActiveStatusEffect status;
     status.target = target;
     status.type = application.type;
@@ -578,6 +613,7 @@ bool GameRule::ApplyDamage(engine::Object3D* target, float damage, bool bypassPl
         return false;
     }
 
+    // 偽王は形態や障壁に応じてダメージを制限し、減算できない場合はここで止めます。
     if (auto* king = dynamic_cast<EnemyFalseKingSlime*>(target)) {
         damage = king->FilterFinaleDamage(damage);
         if (damage <= 0.0f)
@@ -593,6 +629,7 @@ bool GameRule::ApplyDamage(engine::Object3D* target, float damage, bool bypassPl
         }
     }
 
+    // 古い配置値でもHPの有効範囲を確定してからダメージを引き、結果を0〜最大HPへ収めます。
     if (target->GetParameters().has_value()) {
         target->SetParameter(&engine::EntityParameter::maxHp, (std::max)(target->GetParameters()->maxHp, 1.0f));
         target->SetParameter(&engine::EntityParameter::hp, (std::max)(target->GetParameters()->hp, 0.0f));

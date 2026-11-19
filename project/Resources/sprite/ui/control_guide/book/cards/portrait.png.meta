@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "9a337d28050d6f819c4d335f68b8e017",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/cards/portrait.png",
+  "version": 1
+}

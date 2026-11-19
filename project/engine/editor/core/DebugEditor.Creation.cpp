@@ -110,6 +110,7 @@ void DebugEditor::DropToFloor() {
         engine::RayResult tmp;
 
         // AABBで簡易的に衝突判定
+        // 各 Object の中心とスケールで作った簡易箱を使う。交差した候補のうち、レイの始点から最も近い面を選ぶ。
         if (math.IntersectRayAabb(ray, wp - ws, wp + ws, &tmp)) {
             if (tmp.distance < bestHit.distance) {
                 bestHit = tmp;
@@ -147,7 +148,7 @@ void DebugEditor::SplitSelectedModelIntoMeshChildren() {
 
     BaseScene* currentScene = sceneManager_->GetCurrentScene();
     engine::Object3DCommon* objectCommon = currentScene->GetObject3DCommon();
-    Model* sourceModel = selectedObject_->GetModel();
+    engine::Model* sourceModel = selectedObject_->GetModel();
     const std::string sourceModelName = selectedObject_->GetModelName();
 
     if (!objectCommon || !sourceModel || sourceModelName.empty()) {
@@ -190,7 +191,7 @@ void DebugEditor::SplitSelectedModelIntoMeshChildren() {
     const float emissive = rootObject->GetEmissive();
 
     bool hasWaterParam = false;
-    MeshRenderer::WaterParamForGpu waterParam{};
+    engine::MeshRenderer::WaterParamForGpu waterParam{};
 
     if (rootObject->GetMeshRenderer() && rootObject->GetMeshRenderer()->GetWaterParamData()) {
         waterParam = *rootObject->GetMeshRenderer()->GetWaterParamData();
@@ -235,10 +236,12 @@ void DebugEditor::SplitSelectedModelIntoMeshChildren() {
             *child->GetMeshRenderer()->GetWaterParamData() = waterParam;
         }
 
+        // 子は描画専用。見た目を移した後も、旧モデルの当たり判定は子へ複製しない。
         child->SetColliderType(ColliderType::None);
         child->SetCollisionAttribute(0);
         child->SetCollisionMask(0);
         child->SetStatic(rootObject->IsStatic());
+        // 分割前と同じ座標に描くため、子自身はローカル原点・単位スケールに置き、ルートの姿勢を継承する。
         child->SetTranslate({ 0.0f, 0.0f, 0.0f });
         child->SetRotation({ 0.0f, 0.0f, 0.0f });
         child->SetScale({ 1.0f, 1.0f, 1.0f });
@@ -261,6 +264,7 @@ void DebugEditor::SplitSelectedModelIntoMeshChildren() {
     rootObject->UpdateWorldMatrix();
     RegisterObjectEdited(rootObject, beforeState, "Split Model Root");
 
+    // ルートの変更を登録してから子をシーンへ渡し、階層で元の Object を選択した状態へ戻す。
     AddEditorObjects(std::move(meshChildren), "Split Model Mesh Parts");
     SetSelectedObject(rootObject);
     EditorManager::GetInstance()->SetSelectedObject(this);
@@ -354,6 +358,7 @@ void DebugEditor::InstantiateParticleAtCursor(const std::string& particleName) {
     auto newObj = std::make_unique<engine::Object3D>();
     newObj->Initialize(currentScene->GetObject3DCommon());
     
+    // 粒子そのものに選択できるメッシュがないため、編集時の配置目印として仮モデルを持たせる。
     newObj->SetModel("Stages/block"); 
     newObj->SetName("VFX_" + particleName + "_" + std::to_string(currentScene->GetObjects().size())); 
     newObj->SetClassName("GPUParticle");

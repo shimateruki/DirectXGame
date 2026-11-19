@@ -144,6 +144,7 @@ json WriteSequence(const AttackSequenceDefinition& sequence) {
             {"damageScale", track.damageScale}, {"keys", keys}});
     }
 
+    // トラックのキーとは別に、指定時刻の命令と発射条件を書き出す。
     json events = json::array();
 
     for (const auto& e : sequence.events) {
@@ -156,6 +157,7 @@ json WriteSequence(const AttackSequenceDefinition& sequence) {
             {"count", e.count}, {"spreadDegrees", e.spreadDegrees}, {"preset", e.preset}});
         events.back()["name"] = e.name;
         events.back()["enabled"] = e.enabled;
+        // 弾部品を指定した命令だけに個別設定を保存し、従来の攻撃全体の設定も利用できるようにする。
         if (e.projectile.configured)
             events.back()["projectile"] = WriteProjectile(e.projectile);
     }
@@ -194,6 +196,7 @@ void ReadSequence(const json& source, AttackSequenceDefinition& sequence) {
     sequence.assetPath.clear();
     sequence.tracks.clear();
 
+    // 埋め込み形式では、発動中に継続する処理をトラックごとに組み立てる。
     for (const auto& item : source.value("tracks", json::array())) {
         AttackSequenceTrack track;
         track.name = item.value("name", track.name);
@@ -204,10 +207,12 @@ void ReadSequence(const json& source, AttackSequenceDefinition& sequence) {
         track.turnDegreesPerSecond = item.value("turnDegreesPerSecond", 90.0f);
         track.homingDuration = item.value("homingDuration", 1.0f);
         track.targetHeight = item.value("targetHeight", 0.7f);
+        // 親の位置を参照する場合と別トラックの条件を使う場合を分け、未指定は参照なしにする。
         track.parentTrack = item.value("parentTrack", -1);
         track.preset = item.value("preset", track.preset);
         track.condition = item.value("condition", track.condition);
         track.conditionTrack = item.value("conditionTrack", -1);
+        // 再生の速度、開始オフセット、前後の馴染ませ方を復元する。
         track.playbackSpeed = item.value("playbackSpeed", 1.0f);
         track.clipOffset = item.value("clipOffset", 0.0f);
         track.blendIn = item.value("blendIn", 0.05f);
@@ -221,6 +226,7 @@ void ReadSequence(const json& source, AttackSequenceDefinition& sequence) {
         track.damageScale = item.value("damageScale", 1.0f);
         track.keys.clear();
 
+        // 位置や形状のキーを一件ずつ復元し、トラックが時刻に応じて評価できるようにする。
         for (const auto& entry : item.at("keys")) {
             AttackTransformKey key;
             key.time = entry.at("time").get<float>();
@@ -238,6 +244,7 @@ void ReadSequence(const json& source, AttackSequenceDefinition& sequence) {
     sequence.binding = source.value("binding", std::string("enemy"));
     sequence.priority = source.value("priority", 0);
     sequence.duration = source.value("duration", 0.42f);
+    // 本体制御は省略できるため、一度既定値に戻し、指定されたときだけ上書きする。
     sequence.actorControl = {};
 
     if (source.contains("actorControl")) {
@@ -257,6 +264,7 @@ void ReadSequence(const json& source, AttackSequenceDefinition& sequence) {
         c.telegraphColor = j.value("telegraphColor", c.telegraphColor);
     }
 
+    // 弾の外観と炎の描画設定は、移動や命中判定を持つトラックとは別に読み込む。
     sequence.projectileStyle = source.value("projectileStyle", std::string("fire"));
     sequence.visualScale = source.value("visualScale", 1.2f);
     sequence.fireAppearance = {};
@@ -284,6 +292,7 @@ void ReadSequence(const json& source, AttackSequenceDefinition& sequence) {
 
     sequence.events.clear();
 
+    // 継続トラックとは別に、指定時刻に一度だけ発火するイベントを復元する。
     for (const auto& item : source.value("events", json::array())) {
         AttackSequenceEvent event;
         event.name = item.value("name", std::string{});
@@ -294,6 +303,7 @@ void ReadSequence(const json& source, AttackSequenceDefinition& sequence) {
         event.operation = item.value("operation", std::string("projectile"));
         event.condition = item.value("condition", std::string("always"));
         event.stopOnFalse = item.value("stopOnFalse", false);
+        // 発生位置は向きに沿うローカル座標で保持し、固定距離とキャラクターの大きさに比例する分を分ける。
         const engine::Vector3 offset = ReadVector3(item, "offset", {0, 1.05f, 0.65f});
         event.right = offset.x;
         event.up = offset.y;
@@ -473,6 +483,7 @@ EnemyAttackDefinition MakeAttack(const char* id, const char* displayName, float 
 bool EnemyAttackProfile::SaveSequenceAsset(const std::string& path, const AttackSequenceDefinition& sequence, std::string* error) {
     // 検証済みの一時ファイルを書き切ってから置換し、保存途中の元ファイル破損を避ける。
     try {
+        // 外部アセット単体で開けるよう参照先を外し、有効な状態で検証する。
         auto content = sequence;
         content.enabled = true;
         content.assetPath.clear();
@@ -481,6 +492,7 @@ bool EnemyAttackProfile::SaveSequenceAsset(const std::string& path, const Attack
         const std::filesystem::path destination(std::u8string(path.begin(), path.end()));
         if (destination.has_parent_path())
             std::filesystem::create_directories(destination.parent_path());
+        // 同じフォルダーの一時ファイルを最後まで書いてから、正式な保存先へ置き換える。
         auto temporary = destination;
         temporary += L".tmp";
         {
@@ -517,11 +529,13 @@ bool EnemyAttackProfile::LoadSequenceAsset(const std::string& path, AttackSequen
 
         if (!source.value("assetPath", std::string{}).empty())
             throw std::runtime_error("攻撃アセットの入れ子参照はできません。");
+        // 一時定義で読み込みと検証を行い、失敗時は呼び出し元のシーケンスを保持する。
         AttackSequenceDefinition loaded;
         ReadSequence(source, loaded);
         loaded.enabled = true;
         if (!loaded.Validate(error))
             return false;
+        // 保存元のパスを記録し、敵・プレイヤーなどの用途と優先順位は呼び出し元の設定を使う。
         loaded.assetPath = path;
         loaded.binding = sequence.binding;
         loaded.priority = sequence.priority;
@@ -856,6 +870,7 @@ bool EnemyAttackProfile::LoadCachedForEnemy(const std::string& type, EnemyAttack
         }
     }
 
+    // 共有キャッシュを調べた後にロックを外し、ファイルの読み込みはロックの外で行う。
     EnemyAttackProfile loadedProfile;
     const bool loadedFromFile = loadedProfile.LoadForEnemy(type, errorMessage);
 
@@ -866,6 +881,7 @@ bool EnemyAttackProfile::LoadCachedForEnemy(const std::string& type, EnemyAttack
         gProfileCache[type] = loadedProfile;
     }
 
+    // 読み込みに失敗してもLoadForEnemy()で用意した既定値を呼び出し元へ渡す。
     destination = std::move(loadedProfile);
     return loadedFromFile;
 }
@@ -948,12 +964,14 @@ bool EnemyAttackProfile::LoadFromFile(const std::string& path, std::string* erro
             return false;
         }
 
+        // 敵別の既定プロフィールを土台にし、JSONにない項目を補えるようにする。
         const std::string loadedType = ReadString(root, "enemyType", enemyType);
         EnemyAttackProfile merged = CreateDefault(loadedType.empty() ? enemyType : loadedType);
         merged.version = root.value("version", kCurrentVersion);
         merged.enemyType = loadedType.empty() ? merged.enemyType : loadedType;
         merged.displayName = ReadString(root, "displayName", merged.displayName);
         merged.selectionMode = root.value("selectionMode", "priority");
+        // 選択方法は既知の3種類に限定し、不明な設定による攻撃選択の変化を防ぐ。
         if (merged.selectionMode != "priority" && merged.selectionMode != "uniform" && merged.selectionMode != "weighted")
             throw std::runtime_error("未対応の攻撃選択方式です。");
 
@@ -971,6 +989,7 @@ bool EnemyAttackProfile::LoadFromFile(const std::string& path, std::string* erro
 
                 EnemyAttackDefinition* attack = merged.FindAttack(id);
 
+                // 既定にないIDは追加技として扱い、既定にあるIDは同じ技の設定だけを上書きする。
                 if (!attack) {
                     EnemyAttackDefinition added;
                     added.id = id;
@@ -983,6 +1002,7 @@ bool EnemyAttackProfile::LoadFromFile(const std::string& path, std::string* erro
             }
         }
 
+        // プレイヤー制御やタイムラインを全技で検証し、不正な技があれば現在のプロフィールは差し替えない。
         for (const auto& attack : merged.attacks) {
             std::string reason;
 
@@ -997,6 +1017,7 @@ bool EnemyAttackProfile::LoadFromFile(const std::string& path, std::string* erro
             }
         }
 
+        // 個々の値の補正を済ませてから、仮のプロフィールを現在値へ移す。
         merged.Sanitize();
         *this = std::move(merged);
 
@@ -1019,6 +1040,7 @@ bool EnemyAttackProfile::SaveToFile(const std::string& path, std::string* errorM
     try {
         if (selectionMode != "priority" && selectionMode != "uniform" && selectionMode != "weighted")
             throw std::runtime_error("未対応の攻撃選択方式です。");
+        // 書き込み前に抽選重みと各技を検証し、ゲームで読み戻せない内容の保存を防ぐ。
         for (const auto& attack : attacks) {
             if (!std::isfinite(attack.selectionWeight) || attack.selectionWeight < 0 || attack.selectionWeight > 100000)
                 throw std::runtime_error("攻撃の抽選重みが不正です。");
@@ -1035,6 +1057,7 @@ bool EnemyAttackProfile::SaveToFile(const std::string& path, std::string* errorM
             }
         }
 
+        // 日本語を含む保存先をUTF-8から解決し、必要なら親フォルダーを作る。
         const std::filesystem::path outputPath(std::u8string(path.begin(), path.end()));
 
         if (outputPath.has_parent_path()) {
@@ -1052,6 +1075,7 @@ bool EnemyAttackProfile::SaveToFile(const std::string& path, std::string* errorM
             root["attacks"].push_back(WriteAttackJson(attack));
         }
 
+        // 書き込みの途中で失敗しても既存JSONを保持するため、先に一時ファイルへ出力する。
         auto temporaryPath = outputPath;
         temporaryPath += L".tmp";
         std::ofstream file(temporaryPath, std::ios::binary | std::ios::trunc);
@@ -1075,6 +1099,7 @@ bool EnemyAttackProfile::SaveToFile(const std::string& path, std::string* errorM
             return false;
         }
 
+        // 一時ファイルを閉じられたことを確認し、最後に保存先のJSONを置き換える。
         file.close();
         if (!file || !MoveFileExW(temporaryPath.c_str(), outputPath.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
             throw std::runtime_error("プロファイルの置換に失敗しました。元ファイルは保持しています。");
@@ -1118,6 +1143,7 @@ const EnemyAttackDefinition* EnemyAttackProfile::SelectSequence(float distance, 
     for (const auto& attack : attacks) {
         if (!attack.sequence.enabled || attack.sequence.binding != "enemy" || distance < attack.minRange || distance > attack.maxRange)
             continue;
+        // エディター指定時も、結び付けと射程が有効な指定技だけを返す。
         if (!previewId.empty()) {
             if (attack.id == previewId)
                 return &attack;
@@ -1131,6 +1157,7 @@ const EnemyAttackDefinition* EnemyAttackProfile::SelectSequence(float distance, 
             best = &attack;
     }
 
+    // 優先度方式は最高の候補をその場で返す。抽選用の値が未指定ならここで生成する。
     if (selectionMode == "priority" || candidates.empty())
         return best;
     if (roll < 0) {
@@ -1140,6 +1167,7 @@ const EnemyAttackDefinition* EnemyAttackProfile::SelectSequence(float distance, 
 
     if (!std::isfinite(roll))
         return nullptr;
+    // 各候補に割り当てた幅の合計へ乱数を写し、先頭から幅を引いて当選区間を探す。
     float ticket = std::clamp(roll, 0.0f, 1.0f) * total;
 
     for (const auto* attack : candidates) {
@@ -1148,6 +1176,7 @@ const EnemyAttackDefinition* EnemyAttackProfile::SelectSequence(float distance, 
             return attack;
     }
 
+    // 乱数が上端と一致する場合も最後の候補に着地させる。
     return candidates.back();
 }
 
@@ -1191,6 +1220,7 @@ void EnemyAttackProfile::Sanitize() {
         attack.recommendedTargetDistance = finiteOr(attack.recommendedTargetDistance, 5.0f);
         attack.previewDuration = finiteOr(attack.previewDuration, 4.0f);
 
+        // 負の最小射程と逆転した最大射程を補正し、当たり判定の旧表記も読み替える。
         attack.minRange = (std::max)(0.0f, attack.minRange);
         attack.maxRange = (std::max)(attack.minRange, attack.maxRange);
         attack.radius = (std::max)(0.01f, attack.radius);
@@ -1207,6 +1237,7 @@ void EnemyAttackProfile::Sanitize() {
             attack.hitShape = "sphere";
         }
 
+        // 当たり判定に正の大きさを確保し、予告とキャンセルの時刻を参照する動作区間内に収める。
         attack.hitSize.x = (std::max)(0.01f, std::abs(attack.hitSize.x));
         attack.hitSize.y = (std::max)(0.01f, std::abs(attack.hitSize.y));
         attack.hitSize.z = (std::max)(0.01f, std::abs(attack.hitSize.z));
@@ -1222,6 +1253,7 @@ void EnemyAttackProfile::Sanitize() {
         attack.damage = (std::max)(0.0f, attack.damage);
         attack.invincibilityDuration = (std::max)(0.0f, attack.invincibilityDuration);
 
+        // 状態異常が無効な技は、時間と継続ダメージもゼロに揃える。
         if (attack.statusEffectType == "none") {
             attack.statusEffectType.clear();
         }
@@ -1235,6 +1267,7 @@ void EnemyAttackProfile::Sanitize() {
             attack.statusTickDamage = 0.0f;
         }
 
+        // 弾速の上下関係を保ち、プレビューは再生できる最小の長さを確保する。
         attack.minSpeed = (std::max)(0.0f, attack.minSpeed);
         attack.maxSpeed = (std::max)(attack.minSpeed, attack.maxSpeed);
         attack.lifetime = (std::max)(0.0f, attack.lifetime);

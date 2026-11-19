@@ -62,6 +62,7 @@ void InspectorWindow::Draw() {
         ImGui::Spacing();
 
         // 選択対象の動作は上部から操作し、通常の配置設定はその下へ残す。
+        // 動作確認とポーズ編集は代表対象の単体操作です。複数選択やパス編集へ切り替えると両方のプレビューを停止します。
         if (!isMultiSelection && !editor_->GetIsPathEditMode()) {
             if (auto* session = editor_->GetActorSession()) session->DrawInspector(selectedObject, editor_->GetProjectWindow());
             if (ImGui::CollapsingHeader("アニメーションクリップ編集")) {
@@ -102,7 +103,20 @@ void InspectorWindow::Draw() {
         // =========================================================================
         // 🚨 ここから下は「パス編集中」はロック（操作不能）にするエリア
         // =========================================================================
-        ImGui::BeginDisabled(editor_->GetIsPathEditMode());
+        // Camera専用欄の早期returnでもImGuiの無効化スタックを元に戻す。
+        struct PathEditDisabledScope {
+            explicit PathEditDisabledScope(bool disabled) { ImGui::BeginDisabled(disabled); }
+            ~PathEditDisabledScope() { End(); }
+
+            void End() {
+                if (active) {
+                    ImGui::EndDisabled();
+                    active = false;
+                }
+            }
+
+            bool active = true;
+        } pathEditScope(editor_->GetIsPathEditMode());
 
         // パス編集中に本体を変形・削除しないため、以降の通常Inspectorを一括で無効化する。
         ImGui::Spacing();
@@ -123,9 +137,8 @@ void InspectorWindow::Draw() {
         ImGui::TextDisabled(ICON_FA_CUBES " クラス: %s", selectedObject->GetClassName().c_str());
 
         if (selectedObject->IsCameraObject()) {
-            // Camera専用UIを描いたら無効化スコープを閉じ、通常の材質・Collider編集へ進まない。
+            // Camera専用UIの描画で完了し、材質・Collider欄を表示しない。
             DrawCameraObjectInspector(editor_, currentScene, selectedObject);
-            ImGui::EndDisabled();
             return;
         }
 
@@ -199,6 +212,7 @@ void InspectorWindow::Draw() {
 
         DrawMixedValueHint(mixedLayer);
 
+        // 手入力で欄を空にした場合も、処理分類に使う値と表示欄の両方をDefaultに揃えます。
         if (ImGui::InputText("Layer", layerBuffer, sizeof(layerBuffer))) {
             const std::string newLayer = layerBuffer[0] == '\0' ? "Default" : std::string(layerBuffer);
 
@@ -290,7 +304,7 @@ void InspectorWindow::Draw() {
                 }
             }
 
-            Model* currentModel = selectedObject->GetModel();
+            engine::Model* currentModel = selectedObject->GetModel();
             const int meshCount = currentModel ? static_cast<int>(currentModel->GetMeshCount()) : 0;
 
             if (selectedObject->IsMeshDrawFiltered()) {
@@ -474,9 +488,10 @@ void InspectorWindow::Draw() {
             if (!isMultiSelection && selectedObject->GetModel()) {
                 // 単体モデルのローカル頂点範囲から箱を合わせる。複数の足場を含むモデルは個別に分割してから使う。
                 if (ImGui::Button("モデル外形からAABBを設定")) {
-                    const Model* model = selectedObject->GetModel();
+                    const engine::Model* model = selectedObject->GetModel();
                     const engine::Vector3 localMin = model->GetLocalAabbMin();
                     const engine::Vector3 localMax = model->GetLocalAabbMax();
+                    // AABBのサイズ欄はローカルでの半幅を受け取ります。最小・最大の中点は中心オフセットに使います。
                     const engine::Vector3 halfSize = (localMax - localMin) * 0.5f;
 
                     if (halfSize.x > 0.001f && halfSize.y > 0.001f && halfSize.z > 0.001f) {
@@ -593,6 +608,7 @@ void InspectorWindow::Draw() {
                                 const engine::Vector2& a = colConfig.footprint[i];
                                 const engine::Vector2& b = colConfig.footprint[(i + 1) % colConfig.footprint.size()];
                                 const engine::Vector2& c = colConfig.footprint[(i + 2) % colConfig.footprint.size()];
+                                // 隣接する二辺の外積の符号で曲がる向きを確認します。直線に近い点は除き、一度でも向きが逆なら元の頂点へ戻します。
                                 const float cross = (b.x - a.x) * (c.y - b.y) -
                                                     (b.y - a.y) * (c.x - b.x);
                                 if (std::abs(cross) < 0.00001f)
@@ -723,6 +739,7 @@ void InspectorWindow::Draw() {
 
                 if (currentMatType == 36) {
                     // 箱型地形の道は上面の材質で描き、板を追加せず幅を調整します。
+                    // 格納されるのは道の半幅です。編集欄では全幅を表示し、書き戻し時に半分へ変換します。
                     float pathWidth = selectedObject->GetEnvIntensity() * 2.0f;
                     if (ImGui::SliderFloat("道の幅（0で非表示）", &pathWidth, 0.0f, 32.0f)) {
                         for (engine::Object3D* object : inspectorTargets) {
@@ -1027,6 +1044,7 @@ void InspectorWindow::Draw() {
                 if (ImGui::BeginPopup("PBR球プレビュー")) {
                     ProjectWindow* projectWindow = editor_->GetProjectWindow();
 
+                    // 素材パスの索引を作り直した後で、古い組み合わせで生成した球のサムネイルも無効化します。
                     if (ImGui::Button(ICON_FA_SYNC " 素材を再読込")) {
                         textureCatalog.Refresh();
                         if (projectWindow)
@@ -1141,6 +1159,7 @@ void InspectorWindow::Draw() {
                         const char* spritePath = static_cast<const char*>(payload->Data);
 
                         if (spritePath) {
+                            // Sprite一覧のドロップはルートからの相対パスなので、テクスチャの共通ルートを補って適用します。
                             selectedObject->SetTexture("Resources/sprite/" + std::string(spritePath));
                             isGraphicsChanged = true;
                         }
@@ -1190,6 +1209,7 @@ void InspectorWindow::Draw() {
                     }
                 }
 
+                // ノーマルとORMの個別設定は法線マップを使う対象に表示します。空文字は画像割り当ての解除です。
                 if (enableNormal) {
                     std::string currentPath = selectedObject->GetNormalMapPath();
                     const char* previewValue = currentPath.empty() ? "未設定 (クリックで選択)" : currentPath.c_str();
@@ -1389,6 +1409,7 @@ void InspectorWindow::Draw() {
             }
 
             ImGui::Separator();
+            // 属性は自分の分類、マスクは相手の分類です。編集結果はそれぞれ元のビット列と比較してから設定します。
             uint32_t currentAttr = selectedObject->GetCollisionAttribute();
             DrawAttributeSelector(ICON_FA_TAGS " 自分の属性 (Attribute)", &currentAttr);
 
@@ -1496,6 +1517,7 @@ void InspectorWindow::Draw() {
             ImGui::TextDisabled("現在State: %s", currentState.empty() ? "(未再生)" : currentState.c_str());
         }
 
+        // 編集画面へ切り替える前に、現在選択しているObjectをアニメーション確認用の対象として渡します。
         if (ImGui::Button("Animator Controller Editorを開く##BoneAnim")) {
             editor_->GetAnimatorControllerEditor()->SetPreviewTarget(selectedObject);
             EditorManager::GetInstance()->SetSelectedObject(editor_->GetAnimatorControllerEditor());
@@ -1522,7 +1544,7 @@ void InspectorWindow::Draw() {
 
         // ゲーム固有欄は代表Objectへ委譲し、ここまで開いた通常編集の無効化スコープを閉じる。
         DrawGameplayDataSection(selectedObject);
-        ImGui::EndDisabled();
+        pathEditScope.End();
         ImGui::Separator();
 
         if (ImGui::Button(ICON_FA_TRASH_ALT " オブジェクト削除", ImVec2(-1, 0))) {

@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <algorithm>
 #include <MeshEffectManager.h>
+#include "engine/graphics/effect/MeshEffectTarget.h"
 #include "EffectPreviewStage.h"
 #include "EditorManager.h"
 #include "VfxAssetPicker.h"
@@ -30,6 +31,31 @@ static const char* kEasingNames[] = {
     "InElastic", "OutElastic", "InOutElastic",
     "InBounce", "OutBounce", "InOutBounce"
 };
+
+namespace {
+// 追加レイヤーは本体と同じ形状を使い、当たり判定の設定はレイヤーごとに保持する。
+void SyncAdditionalPreviewMesh(EffectObject3D& layer, const EffectObject3D::MeshSettings& shape, int type) {
+    const auto ownSettings = layer.GetMeshSettings();
+    auto settings = shape;
+    settings.hasCollision = ownSettings.hasCollision;
+    settings.collisionShape = ownSettings.collisionShape;
+    settings.collisionSize = ownSettings.collisionSize;
+    settings.collisionOffset = ownSettings.collisionOffset;
+    layer.SetMeshSettings(settings);
+    layer.SetProceduralType(type);
+    layer.UpdateProceduralMesh();
+}
+
+// 本体の形状を確定してから、表示中の追加レイヤーを同じ形状で作り直す。
+void SyncPreviewMesh(EffectObject3D& preview,
+    const std::vector<std::unique_ptr<EffectObject3D>>& layers, int type) {
+    preview.SetProceduralType(type);
+    preview.UpdateProceduralMesh();
+    for (const auto& layer : layers) {
+        SyncAdditionalPreviewMesh(*layer, preview.GetMeshSettings(), type);
+    }
+}
+}
 
 void MeshEffectEditor::Initialize(SceneManager* sceneManager) {
     // SceneManager のポインタを保持
@@ -84,6 +110,7 @@ void MeshEffectEditor::Update(float deltaTime) {
     if (!sceneManager_)
         return;
 
+    // 切替中は旧シーンの基盤を参照するプレビューを破棄し、新規生成も待つ。
     if (sceneManager_->IsTransitioning()) {
         previewEffect_.reset();
         extraPreviewEffects_.clear();
@@ -108,6 +135,7 @@ void MeshEffectEditor::Update(float deltaTime) {
         auto previewEffect = std::make_unique<EffectObject3D>();
         previewEffect->Initialize(objectCommon);
 
+        // 描画用の材質を準備できた個体だけを保持し、次の更新から再生対象にする。
         if (!previewEffect->GetMaterialData()) {
             return;
         }
@@ -152,6 +180,10 @@ void MeshEffectEditor::Update(float deltaTime) {
             break;
         }
 
+        // 立体化を後から有効にした場合も、作成した面に本体の形状を渡す。
+        if (editProceduralType_ >= 1) {
+            SyncAdditionalPreviewMesh(*extra, previewEffect_->GetMeshSettings(), editProceduralType_);
+        }
         extraPreviewEffects_.push_back(std::move(extra));
     }
 
@@ -182,6 +214,7 @@ void MeshEffectEditor::Update(float deltaTime) {
 
         for (auto* fx : activePreviews) {
             fx->Play(editLifetime_);
+            // 停止時は先頭から寿命分を進め、各レイヤーを同じ終了状態へ揃える。
             fx->Update(editLifetime_);
         }
 
@@ -199,6 +232,7 @@ void MeshEffectEditor::Update(float deltaTime) {
         }
     }
 
+    // 専用ステージでは編集座標を原点からのオフセットとして扱う。
     engine::Vector3 basePos = usePreviewStage ? previewStage->GetPreviewPosition() : editPosition_;
 
     if (usePreviewStage) {
@@ -314,6 +348,7 @@ void MeshEffectEditor::Update(float deltaTime) {
         engine::Vector3 finalPos = basePos;
         engine::Vector3 finalRot = baseRot;
 
+        // 十字は2枚目を90度傾け、3枚重ねは追加面をローカルZ方向の前後にずらす。
         if (editVolumeMode_ == 1 && i == 1) {
             finalRot.x += (std::numbers::pi_v<float> * 0.5f);
         }
@@ -335,6 +370,7 @@ void MeshEffectEditor::Update(float deltaTime) {
         fx->SetTranslate(finalPos);
         fx->SetRotation(finalRot);
 
+        // 編集値を適用して再生状態を進め、その結果から描画行列を作る。
         fx->Update(timeStep);
         fx->UpdateLocalMatrix();
         fx->UpdateWorldMatrix();
@@ -342,6 +378,7 @@ void MeshEffectEditor::Update(float deltaTime) {
 
     if (usePreviewStage) {
         const float duration = (std::max)(editLifetime_, 0.01f);
+        // 本体レイヤーの時計をタイムラインに渡し、追加面は表示中の枚数にだけ反映する。
         const float currentTime = previewEffect_ ?
             std::clamp(previewEffect_->GetCurrentTime(), 0.0f, duration) : 0.0f;
         std::vector<EffectPreviewStage::TimelineEvent> events;
@@ -503,19 +540,12 @@ void MeshEffectEditor::DrawImGui() {
         "14: 空間の雷撃バースト" };
 
     if (ImGui::Combo("エフェクト形状", &editProceduralType_, procTypes, IM_ARRAYSIZE(procTypes))) {
-        previewEffect_->SetProceduralType(editProceduralType_);
-
         // スピン形状選択時の初期角度調整
         if (editProceduralType_ == 2 && previewEffect_->GetMeshSettings().slashAngle < 360.0f) {
             previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::slashAngle, 400.0f); // 少し余分に回して透明部分を隠す
         }
 
-        previewEffect_->UpdateProceduralMesh();
-
-        for (auto& ex : extraPreviewEffects_) {
-            ex->SetProceduralType(editProceduralType_);
-            ex->UpdateProceduralMesh();
-        }
+        SyncPreviewMesh(*previewEffect_, extraPreviewEffects_, editProceduralType_);
     }
 
     if (editProceduralType_ >= 1) {
@@ -578,34 +608,9 @@ void MeshEffectEditor::DrawImGui() {
 
         previewEffect_->SetMeshSettings(meshSettings);
 
+        // スライダー操作で形状が変わったときだけ、本体と追加面を一緒に再生成する。
         if (changed) {
-            previewEffect_->UpdateProceduralMesh();
-
-            for (auto& ex : extraPreviewEffects_) {
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::slashAngle, previewEffect_->GetMeshSettings().slashAngle);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::innerRadius, previewEffect_->GetMeshSettings().innerRadius);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::outerRadius, previewEffect_->GetMeshSettings().outerRadius);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::thickness, previewEffect_->GetMeshSettings().thickness);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::spiralPitch, previewEffect_->GetMeshSettings().spiralPitch);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::thrustLength, previewEffect_->GetMeshSettings().thrustLength);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::thrustRadius, previewEffect_->GetMeshSettings().thrustRadius);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::sphereRadius, previewEffect_->GetMeshSettings().sphereRadius);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::sphereRings, previewEffect_->GetMeshSettings().sphereRings);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::cylinderRadius, previewEffect_->GetMeshSettings().cylinderRadius);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::cylinderHeight, previewEffect_->GetMeshSettings().cylinderHeight);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::boxSize, previewEffect_->GetMeshSettings().boxSize);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::planeSize, previewEffect_->GetMeshSettings().planeSize);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::torusMajorRadius, previewEffect_->GetMeshSettings().torusMajorRadius);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::torusMinorRadius, previewEffect_->GetMeshSettings().torusMinorRadius);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::coneRadius, previewEffect_->GetMeshSettings().coneRadius);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::coneHeight, previewEffect_->GetMeshSettings().coneHeight);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::ringOuterRadius, previewEffect_->GetMeshSettings().ringOuterRadius);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::ringInnerRadius, previewEffect_->GetMeshSettings().ringInnerRadius);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::triangleSize, previewEffect_->GetMeshSettings().triangleSize);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::meshSegments, previewEffect_->GetMeshSettings().meshSegments);
-                ex->SetMeshSetting(&EffectObject3D::MeshSettings::uvTiling, previewEffect_->GetMeshSettings().uvTiling);
-                ex->UpdateProceduralMesh();
-            }
+            SyncPreviewMesh(*previewEffect_, extraPreviewEffects_, editProceduralType_);
         }
 
         ImGui::Unindent();
@@ -951,6 +956,7 @@ bool MeshEffectEditor::LoadFromJson(const std::filesystem::path& path) {
         }
     }
 
+    // 配置の3成分を復元する。追従先が解決できれば次の更新でその相対配置に使う。
     if (j.contains("Position")) {
         editPosition_.x = j["Position"][0];
         editPosition_.y = j["Position"][1];
@@ -1006,6 +1012,7 @@ bool MeshEffectEditor::LoadFromJson(const std::filesystem::path& path) {
         previewEffect_->SetIntensity(editIntensity_);
     }
 
+    // 機能追加前のJSONにも対応できるよう、歪みなど一部の項目は未記載時に既定値に戻す。
     if (j.contains("DistortionStrength"))
         editDistortionStrength_ = j["DistortionStrength"];
     else editDistortionStrength_ = 0.0f;
@@ -1052,73 +1059,7 @@ bool MeshEffectEditor::LoadFromJson(const std::filesystem::path& path) {
     if (j.contains("ProceduralType"))
         editProceduralType_ = j["ProceduralType"];
     if (previewEffect_) {
-        if (j.contains("SlashAngle"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::slashAngle, j["SlashAngle"]);
-        if (j.contains("InnerRadius"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::innerRadius, j["InnerRadius"]);
-        if (j.contains("OuterRadius"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::outerRadius, j["OuterRadius"]);
-        if (j.contains("Thickness"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::thickness, j["Thickness"]);
-        if (j.contains("SpiralPitch"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::spiralPitch, j["SpiralPitch"]);
-        if (j.contains("ThrustLength"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::thrustLength, j["ThrustLength"]);
-        if (j.contains("ThrustRadius"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::thrustRadius, j["ThrustRadius"]);
-        if (j.contains("SphereRadius"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::sphereRadius, j["SphereRadius"]);
-        if (j.contains("SphereRings"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::sphereRings, j["SphereRings"]);
-        if (j.contains("CylinderRadius"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::cylinderRadius, j["CylinderRadius"]);
-        if (j.contains("CylinderHeight"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::cylinderHeight, j["CylinderHeight"]);
-        if (j.contains("BoxSize")) {
-            previewEffect_->SetMeshComponent(&EffectObject3D::MeshSettings::boxSize, &engine::Vector3::x, j["BoxSize"][0]);
-            previewEffect_->SetMeshComponent(&EffectObject3D::MeshSettings::boxSize, &engine::Vector3::y, j["BoxSize"][1]);
-            previewEffect_->SetMeshComponent(&EffectObject3D::MeshSettings::boxSize, &engine::Vector3::z, j["BoxSize"][2]);
-        }
-        if (j.contains("PlaneSize")) {
-            previewEffect_->SetMeshComponent(&EffectObject3D::MeshSettings::planeSize, &engine::Vector2::x, j["PlaneSize"][0]);
-            previewEffect_->SetMeshComponent(&EffectObject3D::MeshSettings::planeSize, &engine::Vector2::y, j["PlaneSize"][1]);
-        }
-        if (j.contains("TorusMajorRadius"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::torusMajorRadius, j["TorusMajorRadius"]);
-        if (j.contains("TorusMinorRadius"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::torusMinorRadius, j["TorusMinorRadius"]);
-        if (j.contains("ConeRadius"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::coneRadius, j["ConeRadius"]);
-        if (j.contains("ConeHeight"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::coneHeight, j["ConeHeight"]);
-        if (j.contains("RingOuterRadius"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::ringOuterRadius, j["RingOuterRadius"]);
-        if (j.contains("RingInnerRadius"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::ringInnerRadius, j["RingInnerRadius"]);
-        if (j.contains("TriangleSize"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::triangleSize, j["TriangleSize"]);
-        if (j.contains("MeshSegments"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::meshSegments, j["MeshSegments"]);
-        if (j.contains("UvTiling")) {
-            previewEffect_->SetMeshComponent(&EffectObject3D::MeshSettings::uvTiling, &engine::Vector2::x, j["UvTiling"][0]);
-            previewEffect_->SetMeshComponent(&EffectObject3D::MeshSettings::uvTiling, &engine::Vector2::y, j["UvTiling"][1]);
-        }
-        if (j.contains("SlashAngle"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::slashAngle, j["SlashAngle"]);
-        if (j.contains("InnerRadius"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::innerRadius, j["InnerRadius"]);
-        if (j.contains("OuterRadius"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::outerRadius, j["OuterRadius"]);
-        if (j.contains("Thickness"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::thickness, j["Thickness"]);
-        if (j.contains("SpiralPitch"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::spiralPitch, j["SpiralPitch"]);
-        if (j.contains("ThrustLength"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::thrustLength, j["ThrustLength"]);
-        if (j.contains("ThrustRadius"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::thrustRadius, j["ThrustRadius"]);
-        if (j.contains("MeshSegments"))
-            previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::meshSegments, j["MeshSegments"]);
+        previewEffect_->ReadProceduralMeshSettings(j);
     }
 
     if (j.contains("Collision")) {
@@ -1128,35 +1069,11 @@ bool MeshEffectEditor::LoadFromJson(const std::filesystem::path& path) {
         previewEffect_->SetMeshSetting(&EffectObject3D::MeshSettings::collisionOffset, { j["Collision"]["Offset"][0], j["Collision"]["Offset"][1], j["Collision"]["Offset"][2] });
     }
 
+    // 先に前回の対象を解除し、保存名があれば実行時と同じ走査順で解決する。
     targetObject_ = nullptr;
-
     if (j.contains("TargetName")) {
-        std::string targetName = j["TargetName"];
-
-        if (!targetName.empty() && sceneManager_ && sceneManager_->GetCurrentScene()) {
-            auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
-
-            // シーン内を再帰的に探すヘルパー関数
-            std::function<engine::Object3D* (engine::Object3D*, const std::string&)> findObj = [&](engine::Object3D* obj, const std::string& name) -> engine::Object3D* {
-                if (!obj)
-                    return nullptr;
-                if (obj->GetName() == name)
-                    return obj;
-                for (auto* child : obj->GetChildren()) {
-                    engine::Object3D* found = findObj(child, name);
-                    if (found)
-                        return found;
-                }
-
-                return nullptr;
-                };
-
-            for (auto& obj : objects) {
-                targetObject_ = findObj(obj.get(), targetName);
-                if (targetObject_)
-                    break; // 見つけたら終了
-            }
-        }
+        targetObject_ = FindMeshEffectTarget(sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr,
+            j["TargetName"].get<std::string>());
     }
 
     // 読み込み完了後にプレビューを再起動
@@ -1165,24 +1082,7 @@ bool MeshEffectEditor::LoadFromJson(const std::filesystem::path& path) {
 
 
     if (editProceduralType_ >= 1 && previewEffect_) {
-        previewEffect_->SetProceduralType(editProceduralType_);
-        previewEffect_->UpdateProceduralMesh();
-
-        for (auto& ex : extraPreviewEffects_) {
-            ex->SetProceduralType(editProceduralType_);
-
-            // パラメータを同期
-            ex->SetMeshSetting(&EffectObject3D::MeshSettings::slashAngle, previewEffect_->GetMeshSettings().slashAngle);
-            ex->SetMeshSetting(&EffectObject3D::MeshSettings::innerRadius, previewEffect_->GetMeshSettings().innerRadius);
-            ex->SetMeshSetting(&EffectObject3D::MeshSettings::outerRadius, previewEffect_->GetMeshSettings().outerRadius);
-            ex->SetMeshSetting(&EffectObject3D::MeshSettings::thickness, previewEffect_->GetMeshSettings().thickness);
-            ex->SetMeshSetting(&EffectObject3D::MeshSettings::spiralPitch, previewEffect_->GetMeshSettings().spiralPitch);
-            ex->SetMeshSetting(&EffectObject3D::MeshSettings::thrustLength, previewEffect_->GetMeshSettings().thrustLength);
-            ex->SetMeshSetting(&EffectObject3D::MeshSettings::thrustRadius, previewEffect_->GetMeshSettings().thrustRadius);
-            ex->SetMeshSetting(&EffectObject3D::MeshSettings::meshSegments, previewEffect_->GetMeshSettings().meshSegments);
-
-            ex->UpdateProceduralMesh();
-        }
+        SyncPreviewMesh(*previewEffect_, extraPreviewEffects_, editProceduralType_);
     }
     return true;
 }
@@ -1223,6 +1123,7 @@ void MeshEffectEditor::ResetDocument() {
     editProceduralType_ = defaults.editProceduralType_;
     editVolumeMode_ = defaults.editVolumeMode_;
     targetObject_ = nullptr;
+    // 前の編集内容で作ったメッシュを破棄し、次のUpdateで新規文書の値から作り直す。
     previewEffect_.reset();
     extraPreviewEffects_.clear();
     forcePlayRequest_ = false;

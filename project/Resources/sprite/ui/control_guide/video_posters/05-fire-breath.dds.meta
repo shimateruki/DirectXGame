@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "94a4e01af5788bd1ddf982cd7bc7d63d",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/video_posters/05-fire-breath.dds",
+  "version": 1
+}

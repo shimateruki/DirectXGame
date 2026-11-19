@@ -3,7 +3,7 @@
 
 // 前方宣言
 namespace engine { class InputManager; }
-class Camera;
+namespace engine { class Camera; }
 struct Transform;
 class Player;
 
@@ -19,7 +19,7 @@ class IMoveStrategy {
     /// <summary>
     /// 入力と状態に基づき、このフレームの移動ベクトルを計算する
     /// </summary>
-    /// <param name="Characters/player">操作対象のプレイヤー</param>
-    /// <returns>移動速度ベクトル (X, Z)</returns>
+    /// <param name="player">操作対象のプレイヤー</param>
+    /// <returns>水平面での移動速度。横移動用の実装では X 成分だけを使います。</returns>
     virtual engine::Vector3 CalculateVelocity(Player* player) = 0; // 純粋仮想関数
 };

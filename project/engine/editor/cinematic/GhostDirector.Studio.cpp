@@ -50,6 +50,7 @@ void GhostDirector::CreateStudioObjects() {
         object->Initialize(studioScene_->GetObject3DCommon());
         object->SetName(kNames[index]);
         object->SetClassName(index == 2 ? "CinematicCamera" : "EditorOnly");
+        // 制作空間の仮オブジェクトとして区別し、通常の保存対象や物理接触に入れない。
         object->SetEditorInternal(true);
         object->SetIsLocked(true);
         object->SetCollisionAttribute(0);
@@ -62,6 +63,7 @@ void GhostDirector::CreateStudioObjects() {
             object->SetEnableLighting(false);
         }
 
+        // 役者は基準点の前方、カメラは斜め後方、床は基準点を覆う位置に置く。全て仮空間の原点からのワールド座標。
         if (index == 0) {
             object->SetScale({1.7f, 1.7f, 1.7f});
             object->SetTranslate(kOrigin + engine::Vector3{0, 0, 4});
@@ -105,6 +107,7 @@ if (EffectPreviewStage::GetInstance()->IsEnabled() ||
     auto* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!camera)
         return false;
+    // 現在の再生で変更された姿勢を先に復元し、通常編集画面の視点を退避する。
     player_.Stop(true);
     studioStoredEye_ = camera->GetEye();
     studioStoredTarget_ = camera->GetTargetPoint();
@@ -119,6 +122,7 @@ if (EffectPreviewStage::GetInstance()->IsEnabled() ||
     studioScene_ = sceneManager_->GetCurrentScene();
     studioEnabled_ = true;
     CreateStudioObjects();
+    // 役者と基準のモデルが揃わない場合も閉じる共通処理を通し、途中まで作った仮オブジェクトと視点を片付ける。
     if (!FindStudioObject(0) || !FindStudioObject(0)->GetModel() || !FindStudioObject(1) ||
         !FindStudioObject(1)->GetModel()) {
         EndStudio();
@@ -127,6 +131,7 @@ if (EffectPreviewStage::GetInstance()->IsEnabled() ||
     }
 
     player_.SetSequence(&sequence_);
+    // 仮モデルを揃えた後、制作空間の視点へ切り替えてから入場成功を返す。
     PlaceStudioCamera();
     fileOperationStatus_ = "制作空間を開きました。中央の映像と下側の時間軸で確認できます。";
     return true;
@@ -140,6 +145,7 @@ void GhostDirector::PlaceStudioCamera() {
     currentScrubTime_ = 0.0f;
 
     if (auto* camera = CameraManager::GetInstance()->GetMainCamera()) {
+        // プレビュー用の固定視点が元の追従対象に動かされないよう、先に追従を外す。
         camera->SetFollowTarget(nullptr);
         camera->SetEye(kOrigin + engine::Vector3{-10, 7, -15});
         camera->SetTarget(kOrigin + engine::Vector3{0, 1, 3});
@@ -154,6 +160,7 @@ void GhostDirector::EndStudio() {
     // 仮オブジェクトを遅延削除し、元のシーンがまだ有効ならカメラ設定を復元します。
     if (!studioEnabled_)
         return;
+    // シーン切り替え後は旧シーンの借用参照を使わず、再生器にも旧対象を復元させない。
     const bool sameScene = sceneManager_ && sceneManager_->GetCurrentScene() == studioScene_;
     player_.Stop(sameScene);
 
@@ -177,22 +184,25 @@ void GhostDirector::EndStudio() {
             if (auto* camera = CameraManager::GetInstance()->GetMainCamera()) {
                 engine::Object3D* follow = nullptr;
 
+                // 退避した追従先のポインタを現シーンの登録一覧と照合する。削除されていた場合は追従なしへ戻す。
                 for (const auto& object : studioScene_->GetObjects())
                     if (object.get() == studioStoredFollow_)
                         follow = object.get();
                 camera->SetFollowTarget(follow);
-                camera->SetFollowMode(static_cast<Camera::FollowMode>(studioStoredFollowMode_));
+                camera->SetFollowMode(static_cast<engine::Camera::FollowMode>(studioStoredFollowMode_));
                 camera->SetEye(studioStoredEye_);
                 camera->SetTarget(studioStoredTarget_);
                 camera->SetRotation(studioStoredRotation_);
                 camera->SetFovY(studioStoredFov_);
                 camera->SetClipRange(studioStoredNear_, studioStoredFar_);
                 CameraEditor::GetInstance()->SetMode(static_cast<CameraEditor::Mode>(studioStoredMode_));
+                // カメラとエディターのモードを両方復元してから、描画用の視点を確定する。
                 camera->Update();
             }
         }
     }
 
+    // カメラの復元後に仮シーンの参照を消し、再生器を現在の編集データへ戻す。
     studioEnabled_ = false;
     studioCameraSaved_ = false;
     studioScene_ = nullptr;
@@ -212,6 +222,7 @@ void GhostDirector::DrawStudioControls() {
             BeginStudio();
     }
 
+    // 制作空間では、利用可能なモデル一覧から仮オブジェクトの外見だけを差し替える。
     if (studioEnabled_) {
         ImGui::TextColored({0.4f, 0.9f, 0.7f, 1}, "制作空間 ON / 実ステージのObjectは操作しません");
         if (ImGui::Button("全体を見渡す（停止）"))
@@ -225,6 +236,7 @@ void GhostDirector::DrawStudioControls() {
                         player_.Stop(true);
 
                         if (auto* object = FindStudioObject(index)) {
+                            // シーケンスに残す仮モデル名と、現在の仮オブジェクトの見た目を一緒に更新する。
                             object->SetModel(model);
                             sequence_.previewModels[index] = model;
                             RefreshPlayer(false);
@@ -249,6 +261,7 @@ void GhostDirector::DrawStudioControls() {
                 if (ImGui::Button("置き換えて作成")) {
                     // サンプルは編集中のシーケンスだけを置き換え、実ステージへ保存しない。
                     player_.Stop(true);
+                    ResetTimelineInteraction();
                     sequence_.Clear();
                     sequence_.previewModels[1] = "Gimmicks/portal_gate";
                     if (auto* actor = FindStudioObject(0))
@@ -275,12 +288,14 @@ void GhostDirector::DrawStudioControls() {
                         actor.keys.push_back({times[index], positions[index], {}, {1.7f, 1.7f, 1.7f}, 4});
                         const engine::Vector3 eye{-6.0f + index * 0.6f, 4, -10.0f + index};
                         const engine::Vector3 direction = positions[index] + engine::Vector3{0, 1, 0} - eye;
+                        // 基準の少し上を向くよう、水平距離と高さ差から上下角、XZの方向から左右角を求める。
                         engine::Vector3 rotation{
                             -std::atan2(direction.y, std::sqrt(direction.x * direction.x + direction.z * direction.z)),
                             std::atan2(direction.x, direction.z), 0};
                         camera.keys.push_back({times[index], eye, rotation, {1, 1, 1}, 4});
                     }
 
+                    // 同じ移動トラックのカメラへカットを割り当て、体のクリップをジャンプ区間に合わせる。
                     sequence_.transformTracks = {actor, camera};
                     CinematicCameraShot shot;
                     shot.name = "入口を映す";
@@ -294,6 +309,7 @@ void GhostDirector::DrawStudioControls() {
                     motion.driver = "Body";
                     motion.clipName = "player_jump";
                     motion.duration = 1.8f;
+                    // 1秒分の身体動作を1.8秒かけて進める倍率を指定する。
                     motion.playbackSpeed = 1.0f / 1.8f;
                     sequence_.animationClips.push_back(motion);
                     sequence_.Sort();
@@ -330,6 +346,7 @@ void GhostDirector::DrawStudioControls() {
                     RefreshPlayer(false);
                 }
 
+                // 本番の対象候補からエディター専用物を除き、カメラの役割にはカメラだけを表示する。
                 if (sceneManager_ && sceneManager_->GetCurrentScene()) {
                     for (auto& object : sceneManager_->GetCurrentScene()->GetObjects()) {
                         if (!object || object->IsEditorInternal() || (index == 2 && !object->IsCameraObject()))
@@ -375,11 +392,16 @@ void GhostDirector::DrawImGui() {
 void GhostDirector::DrawTimelinePanel() {
 #ifdef USE_IMGUI
     // 映像は中央のGame Viewだけを使用し、時間軸は既存の下側ドックへ配置する。
-    if (ImGui::Begin("演出制作 - Timeline", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove)) {
+    UpdateDocumentDirty();
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove;
+    // 変更の保存待ちはドックのタブに表示し、時間軸や再生の状態は変えない。
+    if (documentDirty_) flags |= ImGuiWindowFlags_UnsavedDocument;
+    if (ImGui::Begin("演出制作 - Timeline", nullptr, flags)) {
         ImGui::TextUnformatted("演出制作   |   トラックを選択 → 右側で編集   /   時間軸をクリックして確認");
         DrawTransportControls();
         ImGui::SetNextItemWidth(150);
         ImGui::SliderFloat("時間軸の倍率", &timelinePixelsPerSecond_, 40, 240, "%.0f px/s");
+        DrawTimelineVfxPalette();
         DrawTimelineCanvas();
     }
 

@@ -16,6 +16,9 @@ class BaseScene;
 // 主な入口：Initialize / Update / DrawImGui / SaveSpriteLayout / Finalize
 class SpriteDebugEditor : public IEditable {
 public:
+    SpriteDebugEditor();
+    ~SpriteDebugEditor() override;
+
     // 依存マネージャーの注入と初期化
     void Initialize(SceneManager* sceneManager, engine::InputManager* inputManager);
 
@@ -57,7 +60,7 @@ void DrawImGui() override;
     // Sprite配置に使う画像一覧を描画する。
     void DrawProjectWindow();
 
-    void SetSelectedSprite(engine::Sprite* sprite) { selectedSprite_ = sprite; }
+    void SetSelectedSprite(engine::Sprite* sprite);
 
     void SetSpriteFilename(const std::string& filepath) {
         std::string name = filepath;
@@ -70,6 +73,24 @@ void DrawImGui() override;
     }
 
 private:
+    struct LayoutDocument;
+    using SpriteList = std::vector<std::unique_ptr<engine::Sprite>>;
+
+    // 編集対象に応じて、シーンまたは独立レイアウトの所有先へ操作を渡します。
+    const SpriteList& GetEditingSprites(const BaseScene& scene) const;
+    engine::Sprite* AddEditingSprite(BaseScene& scene, std::unique_ptr<engine::Sprite> sprite);
+    bool DeleteEditingSprite(BaseScene& scene, engine::Sprite* sprite);
+    void MoveEditingSprite(BaseScene& scene, engine::Sprite* sprite, int offset);
+
+    // 入力したパスから独立レイアウトを読み込み、保存時に元の拡張項目を保持します。
+    void DrawLayoutFileControls(BaseScene& scene);
+    void OpenLayoutDocument(engine::SpriteCommon* common, bool createNew);
+    void SaveLayoutDocument();
+
+    std::unique_ptr<LayoutDocument> layoutDocument_;
+    char layoutPathInput_[512] = "sprite/pauseMenu.json"; // Resources/json からの相対パス。
+    std::string layoutFileStatus_;
+
     // レイアウト保存
     void SaveSpriteLayout(const std::string& filename);
 

@@ -25,6 +25,7 @@
 namespace {
 constexpr const char* kSettingsPath = "Resources/json/player/whip.json";
 void Sanitize(PlayerWhipSettings& settings) {
+    // 無効な数値は既定値を採用し、有効な値でも演出や判定に使える範囲へ収める。
     const auto clamp = [](float value, float lo, float hi, float fallback) {
         return std::isfinite(value) ? std::clamp(value, lo, hi) : fallback;
     };
@@ -32,6 +33,7 @@ void Sanitize(PlayerWhipSettings& settings) {
     settings.shootSpeed = clamp(settings.shootSpeed, 30.0f, 1000.0f, 450.0f);
     settings.returnSpeed = clamp(settings.returnSpeed, 30.0f, 1500.0f, 650.0f);
     settings.hitRadius = clamp(settings.hitRadius, 0.1f, 3.0f, 0.65f);
+    // 溜め・当たり判定・復帰の各段階に、0秒にならない範囲を設ける。
     settings.windupDuration = clamp(settings.windupDuration, 0.02f, 0.4f, 0.08f);
     settings.sweepDuration = clamp(settings.sweepDuration, 0.06f, 0.8f, 0.18f);
     settings.recoverDuration = clamp(settings.recoverDuration, 0.04f, 0.6f, 0.14f);
@@ -39,6 +41,7 @@ void Sanitize(PlayerWhipSettings& settings) {
     settings.bendDegrees = clamp(settings.bendDegrees, 0.0f, 45.0f, 28.0f);
     settings.bodyTwistDegrees = clamp(settings.bodyTwistDegrees, 0.0f, 65.0f, 32.0f);
     settings.bodySquash = clamp(settings.bodySquash, 0.0f, 0.35f, 0.18f);
+    // 先端の追従や捕獲後の補間に使う値を補正して、接触した瞬間の形を保てるようにする。
     settings.tipDelay = clamp(settings.tipDelay, 0.0f, 0.12f, 0.045f);
     settings.bindBlendDuration = clamp(settings.bindBlendDuration, 0.04f, 0.4f, 0.16f);
     settings.pullBendRatio = clamp(settings.pullBendRatio, 0.0f, 0.3f, 0.10f);
@@ -51,6 +54,7 @@ void Sanitize(PlayerWhipSettings& settings) {
     settings.surfaceRootAngle = clamp(settings.surfaceRootAngle, 35.0f, 65.0f, 55.0f);
     settings.surfaceLift = clamp(settings.surfaceLift, 0.8f, 1.8f, 1.25f);
     settings.tipRoundness = clamp(settings.tipRoundness, 0.0f, 0.4f, 0.22f);
+    // 接触と戻りで使う見た目の変形を、進行や衝突に使う値とは別に制限する。
     settings.contactSquash = clamp(settings.contactSquash, 0.0f, 0.8f, 0.55f);
     settings.contactDuration = clamp(settings.contactDuration, 0.06f, 0.35f, 0.16f);
     settings.returnBulge = clamp(settings.returnBulge, 0.0f, 0.8f, 0.30f);
@@ -80,12 +84,14 @@ void Player::CancelWhipReturn() {
     if (auto visual = std::move(returningWhipVisual_)) visual->Finish(this);
 }
 void Player::UpdateWhipReturn(float deltaTime) {
+    // 捕獲側から受け取った鞭を帰還用へ移し、同じ見た目を手元へ戻す処理へ引き継ぎます。
     if (pendingWhipReturn_) {
         returningWhipVisual_ = std::move(pendingWhipReturn_);
         returningWhipVisual_->BeginReturn(this);
         activeWhipVisual_ = returningWhipVisual_;
     }
     if (!returningWhipVisual_) return;
+    // 死亡やシネマティック、変身で通常の姿勢を使えなくなった場合も、帰還を中断して描画を片付けます。
     if (IsDead() || IsCinematicLocked() || IsEnemyMorphed() ||
         returningWhipVisual_->UpdateReturn(this, deltaTime)) CancelWhipReturn();
 }
@@ -194,10 +200,12 @@ bool Player::SaveWhipSettings() const {
 void Player::DrawWhipEditor() {
 #ifdef USE_IMGUI
     if (!ImGui::CollapsingHeader("スライムウィップ（通常形態）")) return;
+    // 同じ項目名でも、選んでいるプレイヤーごとに編集ウィジェットのIDを分ける。
     ImGui::PushID(this);
     ImGui::DragFloat("射程", &whipSettings_.maxDistance, 0.5f, 1.0f, 200.0f);
     ImGui::TextUnformatted("右から左へ薙ぎ払い、最初に触れた対象を捕獲します。");
     ImGui::DragFloat("鞭の判定半径（太さ以上）", &whipSettings_.hitRadius, 0.02f, 0.1f, 3.0f);
+    // 動作の時間と角度に続けて、先端や本体の見た目を調整する。
     ImGui::DragFloat("振りかぶり時間（秒）", &whipSettings_.windupDuration, 0.01f, 0.02f, 0.4f);
     ImGui::DragFloat("薙ぎ払い時間（秒）", &whipSettings_.sweepDuration, 0.01f, 0.06f, 0.8f);
     ImGui::DragFloat("復帰時間（秒）", &whipSettings_.recoverDuration, 0.01f, 0.04f, 0.6f);
@@ -207,6 +215,7 @@ void Player::DrawWhipEditor() {
     ImGui::DragFloat("体の潰れ量", &whipSettings_.bodySquash, 0.01f, 0.0f, 0.35f);
     ImGui::DragFloat("鞭の根元の太さ", &whipSettings_.thickness, 0.01f, 0.1f, 1.5f);
     ImGui::DragFloat("先端の遅れ（秒）", &whipSettings_.tipDelay, 0.005f, 0.0f, 0.12f);
+    // ここからは接触や引き寄せの曲線、本体の受け止め方を調整する。
     ImGui::DragFloat("命中後のなじみ時間（秒）", &whipSettings_.bindBlendDuration, 0.01f, 0.04f, 0.4f);
     ImGui::DragFloat("引き寄せ中のしなり比率", &whipSettings_.pullBendRatio, 0.01f, 0.0f, 0.3f);
     ImGui::DragFloat("上半身のしなり", &whipSettings_.bodyShear, 0.01f, 0.0f, 1.0f);
@@ -226,6 +235,7 @@ void Player::DrawWhipEditor() {
     ImGui::DragFloat("付け根の上寄せ", &whipSettings_.surfaceLift, 0.01f, 0.8f, 1.8f);
     ImGui::DragFloat("床をかすめる許容量", &whipSettings_.groundSkimTolerance, 0.01f, 0.0f, 1.0f);
     ImGui::TextWrapped("0で床接触も停止。床上面の浅い接触だけを許容し、実効値は判定半径の75%%以内です。");
+    // UI操作で入力された値を、次の鞭の動作に使う前に補正する。
     Sanitize(whipSettings_);
     ImGui::TextWrapped("次の一振りから反映。保存すると次回生成するPlayerにも適用します。");
     if (ImGui::Button("鞭設定を保存")) {
@@ -243,7 +253,7 @@ void Player::DrawWhipEditor() {
 
 namespace {
 constexpr float kPi = std::numbers::pi_v<float>;
-// 入力を0～1へ制限する共通補間を使い、ムチの時間配分と曲線は維持する。
+// 長さのない方向は正規化できないため、呼び出し側が指定する基準方向へ置き換えます。
 engine::Vector3 SafeUnit(const engine::Vector3& v, const engine::Vector3& fallback) {
     const float length = engine::Math::Length(v);
     return length > 0.0001f ? v / length : fallback;
@@ -259,19 +269,23 @@ float PlayerWhipMotion::Duration(const PlayerWhipSettings& s) {
     return s.windupDuration + s.sweepDuration + s.recoverDuration;
 }
 PlayerWhipMotion::Curve PlayerWhipMotion::Evaluate(const PlayerWhipSettings& s, const engine::Vector3& forward, float time) {
+    // 狙った方向と右方向を基準にして、各区間の長さとしなりからワールド方向の曲線を作ります。
     const auto f = SafeUnit(forward, {0, 0, 1});
     const auto right = SafeUnit({f.z, 0, -f.x}, {1, 0, 0});
     float length = 0.0f;
     float bend = 0.0f;
     if (time < s.windupDuration) {
+        // 振りかぶりでは射程の四分の一まで伸ばし、しなりを強めます。
         const float u = Easing::SmoothStep01(time / s.windupDuration);
         length = s.maxDistance * 0.25f * u;
         bend = s.bendDegrees * u;
     } else if (time < s.windupDuration + s.sweepDuration) {
+        // 薙ぎ払いの序盤で射程いっぱいに伸ばし、振り抜くにつれて弧をほどきます。
         const float u = std::clamp((time - s.windupDuration) / s.sweepDuration, 0.0f, 1.0f);
         length = s.maxDistance * (0.25f + 0.75f * Easing::SmoothStep01(u / 0.25f));
         bend = s.bendDegrees * (1.0f - Easing::SmoothStep01(u));
     } else {
+        // 復帰では先端を手元へ戻しながら逆側へ短く反らせます。
         const float u = Easing::SmoothStep01((time - s.windupDuration - s.sweepDuration) / s.recoverDuration);
         length = s.maxDistance * (1.0f - u);
         bend = -s.bendDegrees * std::sin(u * kPi);
@@ -296,11 +310,13 @@ BodyAnimationClip::Sample PlayerWhipMotion::EvaluateBody(const PlayerWhipSetting
     BodyAnimationClip::Sample pose;
     float twist = 0.0f;
     if (time < s.windupDuration) {
+        // 振りかぶりは本体を圧縮して、鞭を振る側にひねります。
         const float u = Easing::SmoothStep01(time / s.windupDuration);
         pose.scale = {1.0f + s.bodySquash * 0.45f * u, 1.0f - s.bodySquash * u, 1.0f};
         pose.shear = {s.bodyShear * 0.75f * u, 0, -s.bodyShear * 0.12f * u};
         twist = u;
     } else if (time < s.windupDuration + s.sweepDuration) {
+        // 薙ぎ払いでは横へ伸び、ひねりを反対側へ移します。
         const float u = Easing::SmoothStep01((time - s.windupDuration) / s.sweepDuration);
         const float arc = std::sin(kPi * u);
         pose.scale = {1.0f + s.bodySquash * 0.45f * (1.0f-u) + s.bodyStretch * arc,
@@ -309,6 +325,7 @@ BodyAnimationClip::Sample PlayerWhipMotion::EvaluateBody(const PlayerWhipSetting
                       s.bodyShear * (-0.12f * (1.0f-u) + 0.28f * arc)};
         twist = 1.0f - 2.0f * u;
     } else {
+        // 復帰では傾きを弱めながら揺れを減衰させ、基準形状へ戻します。
         const float u = std::clamp((time-s.windupDuration-s.sweepDuration)/s.recoverDuration,0.0f,1.0f);
         const float recoil = s.bodyRebound * std::sin(kPi * std::clamp((u-0.35f)/0.65f,0.0f,1.0f));
         const float wobble = s.bodyRebound * std::sin(2.0f*kPi*u) * (1.0f-u);
@@ -333,6 +350,7 @@ void Player::ClearWhipBodyPose() {
 
 void PlayerStateWhip::Enter(Player* player) {
     if (!player) return;
+    // 振り始めの設定と向きを控え、動作中の設定変更や照準移動で曲線が飛ばないようにします。
     settings_ = player->GetWhipSettings();
     Sanitize(settings_);
     origin_ = player->GetWhipOrigin();
@@ -341,6 +359,7 @@ void PlayerStateWhip::Enter(Player* player) {
     player->SetVelocity({0, 0, 0});
     player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::ShootHook);
     player->SetSlimeAnimationDirection(direction_);
+    // 引き寄せや帰還へ渡せるよう、曲線の表示を共有所有の実体として用意します。
     visual_ = std::make_shared<PlayerWhipVisual>();
     visual_->Initialize(player, settings_);
     player->SetActiveWhipVisual(visual_);
@@ -356,14 +375,18 @@ void PlayerStateWhip::BeginRecovery() {
 }
 
 bool PlayerStateWhip::HandleHit(Player* player, engine::Object3D* object, const engine::Vector3& point) {
+    // 命中時の見た目を保存し、別の状態へ変わっても曲線や姿勢が急に切り替わらないようにする。
     visual_->CaptureBodyPose(player->GetWhipBodyPose());
+    // 触れた部品が子の場合は親まで辿り、実際に引ける本体を探す。
     for (auto* target = object; target; target = target->GetParent()) {
+        // 引けるブロックなら曲線を渡して、オブジェクト用の引き寄せ状態へ切り替える。
         if (auto* block = dynamic_cast<GimmickHookPullBlock*>(target)) {
             visual_->BeginPull(curve_, origin_, block->GetWorldPosition(), point);
             visual_->Draw(player, curve_, origin_);
             player->ChangeState(std::make_unique<PlayerStatePullObject>(block, point, true, visual_));
             return true;
         }
+        // 敵の場合は無効な状態を除外し、巨大スライムだけ専用の取付点を使う。
         if (auto* enemy = dynamic_cast<BaseEnemy*>(target)) {
             if (!enemy->IsPullImmune() && !enemy->IsDead() && !enemy->IsReplayRemoved()) {
                 const auto* giant = dynamic_cast<EnemyGiantSlime*>(enemy);
@@ -374,6 +397,7 @@ bool PlayerStateWhip::HandleHit(Player* player, engine::Object3D* object, const 
                 player->ChangeState(std::make_unique<PlayerStatePullEnemy>(enemy, point, true, visual_));
                 return true;
             }
+            // 捕まえられない敵にも命中の表示は残し、掴まず復帰へ移る。
             HitEffectDirector::SpawnPullBindHit(point);
             break;
         }
@@ -452,6 +476,7 @@ bool PlayerStateWhip::CheckCurveHit(Player* player, const PlayerWhipMotion::Curv
         const auto hit = CollisionManager::GetInstance()->SphereCast(start, r, delta / distance, distance, filter);
         if (!hit.isHit || !hit.hitObject) continue;
         // 壁への命中点より先を切り、壁の向こうに鞭の残りを表示しません。
+        // 当たった区間の番号に、その区間の何割まで進んだかを足し、切り詰める先端を小数の添字で表します。
         const float contactIndex = static_cast<float>(i) + hit.distance / distance;
         for (size_t j = 0; j < curve_.size(); ++j) {
             const float sample = contactIndex * static_cast<float>(j) / static_cast<float>(PlayerWhipMotion::kSegments);
@@ -467,35 +492,42 @@ bool PlayerStateWhip::CheckCurveHit(Player* player, const PlayerWhipMotion::Curv
 
 void PlayerStateWhip::Update(Player* player, float deltaTime) {
     if (!player || !std::isfinite(deltaTime) || deltaTime <= 0.0f) return;
+    // このフレームに進む時刻と、鞭が攻撃判定を持つ区間との重なりを求める。
     const float endTime = (std::min)(elapsed_ + deltaTime, PlayerWhipMotion::Duration(settings_));
     const auto currentOrigin = player->GetWhipOrigin();
     const float sweepEnd = settings_.windupDuration + settings_.sweepDuration;
     const float from = (std::max)(elapsed_, settings_.windupDuration);
     const float to = (std::min)(endTime, sweepEnd);
+    // 遮られておらず、有効時間を通過した場合だけ衝突候補を調べる。
     if (!blocked_ && to >= from && endTime >= settings_.windupDuration) {
         CollectCandidates(player);
         // 半径の半分以内の先端移動に分割。低FPSでも曲線間を飛ばさず調べます。
         const float speedBound = settings_.maxDistance *
             (4.5f + 4.0f * (settings_.sweepAngleDegrees + settings_.bendDegrees) * kPi / 180.0f) / settings_.sweepDuration;
         const float movementSpeed = engine::Math::Length(currentOrigin - origin_) / deltaTime;
+        // 鞭先そのものの速度上限に持ち手の移動速度を加え、判定半径の半分だけ進むのに掛かる秒数を求めます。
         const float step = settings_.hitRadius * 0.5f / (std::max)(speedBound + movementSpeed, 0.001f);
         const int count = (std::max)(1, static_cast<int>(std::ceil((to - from) / step)));
         for (int i = 0; i <= count; ++i) {
             const float t = from + (to - from) * static_cast<float>(i) / static_cast<float>(count);
+            // 先端だけでなく持ち手も移動するため、調べる時刻に対応する原点を補間する。
             const auto queryOrigin = origin_ + (currentOrigin - origin_) * std::clamp((t - elapsed_) / deltaTime, 0.0f, 1.0f);
             const auto curve = PlayerWhipMotion::Evaluate(settings_, direction_, t);
             if (CheckCurveHit(player, curve, queryOrigin, t)) return; // 状態は既に破棄されています。
             if (blocked_) { blockedAt_ = t; break; }
         }
     }
+    // 判定を終えてから時刻と原点を確定し、次のフレームで同じ区間を判定しない。
     elapsed_ = endTime;
     origin_ = currentOrigin;
     const float recovery = blocked_ ? (elapsed_ - blockedAt_) / settings_.recoverDuration : 0.0f;
+    // 時間切れか遮られた後の戻りが完了したら、見た目の残りを Player に渡して待機へ移る。
     if (elapsed_ >= PlayerWhipMotion::Duration(settings_) || (blocked_ && recovery >= 1.0f)) {
         player->BeginWhipReturn(visual_);
         player->ChangeState(std::make_unique<PlayerStateIdle>());
         return;
     }
+    // 壁などで止まった場合は、止まった形のまま縮める。通常は現在時刻の曲線を使う。
     if (blocked_) {
         for (size_t i = 0; i < curve_.size(); ++i) curve_[i] = blockedCurve_[i] * (1.0f - Easing::SmoothStep01(recovery));
     } else curve_ = PlayerWhipMotion::Evaluate(settings_, direction_, elapsed_);
@@ -505,12 +537,14 @@ void PlayerStateWhip::Update(Player* player, float deltaTime) {
 }
 
 void PlayerStateWhip::UpdateBodyPose(Player* player, float time) {
+    // 遮られた場合はその時刻の姿勢を基準にし、見た目の強さだけを戻り時間で落とす。
     if (visual_) {
         const float phaseTime = blocked_ ? blockedAt_ : time;
         const float weight = blocked_ ? 1.0f-Easing::SmoothStep01((time-blockedAt_)/settings_.recoverDuration) : 1.0f;
         visual_->SetLaunchProgress(phaseTime / PlayerWhipMotion::LaunchDuration(settings_), weight);
     }
     auto pose = PlayerWhipMotion::EvaluateBody(settings_, blocked_ ? blockedAt_ : time);
+    // 本体の拡縮・回転・せん断も同じ割合で基準姿勢へ戻す。
     if (blocked_) {
         const float weight = 1.0f - Easing::SmoothStep01((time-blockedAt_)/settings_.recoverDuration);
         pose.scale = engine::Vector3{1,1,1} + (pose.scale-engine::Vector3{1,1,1})*weight;
@@ -575,12 +609,14 @@ void PlayerWhipVisual::Draw(Player*, const PlayerWhipMotion::Curve& curve, const
 
 void PlayerWhipVisual::RefreshAttachment(Player* player) {
     if (!player || !deformer_ || !player->GetMeshRenderer()) return;
+    // 見た目の変形後に生じた根元のずれを補い、先端に近づくほど補正を弱めて命中点をずらさないようにします。
     const auto rootDelta = player->GetWhipVisualOrigin() - renderOrigin_;
     for (size_t i = 0; i < curve_.size(); ++i) {
         const float remain = 1.0f - static_cast<float>(i) / PlayerWhipMotion::kSegments;
         renderCurve_[i] = curve_[i] + rootDelta * (remain * remain * remain);
     }
     auto* renderer = player->GetMeshRenderer();
+    // コピーで本体が変わったら旧モデルを変形させず、現在の描画モデルが一致する場合だけ頂点を更新します。
     if (deformer_->GetSource() != renderer->GetModel()) return;
     deformer_->Update(renderCurve_, renderOrigin_, renderer->GetRenderWorldMatrix(),
                       settings_.surfaceRootAngle, settings_.surfaceLift, settings_.thickness,
@@ -595,6 +631,7 @@ void PlayerWhipVisual::RefreshAttachment(Player* player) {
 
 void PlayerWhipVisual::BeginPull(const PlayerWhipMotion::Curve& curve, const engine::Vector3& origin,
                                 const engine::Vector3& targetPosition, const engine::Vector3& contactPoint) {
+    // 命中瞬間の曲線と対象からのずれを退避し、接触点を引き寄せの開始形状に使います。
     hitCurve_ = curve;
     targetOffset_ = origin + curve.back() - targetPosition;
     contactOffset_ = contactPoint - targetPosition;
@@ -632,6 +669,7 @@ void PlayerWhipVisual::UpdatePull(Player* player, const engine::Vector3& targetP
         (capturePose_.shear*(1.0f-bodyBlend)+brace.shear*bodyBlend)*finishWeight);
     const auto origin = player->GetWhipOrigin();
     const float initialLength = engine::Math::Length(hitCurve_.back() - targetOffset_);
+    // 現在の相手との距離を命中時の距離で割り、越えない範囲で命中した時のしなりを縮めます。
     const float ratio = std::clamp(engine::Math::Length(targetPosition - origin) /
         (std::max)(initialLength, 0.001f), 0.0f, 1.0f);
     const float blend = Easing::SmoothStep01(pullElapsed_ / settings_.bindBlendDuration);
@@ -641,6 +679,7 @@ void PlayerWhipVisual::UpdatePull(Player* player, const engine::Vector3& targetP
     const float surfaceBlend = Easing::SmoothStep01(pullElapsed_ / (std::min)(0.04f, settings_.contactDuration * 0.25f));
     const auto attachment = (targetOffset_ * (1.0f - surfaceBlend) + contactOffset_ * surfaceBlend) * (1.0f - settle);
     const auto end = targetPosition + attachment * ratio - origin;
+    // 命中時の曲がり方を引き継ぎ、接続がなじんだら対象へ張る短い弧へ近づけます。
     const auto axis = SafeUnit(end, {0, 0, 1});
     const auto originalBend = hitCurve_[PlayerWhipMotion::kSegments / 2] - hitCurve_.back() * 0.5f;
     const auto perpendicular = originalBend - axis * engine::Math::Dot(originalBend, axis);
@@ -658,6 +697,7 @@ void PlayerWhipVisual::UpdatePull(Player* player, const engine::Vector3& targetP
 }
 
 void PlayerWhipVisual::BeginReturn(Player* player) {
+    // 伸びた曲線と身体姿勢を退避し、戻りを開始したときの形から連続して縮めます。
     recovering_ = true;
     returnElapsed_ = 0.0f;
     returnStartProgress_ = returnProgress_;
@@ -673,6 +713,7 @@ bool PlayerWhipVisual::UpdateReturn(Player* player, float deltaTime) {
     if (std::isfinite(deltaTime)) returnElapsed_ += (std::max)(deltaTime, 0.0f);
     const float u = std::clamp(returnElapsed_ / settings_.returnSettleDuration, 0.0f, 1.0f);
     if (u >= 1.0f) return true;
+    // 鞭の長さの戻りは前半で終え、身体の反動は後半まで徐々に薄くします。
     const float retract = Easing::SmoothStep01(u / 0.45f);
     launchWeight_ = returnStartLaunchWeight_ * (1.0f-retract);
     returnProgress_ = returnStartProgress_ + (1.0f - returnStartProgress_) * retract;
@@ -694,6 +735,7 @@ bool PlayerWhipVisual::UpdateReturn(Player* player, float deltaTime) {
 }
 
 void PlayerWhipVisual::Finish(Player* player) {
+    // 次の帰還処理が引き継ぐ予定ならここで表示を外さず、最終的にこの鞭が使った描画だけを片付けます。
     if (!player || player->IsWhipReturnPending(this)) return;
     contacting_ = false;
     contactWeight_ = 0.0f;

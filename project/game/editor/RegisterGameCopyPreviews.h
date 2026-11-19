@@ -10,14 +10,17 @@
 namespace GameCopyPreviewDetail {
 // 入力を実際の能力へ渡します。攻撃本体・能力状態の更新処理は作り直しません。
 inline std::vector<CopyAbilityPreviewAction> CommonActions() {
+    // コピー開始の確認では未コピーで登場させ、指定時刻に能力を付与する。
     CopyAbilityPreviewAction acquire{"acquire", "コピー開始", true};
     acquire.onTrigger = [](Player& player, const std::string& type) { player.ApplyStoredCopy(type); };
+    // 単押しは発火フレームだけ入力し、次のフレームに押し続けた扱いを残さない。
     CopyAbilityPreviewAction primary{"primary", "左クリック"};
     primary.buildInput = [](const CopyAbilityPreviewFrame& frame) {
         PlayerCopyAbilityInput input{};
         input.primaryTriggered = input.primaryHeld = frame.triggered;
         return input;
     };
+    // 長押しは最初の押下と保持時間を別々に渡し、保持が終われば離した状態になる。
     CopyAbilityPreviewAction hold{"primary_hold", "左長押し → 離す"};
     hold.buildInput = [](const CopyAbilityPreviewFrame& frame) {
         PlayerCopyAbilityInput input{};
@@ -25,6 +28,7 @@ inline std::vector<CopyAbilityPreviewAction> CommonActions() {
         input.primaryHeld = frame.IsHeld();
         return input;
     };
+    // 右操作は能力ごとにガードなどへ割り当てられるので、本番の副入力の形式で渡す。
     CopyAbilityPreviewAction secondary{"secondary", "右クリック / ガード"};
     secondary.buildInput = [](const CopyAbilityPreviewFrame& frame) {
         PlayerCopyAbilityInput input{};
@@ -32,12 +36,14 @@ inline std::vector<CopyAbilityPreviewAction> CommonActions() {
         input.secondaryHeld = frame.IsHeld();
         return input;
     };
+    // E技は開始時の押下だけを送り、持続は個別の能力へ任せる。
     CopyAbilityPreviewAction special{"special", "E 技"};
     special.buildInput = [](const CopyAbilityPreviewFrame& frame) {
         PlayerCopyAbilityInput input{};
         input.specialTriggered = frame.triggered;
         return input;
     };
+    // 解除の確認では新たな攻撃入力を作らず、プレビュー用のコピー解除を呼ぶ。
     CopyAbilityPreviewAction release{"release", "コピー解除"};
     release.onTrigger = [](Player& player, const std::string&) { player.ReleaseCopyPreview(); };
     return {std::move(acquire), std::move(primary), std::move(hold), std::move(secondary),
@@ -55,10 +61,12 @@ inline CopyAbilityPreviewDescriptor Make(const char* type, const char* label,
 } // namespace GameCopyPreviewDetail
 
 inline void RegisterGameCopyPreviews() {
+    // 基本操作を共有し、形態固有の追加操作と確認用の時刻だけを登録する。
     static const bool registered=[] {
         using namespace GameCopyPreviewDetail;
         auto pink=Make("Slime","ピンク","Slime",
             "左: 追加クリックで3段打撃 / 右: 身を縮めるガード / E: 跳ね上がり突進");
+        // ピンクのコンボは追加の押下時刻を二つ設け、低いフレームレートでも跨いだ押下を取りこぼさない。
         CopyAbilityPreviewAction combo{"pink_combo", "ピンク: 3段コンボ"};
         combo.buildInput=[](const CopyAbilityPreviewFrame& frame) {
             PlayerCopyAbilityInput input{};
@@ -66,6 +74,7 @@ inline void RegisterGameCopyPreviews() {
             return input;
         };
         pink.actions.push_back(std::move(combo));
+        // 攻撃を一時停止して、ガードや各段の打点を個別に確認できる位置を登録する。
         pink.bookmarks={
             {"ガード中を確認","secondary",0.95f}, {"Eの跳躍を確認","special",0.88f},
             {"近接1段目: 引きを確認","primary",0.66f,2.4f},
@@ -84,6 +93,7 @@ inline void RegisterGameCopyPreviews() {
         entries.push_back(Make("Bomber","ボム","Bomber","左: 設置ボム / 右: 爆風ジャンプ / E: ボム投擲"));
         auto crown = Make("Crown", "覇王", "FalseKingSlime",
             "左を溜めて離す: ゲート槍1→3→5本 / 最大溜め: 中央槍強化 / 右: ゲート回避 / Eを追加: 近接3段");
+        // 覇王のコンボは現在の近接設定を参照し、次段を予約できる時刻にE入力を送る。
         CopyAbilityPreviewAction crownCombo{"crown_combo", "覇王: 近接3段コンボ"};
         crownCombo.buildInput = [](const CopyAbilityPreviewFrame& frame) {
             PlayerCopyAbilityInput input{};
@@ -98,6 +108,7 @@ inline void RegisterGameCopyPreviews() {
         crown.actions.push_back(std::move(crownCombo));
         crown.bookmarkHelp = "Eを押すたびに次段を1回予約。右クリックは各段の後隙から回避できます。近接設定とBody Clipを調整できます。";
         entries.push_back(std::move(crown));
+        // 一覧をまとめて登録し、初回の結果を保持する。
         return CopyAbilityPreviewRegistry::Register(std::move(entries));
     }();
     assert(registered && "copy preview registration failed");

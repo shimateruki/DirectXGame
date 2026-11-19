@@ -1,0 +1,56 @@
+newmtl OutlineBack
+Kd 0.080 0.080 0.080
+Ks 0.045 0.045 0.045
+Ns 32
+d 1
+illum 2
+
+newmtl OutlineSide
+Kd 0.120 0.120 0.120
+Ks 0.045 0.045 0.045
+Ns 32
+d 1
+illum 2
+
+newmtl OutlineBevel
+Kd 0.250 0.250 0.250
+Ks 0.045 0.045 0.045
+Ns 32
+d 1
+illum 2
+
+newmtl OutlineFront
+Kd 0.095 0.095 0.095
+Ks 0.045 0.045 0.045
+Ns 32
+d 1
+illum 2
+
+newmtl LetterBack
+Kd 0.650 0.650 0.650
+Ks 0.045 0.045 0.045
+Ns 32
+d 1
+illum 2
+
+newmtl LetterSide
+Kd 0.800 0.800 0.800
+Ks 0.045 0.045 0.045
+Ns 32
+d 1
+illum 2
+
+newmtl LetterBevel
+Kd 0.940 0.940 0.940
+Ks 0.045 0.045 0.045
+Ns 32
+d 1
+illum 2
+
+newmtl LetterFront
+Kd 1.000 1.000 1.000
+Ks 0.045 0.045 0.045
+Ns 32
+d 1
+illum 2
+

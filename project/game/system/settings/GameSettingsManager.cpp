@@ -56,6 +56,7 @@ void GameSettingsManager::Load() {
     nlohmann::json data = nlohmann::json::object();
     std::ifstream file(filePath_);
 
+    // 未保存なら空の設定として扱い、ファイル全体が壊れていても既定の読み込み手順へ進む。
     if (file.is_open()) {
         try {
             file >> data;
@@ -68,6 +69,7 @@ void GameSettingsManager::Load() {
         data = nlohmann::json::object();
     }
 
+    // 項目ごとの欠損や型違いを吸収し、無限大やNaNを音量・感度へ渡さない。
     const auto readFloat = [&](const char* key, float fallback) {
         const auto it = data.find(key);
 
@@ -84,12 +86,14 @@ void GameSettingsManager::Load() {
         return it != data.end() && it->is_boolean() ? it->get<bool>() : fallback;
     };
 
+    // 数値をゲーム側が扱える範囲へ収め、反転はキーがなければ無効にする。
     bgmVolume_ = ClampVolume(readFloat("bgmVolume", bgmVolume_));
     seVolume_ = ClampVolume(readFloat("seVolume", seVolume_));
     cameraSensitivity_ = ClampSensitivity(readFloat("cameraSensitivity", cameraSensitivity_));
     cameraInvertX_ = readBool("cameraInvertX", false);
     cameraInvertY_ = readBool("cameraInvertY", false);
 
+    // 天候は保存された整数が列挙値の範囲にあるときだけ採用する。
     const auto mode = data.find("stageSelectWeatherMode");
 
     if (mode != data.end() && mode->is_number_integer()) {
@@ -110,6 +114,7 @@ void GameSettingsManager::Load() {
         }
     }
 
+    // 保存値を読み終えた時点で、音量を音声システムにも反映する。
     ApplyAudioSettings();
 }
 

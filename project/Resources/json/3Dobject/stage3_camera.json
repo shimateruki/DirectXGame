@@ -350,9 +350,9 @@
                 "eyeFollowResponse": 5,
                 "eyeObjectName": "Stage3_HighCrown_Player",
                 "eyeOffset": [
-                    0,
-                    23,
-                    32
+                    8,
+                    18,
+                    23
                 ],
                 "eyeReferenceObjectName": "",
                 "eyeSource": 1,
@@ -363,7 +363,7 @@
                     -50
                 ],
                 "forwardDistance": 10.0,
-                "fovY": 0.8,
+                "fovY": 0.78,
                 "nearClip": 0.10000000149011612,
                 "role": 0,
                 "targetFollowMode": 1,
@@ -371,9 +371,9 @@
                 "targetMode": 1,
                 "targetObjectName": "Stage3_HighCrown_Player",
                 "targetOffset": [
-                    0,
-                    2,
-                    -8
+                    1,
+                    1.6,
+                    -5
                 ],
                 "version": 1,
                 "region": {
@@ -397,17 +397,17 @@
                     "priority": 20,
                     "activationDelay": 0.12,
                     "exitMargin": 1.0,
-                    "routeEnabled": false,
-                    "endCameraGuid": "",
+                    "routeEnabled": true,
+                    "endCameraGuid": "ca864108-5a5a-541b-9401-7dc2f6291547",
                     "pathStart": [
                         0,
                         0,
-                        0
+                        65
                     ],
                     "pathEnd": [
                         0,
                         0,
-                        0
+                        44
                     ]
                 }
             },
@@ -465,9 +465,9 @@
                 "eyeFollowResponse": 5,
                 "eyeObjectName": "Stage3_HighCrown_Player",
                 "eyeOffset": [
-                    0,
-                    29,
-                    40
+                    -5,
+                    22,
+                    30
                 ],
                 "eyeReferenceObjectName": "",
                 "eyeSource": 1,
@@ -478,7 +478,7 @@
                     -50
                 ],
                 "forwardDistance": 10.0,
-                "fovY": 0.86,
+                "fovY": 0.84,
                 "nearClip": 0.10000000149011612,
                 "role": 0,
                 "targetFollowMode": 1,
@@ -487,8 +487,8 @@
                 "targetObjectName": "Stage3_HighCrown_Player",
                 "targetOffset": [
                     0,
-                    2,
-                    -8
+                    2.3,
+                    -9
                 ],
                 "version": 1,
                 "region": {
@@ -580,9 +580,9 @@
                 "eyeFollowResponse": 5,
                 "eyeObjectName": "Stage3_HighCrown_Player",
                 "eyeOffset": [
-                    0,
-                    42,
-                    59
+                    -7,
+                    27,
+                    35
                 ],
                 "eyeReferenceObjectName": "",
                 "eyeSource": 1,
@@ -593,7 +593,7 @@
                     -50
                 ],
                 "forwardDistance": 10.0,
-                "fovY": 0.94,
+                "fovY": 0.92,
                 "nearClip": 0.10000000149011612,
                 "role": 0,
                 "targetFollowMode": 1,
@@ -603,7 +603,7 @@
                 "targetOffset": [
                     0,
                     2,
-                    -10
+                    -11
                 ],
                 "version": 1,
                 "region": {

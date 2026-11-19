@@ -84,6 +84,7 @@ void GameSelectScene::UpdateStageSelectDecorations(float deltaTime) {
             }
         }
 
+        // 橋は状態によらず足場として残し、解放の有無は色と発光だけで知らせます。
         engine::Object3D* bridge = FindObjectByName("StageSelect_Bridge_" + std::to_string(stageIndex));
 
         if (bridge) {
@@ -103,6 +104,7 @@ void GameSelectScene::UpdateStageSelectDecorations(float deltaTime) {
             }
         }
 
+        // 台座は解放中と選択中を明るくし、ゲートのある島を見つける手がかりにします。
         engine::Object3D* markerPad = FindObjectByName("StageMarkerPad_" + std::to_string(stageIndex));
 
         if (markerPad) {
@@ -120,6 +122,7 @@ void GameSelectScene::UpdateStageSelectDecorations(float deltaTime) {
             }
         }
 
+        // 旗も台座と同じ進行条件で発光させ、遠くから島の状態を判別できるようにします。
         engine::Object3D* flag = FindObjectByName("StageFlag_" + std::to_string(stageIndex));
 
         if (flag) {
@@ -155,6 +158,7 @@ void GameSelectScene::UpdatePathDisplay(int stageIndex, bool active, bool unlock
             continue;
         }
 
+        // 解放演出の途中は先に見た目だけ表示し、通行が解放されるまでは接触を無効にします。
         bool visible = active || unlocking;
         path->SetIsVisible(visible);
         path->SetCollisionAttribute(active ? CollisionCategories::Get("ground") : 0);
@@ -192,6 +196,7 @@ void GameSelectScene::UpdateStarCoinDisplays(float deltaTime) {
                 continue;
             }
 
+            // 収集状況を示す置物なので、表示中も拾えるコインとしては扱いません。
             coin->SetIsVisible(unlocked);
             coin->SetCollisionAttribute(0);
             coin->SetCollisionMask(0);
@@ -223,6 +228,7 @@ engine::Object3D* GameSelectScene::EnsureStageClearCrown(int stageIndex) {
         return existing;
     }
 
+    // 保存レイアウトに無い場合だけ、接触しない表示専用の王冠を作ります。
     auto crown = std::make_unique<engine::Object3D>();
     crown->Initialize(GetObject3DCommon());
     crown->SetModel(kStageClearCrownModel);
@@ -246,6 +252,7 @@ engine::Object3D* GameSelectScene::EnsureStageClearCrown(int stageIndex) {
     crown->UpdateLocalMatrix();
     crown->UpdateWorldMatrix();
 
+    // 即時登録してこのフレームから演出を更新できるよう、所有先をシーンへ渡します。
     engine::Object3D* raw = crown.get();
     AddObjectImmediate(std::move(crown));
     return raw;
@@ -274,11 +281,13 @@ void GameSelectScene::UpdateStageClearCrownDisplays(float deltaTime) {
             continue;
         }
 
+        // 報酬対象の王冠だけ通常の浮遊から落下へ切り替えます。
         if (crownCountPresentationActive_ && stageIndex == crownCountPresentationStageIndex_) {
             UpdateStageClearRewardCrown(crown, stageIndex, deltaTime);
             continue;
         }
 
+        // 報酬対象以外はゲート上の定位置を基準に、島ごとに位相の異なる揺れを付けます。
         const float bob = std::sin(stageSelectTime_ * 2.6f + static_cast<float>(stageIndex) * 0.75f) * 0.10f;
         engine::Vector3 targetPos = GetStageClearCrownPosition(stageIndex);
         targetPos.y += bob;
@@ -337,6 +346,7 @@ void GameSelectScene::UpdateStageClearRewardPresentation(float deltaTime) {
     const engine::Vector3 burstPos =
         (crownCountPresentationTimer_ < kCrownCountImpactTime ? crownPos : targetPos) + engine::Vector3{0.0f, 1.05f, 0.0f};
 
+    // 着地前は移動中の王冠、着地後は据え付け位置から一定間隔で粒子を出します。
     if (crownCountPresentationParticleTimer_ <= 0.0f) {
         crownCountPresentationParticleTimer_ = kCrownCountParticleInterval;
         GpuParticleManager::GetInstance()->Emit(kCrownUnlockFountainParticlePreset, burstPos);
@@ -346,6 +356,7 @@ void GameSelectScene::UpdateStageClearRewardPresentation(float deltaTime) {
         }
     }
 
+    // 着地の瞬間を一度だけ確定し、数字が変わるのと同じタイミングで衝撃を出します。
     if (!crownCountPresentationImpactDone_ && crownCountPresentationTimer_ >= kCrownCountImpactTime) {
         crownCountPresentationImpactDone_ = true;
         MeshEffectManager::GetInstance()->SpawnEffectAt(kCrownUnlockFlashRingEffectPath,
@@ -364,6 +375,7 @@ void GameSelectScene::UpdateStageClearRewardPresentation(float deltaTime) {
         }
     }
 
+    // 前の報酬状態を片付けてから、次に解放を見せるステージへ引き継ぎます。
     if (crownCountPresentationTimer_ >= kCrownCountPresentationDuration) {
         crownCountPresentationActive_ = false;
         crownCountPresentationStageIndex_ = -1;
@@ -395,11 +407,13 @@ void GameSelectScene::UpdateStageClearRewardCrown(engine::Object3D* crown, int s
     float silverFlash = 0.0f;
     const float t = crownCountPresentationTimer_;
 
+    // 着地までは上空から定位置へ寄せ、着地後は反発と発光を短時間で減衰させます。
     if (t < kCrownCountImpactTime) {
         const float p = SelectClamp01(t / kCrownCountImpactTime);
         const float e = SelectEaseOutCubic(p);
         const engine::Vector3 startPos = targetPos + engine::Vector3{0.0f, 4.35f, 0.0f};
         position = SelectLerp(startPos, targetPos, e);
+        // 0から1の間だけ正になる半波を高さに足し、始点・着地点を保ったまま軌道に弧を付ける。
         position.y += std::sin(p * std::numbers::pi_v<float>) * 0.62f;
         scale = kStageClearCrownBaseScale * (0.18f + SelectEaseOutBack(p) * 0.92f);
         emissive = 2.6f + p * 2.8f;
@@ -408,7 +422,9 @@ void GameSelectScene::UpdateStageClearRewardCrown(engine::Object3D* crown, int s
         crown->SetEulerZ(std::sin(p * std::numbers::pi_v<float>) * 0.42f);
     } else {
         const float p = t - kCrownCountImpactTime;
+        // 着地から1.35秒で跳ね返りの振幅をゼロへ戻し、常時表示の王冠へつなぐ。
         const float decay = std::max(0.0f, 1.0f - p / 1.35f);
+        // 正弦の絶対値で反動の高さを常に正にし、据え付け位置より下に揺れないようにする。
         const float bounce = std::abs(std::sin(p * 11.0f)) * 0.24f * decay;
         const float pop = std::sin(SelectClamp01(p / 0.42f) * std::numbers::pi_v<float>);
         position.y += bounce;
@@ -419,6 +435,7 @@ void GameSelectScene::UpdateStageClearRewardCrown(engine::Object3D* crown, int s
         crown->SetEulerZ(std::sin(stageSelectTime_ * 5.0f) * 0.12f * std::max(0.25f, decay));
     }
 
+    // 位置・姿勢・発光をまとめて反映してから、描画用行列を確定します。
     crown->SetTranslate(position);
     crown->SetScale({scale, scale, scale});
     crown->SetQuaternionMaster(false);
@@ -449,6 +466,7 @@ void GameSelectScene::UpdateStageSelectCrownHudReward() {
         sprite->Update();
     };
 
+    // 演出が終わった次のフレームには、アイコンと桁を配置時の大きさと色へ戻します。
     if (!crownCountPresentationActive_) {
         applySprite(stageSelectCrownIcon_, 1.0f, stageSelectCrownIcon_.baseColor, 0.0f);
         applySprite(stageSelectCrownXIcon_, 1.0f, stageSelectCrownXIcon_.baseColor, 0.0f);
@@ -461,6 +479,8 @@ void GameSelectScene::UpdateStageSelectCrownHudReward() {
     }
 
     const float t = crownCountPresentationTimer_;
+    // 着地からの時間だけを反発と発光に使い、着地前は反発を加えません。
+    // 王冠数が切り替わった時点から時間を測り直し、拡大を0.52秒、光の余韻を1.15秒で収める。
     const float impactAge = std::max(0.0f, t - kCrownCountImpactTime);
     const float prePulse = std::sin(stageSelectTime_ * 11.0f) * 0.035f;
     const float pop = crownCountPresentationImpactDone_
@@ -503,6 +523,7 @@ engine::Vector3 GameSelectScene::GetStageClearCrownPosition(int stageIndex) cons
             continue;
         }
 
+        // 対象ゲートの範囲が使える場合だけ、上面の中心に高さの余白を付けます。
         Aabb gateAabb = object->GetModelWorldAabb();
         const bool validAabb = std::isfinite(gateAabb.min.x) && std::isfinite(gateAabb.min.y) &&
                                std::isfinite(gateAabb.min.z) && std::isfinite(gateAabb.max.x) &&

@@ -162,7 +162,7 @@ RECT MakeEvenSizedRect(const RECT& source) {
 // エンジンのメインウィンドウを優先して撮影対象のハンドルを取得します。
 HWND GetMainWindowHandle() {
     // エンジンのメインウィンドウを優先し、取得前だけアクティブウィンドウへ後退する。
-    DirectXCommon* dxCommon = DirectXCommon::GetInstance();
+    engine::DirectXCommon* dxCommon = engine::DirectXCommon::GetInstance();
 
     if (dxCommon && dxCommon->GetWinApp()) {
         HWND hwnd = dxCommon->GetWinApp()->GetHwnd();
@@ -324,6 +324,7 @@ bool CaptureScreenRect(const RECT& rect, CapturedImage& outImage, std::string& e
     outImage.width = width;
     outImage.height = height;
     outImage.bgra.resize(byteSize);
+    // DIBが持つ画素はビットマップを削除すると無効になるため、先に所有するBGRA配列へ複製します。
     std::memcpy(outImage.bgra.data(), bits, byteSize);
     DeleteObject(bitmap);
 
@@ -408,6 +409,7 @@ bool SavePngWithWic(const fs::path& path, const CapturedImage& image, std::strin
     }
 
     if (SUCCEEDED(hr)) {
+        // BGRAは1画素4バイトです。WICへは1行のバイト数と全体のバイト数を別々に渡します。
         const UINT stride = static_cast<UINT>(image.width * 4);
         const UINT bufferSize = static_cast<UINT>(image.bgra.size());
         hr = frame->WritePixels(static_cast<UINT>(image.height), stride, bufferSize, const_cast<BYTE*>(image.bgra.data()));
@@ -622,6 +624,7 @@ void CaptureToolWindow::RetagLastScreenshot() {
         return;
     }
 
+    // 最後の出力が移動した画像を指す場合だけ、出力履歴も新しい場所へ更新します。
     if (lastOutputPath_ == lastScreenshotPath_) {
         lastOutputPath_ = destination;
     }
@@ -726,8 +729,7 @@ void CaptureToolWindow::UpdateRecording() {
     }
 
     if (recordingWorkerFinished_.load(std::memory_order_acquire)) {
-        StopRecordingWorker();
-        ApplyRecordingWorkerResult();
+        StopRecording();
     }
 }
 
@@ -741,6 +743,7 @@ void CaptureToolWindow::RecordingWorkerMain(fs::path outputPath, RECT captureRec
 
         if (succeeded) {
             using Clock = std::chrono::steady_clock;
+            // FPSを1枚あたりの秒数へ変え、単調増加する時計の刻みで取得予定を管理します。
             const auto frameInterval = std::chrono::duration_cast<Clock::duration>(
                 std::chrono::duration<double>(1.0 / static_cast<double>(std::max(fps, 1.0f))));
             const auto recordingStart = Clock::now();
@@ -759,6 +762,7 @@ void CaptureToolWindow::RecordingWorkerMain(fs::path outputPath, RECT captureRec
                 }
 
                 const auto frameStart = Clock::now();
+                // 録画開始からの実経過を100ナノ秒単位へ変換し、遅れたフレームでもMP4の時刻を保ちます。
                 const LONGLONG sampleTime100ns = static_cast<LONGLONG>(
                     std::chrono::duration_cast<std::chrono::nanoseconds>(frameStart - recordingStart).count() / 100);
                 if (!WriteRecordingFrame(sampleTime100ns, resultMessage)) {
@@ -1011,6 +1015,7 @@ bool CaptureToolWindow::WriteRecordingFrame(LONGLONG sampleTime100ns, std::strin
         }
     }
 
+    // 画素への直接書き込みが終わったらロックを解除し、長さの確定とエンコーダーへの引き渡しへ進みます。
     if (destination) {
         buffer->Unlock();
     }

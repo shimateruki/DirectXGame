@@ -1,0 +1,8 @@
+{
+  "assetType": "JSON",
+  "guid": "0a8ef56c6da74e95bb525c6f444cb9ce",
+  "importSettings": {},
+  "importer": "JsonImporter",
+  "source": "Resources/json/shader_materials/dash_panel_stop.json",
+  "version": 1
+}

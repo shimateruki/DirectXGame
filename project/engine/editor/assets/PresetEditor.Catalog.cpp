@@ -19,6 +19,7 @@ void PresetEditor::HandleDeferredDelete() {
         return;
     }
 
+    // 描画中に一覧を変えず、削除が予約されてから選択と保留フラグをまとめて解除する。
     PresetManager::GetInstance()->RemovePreset(selectedName_);
     selectedName_.clear();
     requestDelete_ = false;
@@ -58,6 +59,7 @@ void PresetEditor::RefreshModelList() {
         }
     }
 
+    // ファイルシステムの列挙順に依存しないよう、候補名で並べる。
     std::sort(modelNames_.begin(), modelNames_.end());
 }
 
@@ -180,6 +182,7 @@ ImVec4 PresetEditor::GetCategoryColor(Category category) const {
 }
 
 ImVec4 PresetEditor::GetStage1SectionColor(int sectionOrder) const {
+    // セクションの並び番号を100単位の帯で区切り、同じ帯を一覧で同じ色にする。
     if (sectionOrder < 200)
         return ImVec4(0.30f, 0.84f, 0.55f, 1.0f);
     if (sectionOrder < 300)
@@ -229,6 +232,7 @@ int PresetEditor::ReadInt(const json& data, const char* key, int defaultValue) c
     }
 
     if (data.contains(key) && data[key].is_number()) {
+        // 旧形式の小数は四捨五入せず、整数変換で小数部を切り捨てる。
         return static_cast<int>(data[key].get<float>());
     }
 

@@ -31,12 +31,14 @@ void SelectedActorSession::SetTarget(engine::Object3D* target) {
     const uint64_t generation = manager_ ? manager_->GetSceneGeneration() : 0;
     const std::string kind = target && ServicesTable().identity ? ServicesTable().identity(*target) : std::string{};
     if (id == targetId_ && generation == sceneGeneration_ && kind == targetKind_) return;
+    // 元の対象がまだ解決できる間に停止し、一時非表示を解除してから識別情報を新しい対象へ差し替える。
     Stop(); targetId_ = id; sceneGeneration_ = generation; targetKind_ = kind;
     if (target && ServicesTable().select) ServicesTable().select(*target);
 }
 bool SelectedActorSession::Begin() {
     if (changing_ || !manager_ || manager_->IsPlaying() || manager_->IsTransitioning() || !GetTarget()) return false;
     Stop(); changing_ = true;
+    // ゲーム側の準備中は停止などの再入を防ぐ。確認用の実体を作れた場合に限り元の対象を一時非表示にする。
     active_ = ServicesTable().begin && ServicesTable().begin();
     changing_ = false; accumulator_ = 0;
     if (auto* target = GetTarget()) target->SetEditorHiddenReason(kActorHidden, active_);
@@ -44,6 +46,7 @@ bool SelectedActorSession::Begin() {
 }
 void SelectedActorSession::Stop() {
     if (changing_) return;
+    // 終了コールバックの前に再生状態を止め、未処理の時間も捨てる。片付けが終わってから元の表示を戻す。
     const bool wasActive = active_; active_ = false; accumulator_ = 0;
     if (wasActive && ServicesTable().end) {
         changing_ = true; ServicesTable().end(); changing_ = false;
@@ -51,6 +54,7 @@ void SelectedActorSession::Stop() {
     if (auto* target = GetTarget()) target->SetEditorHiddenReason(kActorHidden, false);
 }
 void SelectedActorSession::Restart() { Begin(); }
+// 停止中なら先頭から準備し、連続再生を止めて 1/60 秒だけ進める。既に残っている端数時間は使わない。
 void SelectedActorSession::StepFrame() {
     if (!active_ && !Begin()) return;
     if (ServicesTable().setPlaying) ServicesTable().setPlaying(false);
@@ -73,11 +77,14 @@ void SelectedActorSession::Update(float realDeltaTime) {
     if (!active_ || !ServicesTable().playback) return;
     auto state = ServicesTable().playback();
     if (!state.playing) { accumulator_ = 0; return; }
+    // 通常フレームの経過秒を倍率で調整して蓄積する。停止や長い描画待ちで大量の固定更新が走らないよう入力時間を制限する。
     accumulator_ += std::clamp(realDeltaTime, 0.0f, 0.25f) * std::clamp(state.speed, 0.05f, 2.0f);
+    // 1/60 秒に達した分を一段ずつ消費する。1 フレームで複数段進んでいても、各段の後で演出終了を確認する。
     while (accumulator_ >= kStep && active_) {
         accumulator_ -= kStep;
         if (ServicesTable().step) ServicesTable().step(kStep);
         state = ServicesTable().playback();
+        // 再生終端に着いたらループ時だけ初期状態を作り直す。残りの蓄積時間は次周へ持ち越さない。
         if (state.time >= state.duration && state.duration > 0) {
             if (state.loop) Restart();
             else if (ServicesTable().setPlaying) ServicesTable().setPlaying(false);

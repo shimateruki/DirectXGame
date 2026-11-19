@@ -32,8 +32,10 @@ struct Transform {
         engine::Matrix4x4 matRot = math.MakeRotateQuaternionMatrix(quaternion);
         engine::Matrix4x4 matTrans = math.MakeTranslateMatrix(translate);
 
+        // 頂点を物体原点から拡縮し、その結果を回転してから親に対する位置へ移す。
         matLocal = math.Multiply(math.Multiply(matScale, matRot), matTrans);
 
+        // 行ベクトルの順序に合わせ、ローカル姿勢の後ろへ親のワールド姿勢を掛ける。
         if (parent) {
             matWorld = math.Multiply(matLocal, parent->matWorld);
         } else {

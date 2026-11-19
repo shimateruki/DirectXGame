@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "9b28b946c4ee9b89993387a7ba99d13a",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/cards/basic_row.png",
+  "version": 1
+}

@@ -15,9 +15,9 @@
     },
     "directionalLight": {
         "ambientColor": [
-            0.27,
-            0.32,
-            0.41
+            0.34,
+            0.39,
+            0.46
         ],
         "color": [
             1.0,
@@ -40,7 +40,7 @@
         "fogHeightMax": 48.0,
         "fogHeightMin": -62.0,
         "fogStart": 190.0,
-        "intensity": 1.75,
+        "intensity": 1.57,
         "volumetricIntensity": 0.012,
         "volumetricSteps": 24
     },

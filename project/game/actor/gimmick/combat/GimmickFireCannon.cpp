@@ -122,6 +122,7 @@ void GimmickFireCannon::Update(float deltaTime) {
     editorPreview = !playing && GetParameters()->editorPreviewFiring;
 #endif
 
+    // プレビューの入切では退避した配置を必要に応じて戻し、この砲台のプレビュー弾と旧照準を片付けます。
     if (previewActive_ != editorPreview) {
         const bool wasPreview = previewActive_;
         if (wasPreview)
@@ -173,6 +174,7 @@ void GimmickFireCannon::Update(float deltaTime) {
         active_ = true;
     }
 
+    // 迫撃と固定砲の弾幕は専用周期を使うため、直射の照準処理へは進みません。
     if (GetParameters()->actionMode == 2) {
         UpdateMortar(deltaTime);
         BaseGimmick::Update(deltaTime);
@@ -205,6 +207,7 @@ void GimmickFireCannon::Update(float deltaTime) {
     engine::Vector3 fireDirection = {};
     const bool canFire = active_ && FindFireDirection(fireDirection);
 
+    // 実戦中の追尾砲は回転途中の砲身方向を使って発射し、プレビューでは配置の向きを変更しません。
     if (canFire && GetParameters()->actionMode == 1) {
         if (!editorPreview) {
             RotateToward(fireDirection, deltaTime);
@@ -276,6 +279,7 @@ bool GimmickFireCannon::FindFireDirection(engine::Vector3& outDirection) const {
 
     Player* player = GetScenePlayer(scene);
 
+    // 標的のいない編集プレビューでは、設置した向きで射線を確認できるようにします。
     if (!player) {
         if (previewActive_) {
             outDirection = GetForwardDirection();
@@ -284,6 +288,7 @@ bool GimmickFireCannon::FindFireDirection(engine::Vector3& outDirection) const {
         return false;
     }
 
+    // 足元から少し上を狙い、砲口からの距離を索敵範囲と比較します。
     engine::Vector3 target = player->GetWorldPosition();
     target.y += 0.65f;
 
@@ -350,6 +355,7 @@ void GimmickFireCannon::FireProjectile(const engine::Vector3& direction) {
     const float speed = GetProjectileSpeed();
     const float life = GetProjectileLifetime();
 
+    // 岩の芯と炎の見た目を弾の判定半径から作り、プレビュー弾には生成元の砲台を付けます。
     BulletVisualConfig visual;
     visual.collisionRadiusIsWorld = true;
     visual.materialType = 0;
@@ -395,6 +401,7 @@ void GimmickFireCannon::UpdateBombardPose() {
         const float spring = (1.0f - t) * (1.0f - t) * std::cos(2.0f * kPi * t);
         squash = strength * spring;
         retreat = strength * 2.0f * spring;
+    // 反動から戻った後は、次弾の直前だけ発射前のため姿勢へ移ります。
     } else if (active_) {
         const float configured = std::isfinite(bombardAnticipationTime_) ? bombardAnticipationTime_ : 0.20f;
         const float duration = (std::min)(std::clamp(configured, 0.0f, 0.6f), GetFireInterval() * 0.30f);
@@ -462,6 +469,7 @@ void GimmickFireCannon::FireBombard() {
     // 周期の更新は続け、経路から遠いときは新しい弾と発射エフェクトだけを生成しません。
     if (!previewActive_ && !IsBombardPathRelevant(launch, forward)) return;
 
+    // 大型弾の爆風・着弾破片を設定し、配置された砲口の向きから直進させます。
     BulletVisualConfig visual;
     visual.visualScale = radius * 0.60f / 1.043f; // 岩の芯を小さくし、外側の炎に輪郭を任せます。
     visual.collisionRadiusIsWorld = true;
@@ -558,6 +566,7 @@ void GimmickFireCannon::UpdateMortar(float deltaTime) {
         SetScale({baseScale_.x * (1.0f + squash), baseScale_.y * (1.0f - squash), baseScale_.z});
     landingWarning_.Update(frameDeltaTime);
 
+    // 砲弾が飛んでいる間は着弾地点の表示を維持し、次弾の照準を取り直しません。
     if (flightTimer_ > 0.0f) {
         flightTimer_ -= frameDeltaTime;
         if (flightTimer_ <= 0.0f)
@@ -571,6 +580,7 @@ void GimmickFireCannon::UpdateMortar(float deltaTime) {
         return;
     }
 
+    // 到達可能な着弾候補だけを選び、プレビューでは対象が近すぎる・いない場合も前方の仮目標で確認できるようにします。
     if (!targetLocked_) {
         fireTimer_ -= frameDeltaTime;
         if (fireTimer_ > 0.0f)
@@ -606,6 +616,7 @@ void GimmickFireCannon::UpdateMortar(float deltaTime) {
         warningTimer_ = warning;
     }
 
+    // 固定済みの位置に危険範囲を表示し、予告時間が終わってから同じ地点へ飛ぶ軌道を計算します。
     warningTimer_ -= frameDeltaTime;
     landingWarning_.ShowCircle(lockedTarget_ + engine::Vector3{0, 0.08f, 0}, blast,
                                std::clamp(1.0f - warningTimer_ / warning, 0.0f, 1.0f), {1.0f, 0.34f, 0.05f, 0.65f});
@@ -618,6 +629,7 @@ void GimmickFireCannon::UpdateMortar(float deltaTime) {
     // 頂点高度から上向き初速と飛行時間を逆算し、水平速度をロック済み着弾点へ合わせます。
     const float apex = (std::max)(muzzle.y, target.y) + std::clamp(GetParameters()->jumpPower, 3.0f, 20.0f);
     const float vy = std::sqrt(2.0f * gravity * (apex - muzzle.y));
+    // 頂点までの秒数と頂点から標的の高さまで落ちる秒数を足し、着弾までの時間を求めます。
     const float flight = vy / gravity + std::sqrt(2.0f * (apex - target.y) / gravity);
     const engine::Vector3 velocity = {(target.x - muzzle.x) / flight, vy, (target.z - muzzle.z) / flight};
     BulletVisualConfig visual;
@@ -630,6 +642,7 @@ void GimmickFireCannon::UpdateMortar(float deltaTime) {
     BulletManager::GetInstance()->Fire(muzzle, velocity, CollisionCategories::Get("enemy_attack"),
                                        CollisionCategories::Get("player") | CollisionCategories::Get("ground"), "Gimmicks/volcanic_shell", radius,
                                        flight + 2.0f, visual, 1.0f, {}, DamageType::Explosion, gravity);
+    // 実戦用の砲口演出はプレビューで増やさず、発射後は飛行・再発射・反動それぞれの時計を設定します。
     if (!previewActive_) {
         if (auto* effects = MeshEffectManager::GetInstance())
             effects->SpawnEffectAt("Resources/json/effect/shared/effect_bomb_core_flash.json", muzzle, {0, 0, 0}, {.4f, .4f, .4f});

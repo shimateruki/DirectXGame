@@ -29,11 +29,6 @@ AssetDatabase* AssetDatabase::GetInstance() {
     return &instance;
 }
 
-AssetDatabase::~AssetDatabase() {
-    StopFilesystemWatcher();
-    CloseDdsCacheProcessHandle();
-}
-
 bool AssetDatabase::Initialize(const std::string& resourcesRoot, bool createMissingMeta) {
     StopFilesystemWatcher();
     std::error_code error;
@@ -64,7 +59,7 @@ bool AssetDatabase::Initialize(const std::string& resourcesRoot, bool createMiss
 }
 
 AssetDatabaseRefreshResult AssetDatabase::Refresh(bool createMissingMeta) {
-    // 明示的な同期更新でも、既存の .meta と永続索引を優先して再利用します。
+    // 明示的な同期更新では段階走査を打ち切り、既存の .meta を一括で読み直します。
     AssetDatabaseRefreshResult result;
     initialIndexBuildInProgress_ = false;
     initialDirectoryScanInProgress_ = false;
@@ -96,6 +91,7 @@ AssetDatabaseRefreshResult AssetDatabase::Refresh(bool createMissingMeta) {
         return result;
     }
 
+    // 同期更新では全メタデータを読み直し、その結果から次回起動用の永続索引を作る。
     const std::vector<fs::path> sourcePaths = CollectSourcePaths();
 
     std::unordered_map<std::string, std::string> guidOwners;
@@ -139,7 +135,7 @@ AssetDatabaseRefreshResult AssetDatabase::Refresh(bool createMissingMeta) {
     persistentIndexCacheAvailable_ = true;
     SavePersistentIndexCache();
 
-    if (!changeNotificationHandles_.empty()) {
+    if (filesystemWatcher_) {
         RestartFilesystemWatcher();
     }
 
@@ -174,10 +170,12 @@ bool AssetDatabase::Update() {
 
     const bool ddsStateChanged = PollDdsCacheBuild();
 
+    // 現在の列挙・索引を先に進め、別の更新要求で進行中の状態を上書きしない。
     if (initialIndexBuildInProgress_) {
         return ProcessInitialIndexBuild() || ddsStateChanged;
     }
 
+    // 変換で生成されたファイルを先に取り込む。この索引更新の完了から同じ DDS 変換は予約しない。
     if (refreshAfterDdsCacheBuild_) {
         refreshAfterDdsCacheBuild_ = false;
         BeginInitialIndexBuild(createMissingMeta_, false);
@@ -194,34 +192,11 @@ bool AssetDatabase::Update() {
         return ddsStateChanged;
     }
 
-    if (changeNotificationHandles_.empty()) {
-        return ddsStateChanged;
-    }
-
     const auto now = std::chrono::steady_clock::now();
-    bool hasFilesystemChange = false;
-    bool watcherFailed = false;
-
-    for (void* rawHandle : changeNotificationHandles_) {
-        const DWORD waitResult = WaitForSingleObject(static_cast<HANDLE>(rawHandle), 0);
-
-        if (waitResult == WAIT_OBJECT_0) {
-            hasFilesystemChange = true;
-        }
-        else if (waitResult == WAIT_FAILED) {
-            watcherFailed = true;
-            break;
-        }
-    }
-
-    if (hasFilesystemChange && !filesystemChangePending_) {
+    // 最初の変更通知から所定時間待ち、その間の通知を一度の再走査にまとめる。
+    if (PollFilesystemWatcher() && !filesystemChangePending_) {
         filesystemChangePending_ = true;
         filesystemChangeReadyAt_ = now + kFilesystemChangeDebounce;
-    }
-
-    if (watcherFailed) {
-        RestartFilesystemWatcher();
-        return ddsStateChanged;
     }
 
     if (!filesystemChangePending_ || now < filesystemChangeReadyAt_) {
@@ -257,6 +232,7 @@ std::string AssetDatabase::ResolveAssetPath(const std::string& pathOrGuidReferen
         guid.erase(0, 5);
     }
 
+    // 形式が有効なGUIDはパスへ代用せず、見つからないときは未解決として空を返す。
     if (IsGuidValid(guid)) {
         const EditorAssetRecord* asset = FindByGuid(guid);
         return asset ? asset->sourcePath : std::string();
@@ -364,6 +340,7 @@ bool AssetDatabase::MoveAsset(
         return false;
     }
 
+    // 移動と再索引で参照が変わる前に、本体と.metaの元パスを値として控える。
     const std::string sourceProjectPath = asset->sourcePath;
     const std::string sourceMetaProjectPath = asset->metaPath;
     const fs::path sourceAbsolute = ResolveAbsolutePath(sourceProjectPath);
@@ -416,6 +393,7 @@ bool AssetDatabase::MoveAsset(
         fs::rename(sourceMetaAbsolute, destinationMetaAbsolute, error);
 
         if (error) {
+            // 先に移動した本体を元へ戻す。索引更新は本体とメタデータの移動が揃った後だけ予約する。
             std::error_code rollbackError;
             fs::rename(destinationAbsolute, sourceAbsolute, rollbackError);
 

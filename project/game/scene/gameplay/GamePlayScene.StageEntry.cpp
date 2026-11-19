@@ -50,6 +50,7 @@ engine::Object3D* GamePlayScene::FindStageEntryGate() const {
             continue;
         }
 
+        // 現在のタイプ表記を優先し、型だけ残った古い配置は候補として控えます。
         if (object->GetGimmickType() == "StageGate") {
             return object.get();
         }
@@ -69,8 +70,9 @@ bool GamePlayScene::StartStageEntryPresentation() {
     }
 
     stageEntryGate_ = FindStageEntryGate();
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
+    // 入口・プレイヤー・メインカメラのどれかが未配置なら、部分的に演出を始めません。
     if (!stageEntryGate_ || !player_ || !camera) {
         stageEntryGate_ = nullptr;
         return false;
@@ -111,6 +113,7 @@ bool GamePlayScene::StartStageEntryPresentation() {
         gate->TriggerEntryReaction();
     }
 
+    // 演出の黒帯で既存の画面設定を失わないよう、開始時の高さを保存します。
     if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
         stageEntryCinemaBarBaseHeight_ = params->cinemaBarHeight;
         stageEntryCinemaBarOverrideActive_ = true;
@@ -190,6 +193,7 @@ bool GamePlayScene::StartStageEntryPresentation() {
     stageEntryCameraBaseFov_ = camera->GetFovY();
     stageEntryCameraFocusFov_ = stageEntryCameraBaseFov_;
 
+    // 編集カメラの姿勢が解決できた場合だけ、計算した導入ショットと画角を上書きします。
     if (authoredEntryCamera) {
         engine::Object3D* cameraTransformRoot = authoredEntryCamera;
 
@@ -217,7 +221,7 @@ bool GamePlayScene::StartStageEntryPresentation() {
     camera->SetInputEnabled(false);
     camera->SetFollowTarget(nullptr);
     camera->SetLockOnTarget(nullptr);
-    camera->SetFollowMode(Camera::FollowMode::FixedPoint);
+    camera->SetFollowMode(engine::Camera::FollowMode::FixedPoint);
     camera->SetEye(stageEntryCameraStartEye_);
     camera->SetTarget(stageEntryCameraStartTarget_);
     const engine::Vector3 startRotation = MakeLookAtEuler(stageEntryCameraStartEye_, stageEntryCameraStartTarget_);
@@ -235,6 +239,7 @@ bool GamePlayScene::StartStageEntryPresentation() {
 }
 
 void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
+    // 途中で役者がなくなった場合も、通常制御の復元経路に入ります。
     if (!stageEntryPresentationActive_ || !player_) {
         FinishStageEntryPresentation();
         return;
@@ -242,6 +247,7 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
 
     stageEntryPresentationTimer_ += std::max(deltaTime, 0.0f);
 
+    // ゲートを先に動かし、所定の秒数に達してからプレイヤーを出現させます。
     if (!stageEntryPlayerEmergenceStarted_ && stageEntryPresentationTimer_ >= kStageEntryGateOpenLeadTime) {
         stageEntryPlayerEmergenceStarted_ = true;
         player_->SetIsVisible(true);
@@ -259,6 +265,7 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
         stageEntryGate_->Update(deltaTime);
     }
 
+    // 黒帯は導入で開き、通常視点への復帰と同じ区間で元の高さに戻します。
     if (stageEntryCinemaBarOverrideActive_) {
         if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
             const float openRate = AnimationInterpolation::ApplyEasing(
@@ -269,6 +276,7 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
                 AnimationInterpolation::SegmentRate(stageEntryPresentationTimer_, kStageEntryCameraRestoreStartTime,
                                                     kStageEntryPresentationDuration),
                 AnimationInterpolation::EasingType::SmootherStep);
+            // 開く側の進行率に閉じる側の残り率を掛け、開始と終了の両方で元の帯の高さに一致させる。
             const float blend = openRate * (1.0f - closeRate);
             const float targetHeight = std::max(stageEntryCinemaBarBaseHeight_, kStageEntryCinemaBarHeight);
             params->cinemaBarHeight =
@@ -276,7 +284,7 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
         }
     }
 
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
     if (camera) {
         CameraManager::GetInstance()->SetActiveCamera(camera);
@@ -284,6 +292,7 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
         engine::Vector3 target = stageEntryCameraFocusTarget_;
         float fov = stageEntryCameraFocusFov_;
 
+        // カメラは最初にゲートへ寄り、後半で通常追従の位置と画角へ補間します。
         if (stageEntryPresentationTimer_ < kStageEntryCameraRestoreStartTime) {
             const float introRate = AnimationInterpolation::ApplyEasing(
                 AnimationInterpolation::SegmentRate(stageEntryPresentationTimer_, 0.0f, kStageEntryCameraIntroDuration),
@@ -292,6 +301,7 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
             target =
                 AnimationInterpolation::Lerp(stageEntryCameraStartTarget_, stageEntryCameraFocusTarget_, introRate);
         } else {
+            // 復帰区間だけを0〜1に換算し、目の位置・注視点・画角を同じ割合で通常視点へ戻す。
             const float restoreRate = AnimationInterpolation::ApplyEasing(
                 AnimationInterpolation::SegmentRate(stageEntryPresentationTimer_, kStageEntryCameraRestoreStartTime,
                                                     kStageEntryPresentationDuration),
@@ -304,9 +314,9 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
 
         camera->SetInputEnabled(false);
         camera->SetFollowTarget(nullptr);
-        camera->SetFollowMode(Camera::FollowMode::FixedPoint);
+        camera->SetFollowMode(engine::Camera::FollowMode::FixedPoint);
 
-        // 追従対象がない演出カメラでは、固定点設定ではなく実際の視点を直接更新します。
+        // 描画へ使う視点と、固定点モードが次に使う基準の両方を現在の補間結果へそろえます。
         camera->SetEye(eye);
         camera->SetTarget(target);
         const engine::Vector3 rotation = MakeLookAtEuler(eye, target);
@@ -328,6 +338,7 @@ void GamePlayScene::UpdateStageEntryPresentation(float deltaTime) {
 
     GpuParticleManager::GetInstance()->Update(deltaTime);
 
+    // 復帰区間も終わってから操作とゲート判定を本編へ返します。
     if (stageEntryPresentationTimer_ >= kStageEntryPresentationDuration) {
         FinishStageEntryPresentation();
     }
@@ -347,12 +358,14 @@ void GamePlayScene::FinishStageEntryPresentation() {
     stageEntryPresentationTimer_ = 0.0f;
     stageEntryPresentationRetryTimer_ = 0.0f;
 
+    // 演出中に抑止していた入退場判定を使えるようにし、ゲートの借用参照を外します。
     if (auto* gate = dynamic_cast<GimmickStageGate*>(stageEntryGate_)) {
         gate->SetTransitionEnabled(true);
     }
 
     stageEntryGate_ = nullptr;
 
+    // 黒帯が閉じる途中で中断しても、開始時の設定値へ戻します。
     if (stageEntryCinemaBarOverrideActive_) {
         if (PostEffect::Params* params = PostEffect::GetInstance()->GetParams()) {
             params->cinemaBarHeight = stageEntryCinemaBarBaseHeight_;
@@ -362,13 +375,15 @@ void GamePlayScene::FinishStageEntryPresentation() {
         stageEntryCinemaBarBaseHeight_ = 0.0f;
     }
 
+    // 経路アニメーションを止めて操作権を戻し、短い着地反応へつなぎます。
     if (player_) {
         player_->StopGateReturnAnimation(stageEntryHadPlayerControl_);
         player_->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::Idle);
         player_->TriggerSlimeImpulse({0.96f, 1.08f, 0.96f}, 0.18f);
     }
 
-    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+    // 演出の画角を解除します。編集時は編集カメラ、プレイ時はプレイヤー追従へ戻します。
+    if (engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         camera->SetFovY(stageEntryCameraBaseFov_);
 #ifdef USE_IMGUI
         if (CameraEditor::GetInstance()->IsEditorMode()) {
@@ -379,7 +394,7 @@ void GamePlayScene::FinishStageEntryPresentation() {
         {
             if (player_) {
                 camera->SetFollowTarget(player_);
-                camera->SetFollowMode(Camera::FollowMode::Aimable);
+                camera->SetFollowMode(engine::Camera::FollowMode::Aimable);
                 camera->SetRotation(
                     {kStageEntryThirdPersonPitch,
                      std::atan2(stageEntryDirection_.x, stageEntryDirection_.z) + kStageEntryCameraYawOffset, 0.0f});
@@ -391,5 +406,6 @@ void GamePlayScene::FinishStageEntryPresentation() {
         }
     }
 
+    // メインカメラを強制描画する指定を外し、以降のカメラ選択を通常経路へ戻します。
     CameraManager::GetInstance()->SetActiveCamera(nullptr);
 }

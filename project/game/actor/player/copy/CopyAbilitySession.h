@@ -28,7 +28,7 @@ class ICopyAbilitySession {
     virtual void NotifyDamageStarted(Player&) {}
 
     // 通常描画用。能力に表示物がなければ既定の空実装を使う。
-    virtual void Draw(Player&, ID3D12Resource*, ID3D12Resource*, Camera*, int) {}
+    virtual void Draw(Player&, ID3D12Resource*, ID3D12Resource*, engine::Camera*, int) {}
 
     virtual bool HasOwnedVisuals() const { return false; }
 
@@ -37,7 +37,7 @@ class ICopyAbilitySession {
     virtual void SetPreviewAttackId(const std::string&) {}
 
     // 深度・画面コピーを必要とする表示物の専用パス。通常描画との二重描画を避ける。
-    virtual void DrawOwnedVisuals(Player&, uint32_t, uint32_t, Camera*, int) {}
+    virtual void DrawOwnedVisuals(Player&, uint32_t, uint32_t, engine::Camera*, int) {}
 
     // ガード成立時の追加演出を処理した場合のみ true を返します。
     virtual bool NotifyGuardedHit(Player&, const engine::Vector3&) { return false; }

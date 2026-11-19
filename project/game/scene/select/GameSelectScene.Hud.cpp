@@ -88,10 +88,12 @@ void GameSelectScene::InitializeStageGateNameLabels() {
                                                  : stages[index].gateNameTexturePath;
         engine::Object3D* gate = tutorial ? FindObjectByName("TutorialArrivalGate")
                                   : FindStageGateByIndex(static_cast<int>(index));
+        // 描画先のゲートや指定画像が無い場合は、そのステージ番号のスロットを空のまま保ちます。
         if (texturePath.empty() || !gate) {
             continue;
         }
 
+        // 画像の縦横比を維持して名札を作り、毎フレームの投影位置が決まるまで隠します。
         auto label = std::make_unique<engine::Sprite>();
         label->Initialize(GetSpriteCommon(), texturePath);
         label->SetName("stage_gate_name_" + std::to_string(index));
@@ -104,6 +106,7 @@ void GameSelectScene::InitializeStageGateNameLabels() {
         label->Update();
         stageGateNameLabels_[index] = std::move(label);
 
+        // チュートリアルとスターコインがないステージには、完了マークの列を作りません。
         if (tutorial || !stages[index].hasStarCoins) {
             continue;
         }
@@ -124,7 +127,8 @@ void GameSelectScene::InitializeStageGateNameLabels() {
 }
 
 void GameSelectScene::UpdateStageGateNameLabels() {
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    // 通常操作時だけ名札を表示します。カメラ・プレイヤー不在や演出切替中は全てのゲートを表示対象外にします。
+    engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     const bool showLabels = player_ && camera && !isChangingStage_ && !gateEntryCinematicActive_ &&
                             !gateReturnPresentationActive_ && !crownCountPresentationActive_ &&
                             unlockingStageIndex_ < 0;
@@ -141,6 +145,7 @@ void GameSelectScene::UpdateStageGateNameLabels() {
             continue;
         }
 
+        // 名札が見えなくなった場合は、それに付随するスターも同じタイミングで隠します。
         auto hide = [this, index, label]() {
             label->SetVisible(false);
 
@@ -164,12 +169,14 @@ void GameSelectScene::UpdateStageGateNameLabels() {
         const float dz = gatePosition.z - playerPosition.z;
         const float distance = std::sqrt(dx * dx + dz * dz);
 
+        // プレイヤーとゲートの水平距離を使い、表示距離の範囲外で徐々に透明にします。
         const float alpha = GateNameAlpha(distance, gateNameShowDistance_, gateNameFadeDistance_);
         if (alpha <= 0.0f) {
             hide();
             continue;
         }
 
+        // モデル上端の少し上を投影し、カメラ背後の点や視錐台外の点は画面座標へ変換しません。
         const Aabb bounds = gate->GetModelWorldAabb();
         const engine::Vector3 worldPosition = {gatePosition.x, bounds.max.y + gateNameHeightOffset_, gatePosition.z};
         const float w = worldPosition.x * viewProjection.m[0][3] + worldPosition.y * viewProjection.m[1][3] +
@@ -197,6 +204,7 @@ void GameSelectScene::UpdateStageGateNameLabels() {
         label->SetVisible(true);
         label->Update();
 
+        // 通常ステージだけセーブ済みの収集状態を参照して、名札に沿ってスターを並べます。
         auto* save = GameDataManager::GetInstance();
 
         if (tutorial) {
@@ -213,6 +221,7 @@ void GameSelectScene::UpdateStageGateNameLabels() {
             const bool collected = save && save->IsStarCoinCollected(static_cast<int>(index), coinIndex);
             const std::string texture = collected ? "ui/hud/stage_star_filled.png" : "ui/hud/stage_star_empty.png";
 
+            // 収集済み表示に変わった場合だけ画像を差し替え、透明度は名札に揃えます。
             if (star->GetTextureName() != texture) {
                 star->SetTextureHandle(engine::Sprite::LoadTexture(texture));
                 star->SetTextureName(texture);
@@ -236,6 +245,7 @@ void GameSelectScene::LoadStageGateNameSettings() {
         LOG_ERROR("stage_gate_info_settings.json: invalid settings object");
         return;
     }
+    // 各設定を独立して読み、欠損や不正な数値で他の設定まで戻らないようにする。
     auto read = [&data](const char* key, float current, float minimum, float maximum) {
         if (!data.contains(key) || !data[key].is_number()) {
             return current;
@@ -243,6 +253,7 @@ void GameSelectScene::LoadStageGateNameSettings() {
         const float value = data[key].get<float>();
         return std::isfinite(value) ? std::clamp(value, minimum, maximum) : current;
     };
+    // 表示開始・透明度の切り替え・地面からの高さを、ワールド座標で使う範囲へ収める。
     gateNameShowDistance_ = read("nameShowDistance", gateNameShowDistance_, 5.0f, 150.0f);
     gateNameFadeDistance_ = read("nameFadeDistance", gateNameFadeDistance_, 1.0f, 40.0f);
     gateNameHeightOffset_ = read("nameHeightOffset", gateNameHeightOffset_, 0.0f, 10.0f);
@@ -271,6 +282,7 @@ void GameSelectScene::SetStageSelectHUDNumber(std::array<StageSelectHudSprite, 3
             continue;
         }
 
+        // 表示する桁だけ数字画像を設定し、残りはレイアウトの並びを変えず非表示にします。
         const bool digitVisible = visible && i >= visibleStart;
         sprite->SetVisible(digitVisible);
 
@@ -305,6 +317,7 @@ void GameSelectScene::UpdateUi() {
         }
     }
 
+    // 王冠表示だけ演出中の値を許し、スターとコインはセーブデータの合計を描きます。
     SetStageSelectHUDNumber(stageSelectCrownDigits_, GetDisplayedCrownCount(), visible);
     SetStageSelectHUDNumber(stageSelectStarDigits_, save->GetCollectedStarCoinCount(), visible);
     SetStageSelectHUDNumber(stageSelectCoinDigits_, save->GetCoins(), visible);

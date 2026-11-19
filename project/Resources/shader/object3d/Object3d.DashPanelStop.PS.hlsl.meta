@@ -1,0 +1,8 @@
+{
+  "assetType": "Shader",
+  "guid": "86468e7603c941feb11b45030aa42754",
+  "importSettings": {},
+  "importer": "ShaderImporter",
+  "source": "Resources/shader/object3d/Object3d.DashPanelStop.PS.hlsl",
+  "version": 1
+}

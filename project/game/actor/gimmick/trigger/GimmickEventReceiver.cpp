@@ -56,6 +56,7 @@ void GimmickEventReceiver::Update(float deltaTime) {
         isPlaying = sceneManager->IsPlaying();
     }
 
+    // 編集に戻ったら保留中のイベントを消し、次の再生で配置状態を取り直す。
     if (!isPlaying) {
         initializedForPlay_ = false;
         hasPendingActive_ = false;
@@ -80,6 +81,7 @@ void GimmickEventReceiver::Update(float deltaTime) {
         if (originalCollisionMask_ == 0)
             originalCollisionMask_ = CollisionCategories::GetDefaultGameplayMask();
 
+        // 初回更新より先に届いたイベントを優先し、受信していない場合は設定値から始める。
         active_ = hasPendingActive_ ? pendingActive_ : GetParameters()->startActive;
         hasPendingActive_ = false;
         ApplyActiveState(active_);
@@ -89,6 +91,7 @@ void GimmickEventReceiver::Update(float deltaTime) {
     // 軸移動モードと報酬の出現演出は同じ受信オブジェクトで処理します。
     int actionMode = GetParameters()->actionMode;
 
+    // 軸移動は受信時に設定した位置へ近づける。補間率はフレーム時間に応じて求める。
     if (actionMode >= 1 && actionMode <= 3) {
         float speed = (std::max)(0.01f, GetParameters()->moveSpeed);
         float t = 1.0f - std::exp(-speed * deltaTime);
@@ -98,6 +101,7 @@ void GimmickEventReceiver::Update(float deltaTime) {
         pos.z = engine::Math::Lerp(pos.z, targetPosition_.z, t);
         SetTranslate(pos);
     } else if (actionMode == 6 && active_) {
+        // ボス報酬は浮き上がりながら配置位置へ戻り、出現が終わってから取得できるようにする。
         activationTimer_ += (std::max)(0.0f, deltaTime);
         const float duration = (std::max)(0.35f, GetParameters()->fallDuration);
         const float progress = (std::clamp)(activationTimer_ / duration, 0.0f, 1.0f);
@@ -158,12 +162,14 @@ void GimmickEventReceiver::ApplyActiveState(bool active) {
     int actionMode = GetParameters().has_value() ? GetParameters()->actionMode : 0;
     float moveAmount = GetParameters().has_value() ? GetParameters()->moveAmount : 10.0f;
 
+    // 出現と有効化はイベントと同じ表示・衝突状態を使い、無効化だけオンとオフを反転させます。
     if (actionMode == 0) {
         SetIsVisible(active);
         SetCollisionEnabled(active);
 
         // エディタで設定した色を尊重し、報酬王冠などを汎用緑色へ上書きしません。
         SetColor(originalColor_);
+    // 軸移動は移動先だけ設定し、実際の位置は Update() が時間をかけて動かします。
     } else if (actionMode >= 1 && actionMode <= 3) {
         engine::Vector3 offset{};
         if (actionMode == 1)
@@ -181,6 +187,7 @@ void GimmickEventReceiver::ApplyActiveState(bool active) {
     } else if (actionMode == 5) {
         SetIsVisible(!active);
         SetCollisionEnabled(!active);
+    // 王冠を演出開始位置へ置きます。着地までの時間と衝突の切り替えは毎フレーム更新側で扱います。
     } else if (actionMode == 6) {
         SetScale(baseScale_);
         SetRotation(baseRotation_);

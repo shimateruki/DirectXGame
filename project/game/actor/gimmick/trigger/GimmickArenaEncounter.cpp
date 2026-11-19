@@ -70,12 +70,14 @@ void GimmickArenaEncounter::Update(float deltaTime) {
     SceneManager* sceneManager = SceneManager::GetInstance();
     const bool isPlaying = sceneManager && sceneManager->IsPlaying();
 
+    // 編集へ戻ったフレームはボス戦の状態を復元し、封鎖や登場の時間を進めない。
     if (!isPlaying) {
         ResetForEditor();
         BaseGimmick::Update(deltaTime);
         return;
     }
 
+    // 再生に切り替わった時点で、今回の封鎖や戦闘に使う参照を用意する。
     if (!initializedForPlay_) {
         InitializeForPlay();
     }
@@ -83,6 +85,7 @@ void GimmickArenaEncounter::Update(float deltaTime) {
     if (state_ == State::Sealing) {
         stateTimer_ += (std::max)(0.0f, deltaTime);
 
+        // 登場タイムラインの再生状態はシーン側で持つため、ここでは終了したかを確認する。
         if (introTimelineActive_) {
             auto* gameplay = dynamic_cast<GamePlayScene*>(sceneManager->GetCurrentScene());
             if (!gameplay || !gameplay->IsArenaBossIntroActive()) {
@@ -90,6 +93,7 @@ void GimmickArenaEncounter::Update(float deltaTime) {
             }
         }
 
+        // 封鎖からの待ち時間と登場演出の終了を両方満たしてから、ボスを戦闘へ参加させる。
         if (!introTimelineActive_ && stateTimer_ >= GetBossRevealDelay()) {
             SetBossActive(true);
             state_ = State::Fighting;
@@ -167,7 +171,7 @@ void GimmickArenaEncounter::ResetForEditor() {
     SetCollisionMask(CollisionCategories::Get("player"));
 }
 
-// 入場時にボスと隔離壁を有効化し、撃破後の報酬と解放までを一つの進行として管理します。
+// 入場時に隔離壁を有効化し、ボスの起動は登場演出の信号または時間判定まで待ちます。
 void GimmickArenaEncounter::BeginEncounter() {
     // 入場判定を即時に外し、同じフレームの重複開始を防ぎます。
     state_ = State::Sealing;
@@ -177,6 +181,7 @@ void GimmickArenaEncounter::BeginEncounter() {
     SetCollisionMask(0);
     SetBarriersActive(true);
 
+    // 中ボスでは配置された敵の種別から封鎖効果を選び、高冠戦の登場はシーンの演出に任せます。
     if (!IsHighCrownMode()) {
         const auto& effects = IsMagmaMode() ? MidbossEncounterEffects::Magma() : MidbossEncounterEffects::Prism();
         VfxSequencer::PlayOneShot(effects.seal, GetWorldPosition(), {4.0f, 1.0f, 4.0f});
@@ -197,12 +202,14 @@ void GimmickArenaEncounter::CompleteEncounter() {
     SetCollisionAttribute(0);
     SetCollisionMask(0);
 
+    // 中ボス戦は壁を開きます。高冠戦では報酬を有効化し、専用の受け取り演出に進みます。
     if (IsHighCrownMode()) {
         SetRewardActive(true);
     } else {
         SetBarriersActive(false);
     }
 
+    // 演出の基準は遭遇地点です。高冠戦で報酬を取得できる場合はその位置へ切り替えます。
     engine::Vector3 cuePosition = GetWorldPosition();
 
     if (IsHighCrownMode()) {

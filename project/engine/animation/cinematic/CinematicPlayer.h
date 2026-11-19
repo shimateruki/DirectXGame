@@ -197,17 +197,19 @@ class CinematicPlayer {
     std::unordered_set<engine::Object3D*> GetLiveTargets() const;
     // 対象不足や名前重複、視点キーとCamera Shotの競合を診断結果へ追記する。
     void AddPresentationIssues(std::vector<std::string>& issues) const;
-    // 外部の位置解決を優先し、解決できない名前は nullopt を返す。
+    // 有効な部品を指定秒で評価します。対象や基準位置を解決できない場合は nullopt を返します。
     std::optional<engine::Vector3> SampleObjectPosition(size_t index, float timeSeconds,
         const std::unordered_set<engine::Object3D*>& live) const;
+    // 位置を解決できた部品だけ位置・回転・拡縮を更新します。材質や行列の更新は呼び出し側で行います。
     bool ApplyPresentationTransform(size_t index, float timeSeconds,
         const std::unordered_set<engine::Object3D*>& live);
+    // 外部の位置解決を優先し、シーンの対象でも解決できなければ nullopt を返します。
     std::optional<engine::Vector3> PresentationPosition(const std::string& name,
         const std::unordered_set<engine::Object3D*>& live) const;
     std::vector<PresentationObject> presentationObjects_;
     std::vector<std::pair<engine::Object3D*, bool>> presentationHidden_;
-    std::unique_ptr<Camera> presentationCamera_;
-    Camera* presentationPreviousCamera_ = nullptr; // 演出開始前の有効カメラ。借用参照。
+    std::unique_ptr<engine::Camera> presentationCamera_;
+    engine::Camera* presentationPreviousCamera_ = nullptr; // 演出開始前の有効カメラ。借用参照。
     engine::Vector3 presentationOrigin_{}, presentationLookAt_{}, presentationScale_{1, 1, 1};
     float presentationYaw_ = 0.0f, presentationBars_ = 0.0f;
     bool presentationCaptured_ = false, finished_ = false, bindingsReady_ = false;

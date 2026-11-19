@@ -51,12 +51,14 @@ inline engine::Vector3 LerpVector3(const engine::Vector3& start, const engine::V
 inline engine::Vector3 MakePacedSpacingVelocity(const engine::Vector3& toTarget, float distance, float nearDistance, float farDistance,
                                         float speed, float retreatRate, float strafeRate, float elapsed,
                                         float cycleSeconds) {
+    // 遠ければ接近、近すぎれば後退し、間合い内に入ったときだけ横移動を選びます。
     if (distance > farDistance) {
         return {toTarget.x * speed, 0.0f, toTarget.z * speed};
     }
     if (distance < nearDistance) {
         return {-toTarget.x * speed * retreatRate, 0.0f, -toTarget.z * speed * retreatRate};
     }
+    // 周期内で右移動・静止・左移動・静止を順に挟み、間合いの端では横移動を弱めます。
     const float phase =
         std::fmod((std::max)(elapsed, 0.0f), (std::max)(cycleSeconds, 0.1f)) / (std::max)(cycleSeconds, 0.1f);
     const float side = phase < 0.38f ? 1.0f : (phase < 0.50f ? 0.0f : (phase < 0.88f ? -1.0f : 0.0f));

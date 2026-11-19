@@ -71,6 +71,7 @@ void RootSignatureBuilder::AddDescriptorTable(const std::vector<D3D12_DESCRIPTOR
     D3D12_ROOT_PARAMETER param{};
     param.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
     param.DescriptorTable.NumDescriptorRanges = static_cast<UINT>(rangeCopy->size());
+    // パラメータには範囲の先頭ポインターだけを渡します。保持リストが再確保されても範囲自体のアドレスは変わりません。
     param.DescriptorTable.pDescriptorRanges = rangeCopy->data(); // ポインタを渡す
     param.ShaderVisibility = visibility;
 
@@ -149,6 +150,7 @@ void RootSignatureBuilder::Build(ID3D12Device* device, ID3D12RootSignature** out
         return;
     }
 
+    // シリアライズに成功したデータからGPUオブジェクトを作成します。生成後はBuilder内の範囲を参照しません。
     hr = device->CreateRootSignature(
         0,
         signatureBlob->GetBufferPointer(),

@@ -3,6 +3,10 @@
 #include "Easing.h"
 #include <numbers>
 #include "game/ui/SaveIndicatorOverlay.h"
+#include "game/ui/ControlsGuideOverlay.h"
+#include "game/ui/PauseMenuOverlay.h"
+#include "game/ui/SettingsMenuOverlay.h"
+#include "Player.h"
 
 #include "CameraManager.h"
 #include "game/actor/enemy/boss/false_king/EnemyFalseKingSlime.h"
@@ -58,13 +62,71 @@ void GamePlayScene::UpdateUi(float deltaTime) {
     // ゲーム進行に合わせて通常HUDとボスHUDの表示を更新する。
     UpdateGameplayHUD(deltaTime);
     UpdateLifeLostPresentation(deltaTime);
+    UpdateDashSpeedLines(deltaTime);
 
     if (saveIndicatorOverlay_) {
         saveIndicatorOverlay_->Update(deltaTime);
     }
 }
 
+// 加速と水平速度から表示量を求め、HUDの奥に描く二枚の位置と色を更新する。
+void GamePlayScene::UpdateDashSpeedLines(float deltaTime) {
+    if (deltaTime <= 0.0f || !std::isfinite(deltaTime))
+        return;
+
+    // 通常操作に集中する表示なので、ポーズ・死亡・シネマティックに入った時点で強制的に消す。
+    const bool hidden = !player_ || player_->IsDead() || lifeLostState_.IsActive() || lifeLostState_.HoldsBlack() ||
+                        isGoal_ || stageEntryPresentationActive_ || arenaBossIntroActive_ || arenaBossRewardActive_ ||
+                        sealBarrageMovie_.active || crownFinale_.active || crownDefeat_.active || pausePageSliding_ ||
+                        (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) ||
+                        (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive()) ||
+                        (settingsOverlay_ && settingsOverlay_->IsActive());
+    // 通常の移動速度を基準とした水平速度の倍率で濃さを決め、ダッシュパネル加速中だけ目標値を上げる。
+    const float baseSpeed = player_ ? (std::max)(player_->GetMoveSpeed(), 0.01f) : 1.0f;
+    const auto velocity = player_ ? player_->GetVelocity() : engine::Vector3{};
+    const float speedRatio = std::hypot(velocity.x, velocity.z) / baseSpeed;
+    const float strength = std::clamp((speedRatio - 1.10f) / 0.90f, 0.0f, 1.0f);
+    const bool boosted = !hidden && player_->IsDashPanelBoostActive();
+    const float targetAlpha = boosted ? strength * dashSpeedLineMaxAlpha_ : 0.0f;
+    if (hidden) {
+        dashSpeedLineAlpha_ = 0.0f;
+        dashSpeedLinePhase_ = 0.0f;
+    } else {
+        // 立ち上がりを素早くし、加速が切れた後は短く残して急な点滅を避ける。
+        const float response = targetAlpha > dashSpeedLineAlpha_ ? 28.0f : 14.0f;
+        dashSpeedLineAlpha_ = std::lerp(dashSpeedLineAlpha_, targetAlpha, 1.0f - std::exp(-response * deltaTime));
+    }
+    // フェードが見えない濃さまで下がったら、二枚とも隠して位置・大きさの更新も止める。
+    if (dashSpeedLineAlpha_ <= 0.005f) {
+        dashSpeedLineAlpha_ = 0.0f;
+        for (auto& line : dashSpeedLineSprites_)
+            if (line)
+                line->SetVisible(false);
+        return;
+    }
+
+    // 半周期ずつずらした二枚を交互に拡大し、画面端へ流れ続けるように見せる。
+    dashSpeedLinePhase_ = std::fmod(dashSpeedLinePhase_ + (1.8f + strength * 1.6f) * deltaTime, 1.0f);
+    const float width = static_cast<float>(WinApp::GetClientWidth());
+    const float height = static_cast<float>(WinApp::GetClientHeight());
+    for (size_t i = 0; i < dashSpeedLineSprites_.size(); ++i) {
+        auto& line = dashSpeedLineSprites_[i];
+        if (!line)
+            continue;
+        const float phase = std::fmod(dashSpeedLinePhase_ + static_cast<float>(i) * 0.5f, 1.0f);
+        // 拡大するほど外へ流れ、次の画像と交差して一周期の境目が見えなくなる。
+        const float zoom = (0.94f + phase * 0.30f) * dashSpeedLineScale_;
+        const float alpha = dashSpeedLineAlpha_ * (1.0f - std::abs(phase * 2.0f - 1.0f));
+        line->SetPosition({width * 0.5f, height * 0.5f});
+        line->SetSize({width * zoom, height * zoom});
+        line->SetColor({1.0f, 1.0f, 1.0f, alpha});
+        line->SetVisible(true);
+        line->Update();
+    }
+}
+
 GamePlayScene::HudSpriteState GamePlayScene::BindHud(const std::string& name) {
+    // 配置データから名前で参照を取得し、位置・大きさ・色を後続のアニメーションの基準として保持する。
     engine::Sprite* sprite = GetSpriteByName(name);
     if (!sprite) {
         // 配置漏れを静かに隠さず、Editorで修正できるよう名前をログに残す。
@@ -101,6 +163,7 @@ void GamePlayScene::InitializeGameplayHUD() {
         levelLoader_->LoadSpriteLayout(this, "Resources/json/sprite/gameplayHUD.json");
     }
 
+    // HPとコピー表示は既存の描画部品を渡し、プレイヤー状態に応じた更新を各HUDに任せる。
     healthHud_.Bind(BindHud("hud_hp_icon").sprite, BindHud("hud_hp_damage_fill").sprite,
                     BindHud("hud_hp_fill").sprite, BindHud("hud_hp_highlight").sprite,
                     BindHud("hud_hp_frame").sprite, player_, PlayerHealthHud::Style::Animated);
@@ -179,6 +242,7 @@ void GamePlayScene::InitializeGameplayHUD() {
     // 最初のフレームでダメージ演出が発生しないよう、比較に使う前回値を現在値へ揃える。
     lifeLostState_.Reset();
 
+    // ボスHUDは入場後に表示対象が見つかるまでは非表示にし、初回更新前に被弾や段階移行の計測を戻す。
     prismBossHudPhase_ = PrismBossHudPhase::Hidden;
     prismBossHudTimer_ = 0.0f;
     prismBossHudDisplayedRate_ = 0.0f;
@@ -199,6 +263,7 @@ void GamePlayScene::SetGameplayHUDNumber(std::array<HudSpriteState, 2>& digits, 
     // 一桁・二桁の数字を右揃えで描き、値の桁数で他のHUD要素を動かさない。
     value = std::clamp(value, 0, 99);
 
+    // 十の位と一の位を分け、表示する桁数に合わせて数字全体の左端を求める。
     const std::array<int, 2> digitValues = {value / 10, value % 10};
     const int digitCount = value >= 10 ? 2 : 1;
     const float digitWidth = digitHeight * 0.68f;
@@ -211,6 +276,7 @@ void GamePlayScene::SetGameplayHUDNumber(std::array<HudSpriteState, 2>& digits, 
         if (!sprite)
             continue;
 
+        // 一桁では十の位だけを隠し、右端の位置を変えずに同じ部品を使う。
         const bool digitVisible = visible && (digitCount == 2 || i == 1);
         sprite->SetVisible(digitVisible);
 
@@ -264,7 +330,7 @@ void GamePlayScene::CollectStarCoin(int coinIndex, const engine::Vector3& worldP
 
 engine::Vector2 GamePlayScene::ProjectWorldToScreen(const engine::Vector3& worldPosition) const {
     // ワールド上の取得位置を画面座標へ変換し、カメラ不在や異常値では中央を使う。
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
     const float screenW = static_cast<float>(WinApp::GetClientWidth());
     const float screenH = static_cast<float>(WinApp::GetClientHeight());
 
@@ -284,6 +350,7 @@ engine::Vector2 GamePlayScene::ProjectWorldToScreen(const engine::Vector3& world
 
 void GamePlayScene::StartStageStarHUDCollectEffect(int starIndex, const engine::Vector3& worldPosition) {
     // 星本体と火花を取得位置からHUD枠へ飛ばし、到着時に取得済み表示へ切り替える。
+    // 描画部品を作れない場合も、有効な枠の取得表示は即時反映して取りこぼさない。
     if (starIndex < 0 || starIndex >= static_cast<int>(hudStageStarSlots_.size()) || !GetSpriteCommon()) {
         if (starIndex >= 0 && starIndex < 3) {
             hudStageStarVisualCollected_[starIndex] = true;
@@ -293,11 +360,13 @@ void GamePlayScene::StartStageStarHUDCollectEffect(int starIndex, const engine::
         return;
     }
 
+    // 取得地点を画面に投影し、到着先にはJSONで決めた枠の位置を使う。
     const engine::Vector2 start = ProjectWorldToScreen(worldPosition);
     const engine::Vector2 end = hudStageStarSlots_[starIndex].sprite
                             ? hudStageStarSlots_[starIndex].basePosition
                             : engine::Vector2{52.0f + 48.0f * static_cast<float>(starIndex), 214.0f};
 
+    // 表示部品と飛行軌道を組にして保存し、毎フレームの進行をUpdateStageStarHUDへ引き渡す。
     auto addParticle = [&](const std::string& texturePath, const engine::Vector2& particleStart, const engine::Vector2& particleEnd,
                            const engine::Vector2& control, float duration, float baseSize, float rotationSpeed,
                            bool fillsSlot) {
@@ -321,10 +390,12 @@ void GamePlayScene::StartStageStarHUDCollectEffect(int starIndex, const engine::
         hudStageStarFlyParticles_.push_back(std::move(particle));
     };
 
+    // 中央が上に膨らむ軌道を作り、星本体だけが到着時に枠を取得済みへ切り替える。
     const engine::Vector2 mainControl = {(start.x + end.x) * 0.5f,
                                  std::min(start.y, end.y) - 135.0f - 18.0f * static_cast<float>(starIndex)};
     addParticle("Resources/sprite/ui/hud/stage_star_filled.png", start, end, mainControl, 0.72f, 44.0f, 5.6f, true);
 
+    // 火花は星本体の周りから散らし、経路や寿命を少しずつ変えて一斉に消えないようにする。
     for (int i = 0; i < 10; ++i) {
         const float angle = static_cast<float>(i) / 10.0f * kPi * 2.0f;
         const float radius = 18.0f + static_cast<float>((i % 3) * 7);
@@ -346,6 +417,7 @@ void GamePlayScene::UpdateStageStarHUD(float deltaTime, bool visible) {
     visible = visible && StageManager::GetInstance()->GetCurrentStage().hasStarCoins;
     const int stageIndex = StageManager::GetInstance()->GetCurrentStageIndex();
 
+    // 同じ曲線補間で星と火花を進め、星本体の形は保ちつつ火花だけ途中から薄くする。
     for (auto it = hudStageStarFlyParticles_.begin(); it != hudStageStarFlyParticles_.end();) {
         StageStarUiFlyParticle& particle = *it;
         particle.timer += deltaTime;
@@ -364,6 +436,7 @@ void GamePlayScene::UpdateStageStarHUD(float deltaTime, bool visible) {
             particle.sprite->Update();
         }
 
+        // 星本体が枠に到着したフレームで取得表示と脈動を始め、寿命を過ぎた部品は取り除く。
         if (t >= 1.0f) {
             if (particle.fillsSlot && particle.starIndex >= 0 && particle.starIndex < 3) {
                 hudStageStarVisualCollected_[particle.starIndex] = true;
@@ -376,6 +449,7 @@ void GamePlayScene::UpdateStageStarHUD(float deltaTime, bool visible) {
         }
     }
 
+    // 星本体がまだ飛んでいる枠だけは、セッションの取得フラグを即座に画面へ反映しない。
     for (int i = 0; i < static_cast<int>(hudStageStarSlots_.size()); ++i) {
         bool hasActiveFill = false;
 
@@ -400,6 +474,7 @@ void GamePlayScene::UpdateStageStarHUD(float deltaTime, bool visible) {
             continue;
         }
 
+        // 配置の大きさを基準に、取得時の脈動だけ一時的に加える。
         hudStageStarPulseTimers_[i] = std::max(0.0f, hudStageStarPulseTimers_[i] - deltaTime);
         const bool collected = hudStageStarVisualCollected_[i];
         const uint32_t handle =
@@ -480,6 +555,7 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
     SetGameplayHUDNumber(hudLifeDigits_, lives, lifeNumberRight, lifeDigitHeight * (1.0f + lifeGainRate * 0.12f),
                          hudLifeDigits_[1].baseColor, visible);
 
+    // コインは残機の伸縮と別に、アイコンを跳ねさせ、掛け記号と数字はその半分ほど追従させる。
     if (hudCoinIcon_.sprite) {
         hudCoinIcon_.sprite->SetVisible(visible);
         hudCoinIcon_.sprite->SetPosition(
@@ -506,6 +582,7 @@ void GamePlayScene::UpdateGameplayHUD(float deltaTime) {
     const float coinDigitHeight = hudCoinDigits_[1].baseSize.y > 0.0f ? hudCoinDigits_[1].baseSize.y : 40.0f;
     SetGameplayHUDNumber(hudCoinDigits_, coins, {coinNumberRight.x, coinNumberRight.y + coinBounceOffsetY * 0.55f},
                          coinDigitHeight * coinCountScale, hudCoinDigits_[1].baseColor, visible);
+    // 通常の数値を反映した後、飛行中の星と戦闘中のボス表示を進める。
     UpdateStageStarHUD(deltaTime, visible);
     UpdateBossHud(FindBossHudDisplay(), deltaTime);
 }
@@ -573,6 +650,7 @@ void GamePlayScene::UpdateBossHud(const BossHudDisplay& display, float deltaTime
     const bool usesFalseKingTheme = requestedTheme == BossHudTheme::FalseKing;
     const bool requestedVisible = display.visible;
     const float currentHp = display.currentHp;
+    // 現在HPを最大HPで割って表示幅の割合にする。装飾の出現率とは独立して保持する。
     const float actualRate = (std::clamp)(currentHp / display.maximumHp, 0.0f, 1.0f);
     const int falseKingPhase = display.falseKingPhase;
     const float falseKingPhaseTransition = display.falseKingPhaseTransition;
@@ -615,6 +693,7 @@ void GamePlayScene::UpdateBossHud(const BossHudDisplay& display, float deltaTime
 
     switch (prismBossHudPhase_) {
     case PrismBossHudPhase::Hidden:
+        // 非表示中は枠や名前の公開率をゼロのままにして、その値で後段の部品を隠す。
         break;
 
     case PrismBossHudPhase::Introducing: {
@@ -628,6 +707,7 @@ void GamePlayScene::UpdateBossHud(const BossHudDisplay& display, float deltaTime
         prismBossHudPreviousHp_ = currentHp;
         visualAlpha = 1.0f;
 
+        // 登場ゲージの演出が終わったら、両方の帯を実HPに戻して被弾追従へ切り替える。
         if (prismBossHudTimer_ >= kIntroDuration) {
             prismBossHudPhase_ = PrismBossHudPhase::Active;
             prismBossHudTimer_ = 0.0f;
@@ -654,9 +734,11 @@ void GamePlayScene::UpdateBossHud(const BossHudDisplay& display, float deltaTime
         }
 
         prismBossHudPreviousHp_ = currentHp;
+        // 経過秒から求めた追従率で現在HPへ寄せ、フレームレートで追いつく速さが変わりにくくする。
         const float follow = 1.0f - std::exp(-deltaTime * 13.0f);
         prismBossHudDisplayedRate_ += (actualRate - prismBossHudDisplayedRate_) * follow;
 
+        // 回復時は遅延帯を追いつかせ、被弾後は保持時間を過ぎてから一定速度で縮める。
         if (actualRate >= prismBossHudDelayedRate_) {
             prismBossHudDelayedRate_ = actualRate;
             prismBossHudDamageHoldTimer_ = 0.0f;
@@ -702,6 +784,7 @@ void GamePlayScene::UpdateBossHud(const BossHudDisplay& display, float deltaTime
                                                   : 0.0f;
     const float barScale = 0.12f + frameReveal * 0.88f;
     const float displayedRate = (std::clamp)(prismBossHudDisplayedRate_, 0.0f, 1.0f);
+    // 遅延帯には現在帯以上の割合を使い、回復時などに前後が逆転しないようにする。
     const float delayedRate = (std::clamp)(prismBossHudDelayedRate_, displayedRate, 1.0f);
     const float lowHpRate = (std::clamp)((0.34f - displayedRate) / 0.34f, 0.0f, 1.0f);
     const float lowHpPulse = lowHpRate * (0.5f + 0.5f * std::sin(prismBossHudAnimationTimer_ * 7.0f));
@@ -796,6 +879,7 @@ void GamePlayScene::UpdateBossHud(const BossHudDisplay& display, float deltaTime
                  {1.0f, usesFalseKingTheme ? 0.96f : (usesMagmaTheme ? 0.86f : 1.0f),
                   usesFalseKingTheme ? 0.72f : (usesMagmaTheme ? 0.36f : 1.0f),
                   prismBossHudHighlight_.baseColor.w * visualAlpha * (0.74f + glowPulse * 0.26f)});
+    // HP表示の外側は実HPによる幅変更を受けず、開く途中の枠の幅と被弾の揺れだけを共有する。
     updateSprite(prismBossHudFrameTop_, hudVisible,
                  {prismBossHudFrameTop_.basePosition.x + barShake, prismBossHudFrameTop_.basePosition.y},
                  {prismBossHudFrameTop_.baseSize.x * barScale, prismBossHudFrameTop_.baseSize.y},
@@ -826,6 +910,7 @@ void GamePlayScene::UpdateBossHud(const BossHudDisplay& display, float deltaTime
                   prismBossHudShardRight_.baseColor.w * shardAlpha},
                  0.18f - std::sin(prismBossHudAnimationTimer_ * 2.8f) * 0.025f);
 
+    // 名前は装飾と別の登場率で上から定位置へ下ろし、被弾の揺れは弱めに引き継ぐ。
     const float nameScale = 0.82f + nameReveal * 0.18f + damageImpact * 0.035f;
     updateSprite(prismBossHudName_, hudVisible && nameReveal > 0.001f,
                  {prismBossHudName_.basePosition.x + barShake * 0.45f,
@@ -877,6 +962,7 @@ void GamePlayScene::UpdateBossHud(const BossHudDisplay& display, float deltaTime
     // 第二段階の詠唱中は残り時間に比例したゲージを表示する。
     const float castRemaining = display.sealCastRemaining;
     const bool showCast = showFalseKingPhases && falseKingPhase == 2 && castRemaining > 0.0f;
+    // 残り秒数を詠唱の全秒数で割るので、詠唱が完了に近づくほど幅が短くなる。
     const float castRate = showCast
                                ? (std::clamp)(castRemaining / CrownFinaleTuning::Get().sealCastTime, 0.0f, 1.0f)
                                : 0.0f;

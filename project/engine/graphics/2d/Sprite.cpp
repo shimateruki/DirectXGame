@@ -243,6 +243,7 @@ void Sprite::Update() {
 	engine::Math math;
 	engine::Matrix4x4 worldMatrix = MakeSpriteWorldMatrix(this);
 	engine::Matrix4x4 viewMatrix = math.MakeIdentity4x4();
+	// クライアント領域のピクセル座標を画面全体へ正射影します。左上を原点として下へYが増えます。
 	engine::Matrix4x4 projectionMatrix = math.MakeOrthographicMatrix(0.0f, 0.0f, (float)WinApp::GetClientWidth(), (float)WinApp::GetClientHeight(), 0.0f, 100.0f);
 	engine::Matrix4x4 worldViewProjectionMatrix = math.Multiply(worldMatrix, math.Multiply(viewMatrix, projectionMatrix));
 
@@ -330,6 +331,7 @@ void Sprite::SetAnimation(int frameCount, float duration, bool loop) {
 	if (textureHandle_ == 0)
 		return;
 
+	// durationはアニメーション全体ではなく1コマの表示秒数。設定変更だけでは再生を始めず、先頭のUVを準備する。
 	totalFrames_ = (frameCount > 0) ? frameCount : 1;
 	frameDuration_ = duration;
 	isLooping_ = loop;
@@ -350,6 +352,7 @@ void Sprite::SetAnimation(int frameCount, float duration, bool loop) {
 /// <summary>
 /// アニメーションの再生を開始
 /// </summary>
+// 停止位置からの再開ではなく、先頭のコマへ戻して再生を始める。
 void Sprite::Play() {
 	isPlaying_ = true;
 	currentFrame_ = 0;
@@ -365,6 +368,7 @@ void Sprite::Stop() {
 
 uint64_t Sprite::EnsureReplayId() {
 	if (replayId_ == 0) {
+		// 再生用IDは重複しない番号を発行するだけなので、他のSprite状態の同期には使いません。
 		replayId_ = gNextSpriteReplayId.fetch_add(1, std::memory_order_relaxed);
 	}
 
@@ -418,6 +422,7 @@ void Sprite::RestoreReplayState(const ReplayState& state) {
 	isVisible_ = state.visible;
 	isLocked_ = state.locked;
 
+	// 再生位置と切り出し範囲を同じ保存フレームに揃えてから、描画用の色と行列を再構築します。
 	isPlaying_ = state.animationPlaying;
 	isLooping_ = state.animationLooping;
 	frameDuration_ = state.frameDuration;
@@ -468,6 +473,7 @@ void Sprite::SetParent(Sprite* parent, bool keepWorldPosition) {
 		if (parent_) {
 			engine::Math math;
 			engine::Matrix4x4 parentWorld = MakeSpriteWorldMatrix(parent_);
+			// 新しい親の逆変換で画面上の位置をローカルへ戻します。調整するのは位置だけで、自身の回転は保持します。
 			engine::Matrix4x4 inverseParent = math.Inverse(parentWorld);
 			engine::Vector3 local = math.Transform({ worldPosition.x, worldPosition.y, 0.0f }, inverseParent);
 			position_ = { local.x, local.y };

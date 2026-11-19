@@ -10,6 +10,7 @@ inline std::filesystem::path Resolve(const std::filesystem::path& root, const st
     std::error_code error;
     if (fs::is_regular_file(requested, error)) return requested;
     const auto relative = requested.lexically_normal().lexically_relative(root.lexically_normal());
+    // シーン別検索へ進むのは素材ルート直下のJSON名だけです。下位フォルダーを明示した指定は、そのパスのまま扱います。
     if (relative.empty() || relative.has_parent_path() || relative.extension() != ".json") return requested;
 
     // 同名の候補が複数あれば誤った演出を再生しない。

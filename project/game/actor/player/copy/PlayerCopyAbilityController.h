@@ -7,7 +7,7 @@
 #include "game/actor/combat/PlayerAttackMovement.h"
 
 class Player;
-class Camera;
+namespace engine { class Camera; }
 class EnemyAttackProfile;
 struct ID3D12Resource;
 
@@ -48,13 +48,13 @@ class PlayerCopyAbilityController {
     void Update(Player& player, float deltaTime);
 
     // 能力固有の3D表示を、現在のセッションがある時だけ描く。
-    void Draw(Player& player, ID3D12Resource* pointLight, ID3D12Resource* spotLight, Camera* camera = nullptr,
+    void Draw(Player& player, ID3D12Resource* pointLight, ID3D12Resource* spotLight, engine::Camera* camera = nullptr,
               int previewBufferIndex = 0);
 
     bool HasOwnedVisuals() const;
 
     // 深度・画面取得テクスチャを使う能力の見た目を専用パスへ転送する。
-    void DrawOwnedVisuals(Player& player, uint32_t depthSrvHandle, uint32_t grabSrvHandle, Camera* camera = nullptr,
+    void DrawOwnedVisuals(Player& player, uint32_t depthSrvHandle, uint32_t grabSrvHandle, engine::Camera* camera = nullptr,
                           int previewBufferIndex = 0);
 
     // 能力側の終了処理を呼んでからセッションを破棄する。

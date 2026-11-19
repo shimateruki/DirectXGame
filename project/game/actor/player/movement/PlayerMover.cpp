@@ -60,12 +60,14 @@ void PlayerMover::StopDashOnImpact() {
 
 void PlayerMover::ResetTransientState() {
     // ワープ・演出復帰で前の足場やダッシュの補正を次の場面へ持ち込まない。
+    // 乗っていた床や能力の速度を破棄し、次の移動更新では通常の入力速度から計算します。
     platformVelocity_ = {};
     platformAirVelocity_ = {};
     abilityAirVelocity_ = {};
     previousAddedAirVelocity_ = {};
     jumpRequest_.Reset();
     jumpStatus_ = "リセット";
+    // ダッシュ終了に付随する無敵と衝突属性を戻してから、移動の予約や方向を初期化します。
     StopDashOnImpact();
     isJumpCharging_ = false;
     jumpChargeTimer_ = 0.0f;
@@ -74,9 +76,8 @@ void PlayerMover::ResetTransientState() {
     currentDashSpeed_ = dashSpeed_;
     currentDashDuration_ = dashDuration_;
 
-    dashPanelTimer_ = 0.0f;
-    dashPanelSpeedMultiplier_ = 1.0f;
-    dashPanelTurnMultiplier_ = 1.0f;
+    // 着地履歴とパネルの効果を消し、転送先で前の落下を着地として扱わないようにします。
+    CancelDashPanelBoost();
     hasGroundedHistory_ = false;
     wasGroundedLastFrame_ = false;
     airborneDuration_ = 0.0f;
@@ -161,11 +162,13 @@ void PlayerMover::Update(float deltaTime) {
         return;
     }
 
+    // 物理で確定済みの上下速度を土台に、入力・攻撃・ダッシュの水平移動を組み立てる。
     engine::Vector3 velocity = player_->GetVelocity();
 
     const auto attackMovement = player_->GetAttackMovement();
     engine::Vector3 inputMove = strategy_->CalculateVelocity(player_);
 
+    // パネルの効果時間を先に減らし、有効なフレームにだけ移動と旋回の倍率を渡す。
     if (dashPanelTimer_ > 0.0f) {
         dashPanelTimer_ = (std::max)(0.0f, dashPanelTimer_ - deltaTime);
     }
@@ -184,6 +187,7 @@ void PlayerMover::Update(float deltaTime) {
 
         dashTimer_ -= deltaTime;
 
+        // 残り時間分の速度を適用し終えてから、ダッシュ状態の終了処理を呼ぶ。
         if (dashTimer_ <= 0.0f) {
             StopDashOnImpact();
         }
@@ -201,6 +205,7 @@ void PlayerMover::Update(float deltaTime) {
             // 攻撃中の地上制限と空中補間は、攻撃側で編集した設定をそのまま優先する。
             velocity = attackMovement.Apply(velocity, inputMove * moveSpeedMultiplier, player_->IsGrounded(), deltaTime);
         } else {
+            // 攻撃による制限がない場合は、現在の操作と地上・空中向けの加速設定から速度を求める。
             const auto& movement = GameplayStatusManager::GetInstance()->GetPlayerLocomotion();
             velocity = movement.Apply(velocity, inputMove * moveSpeedMultiplier,
                                       player_->GetMoveSpeed() * moveSpeedMultiplier, player_->IsGrounded(), deltaTime);
@@ -233,6 +238,7 @@ void PlayerMover::Update(float deltaTime) {
         hasAirDashed_ = false; // 地面に着いたら空中ダッシュ権をリセット
     }
 
+    // 入力側で判定済みの溜め状態を読み、ピンク形態では溜め量も見た目に反映する。
     const bool usePinkSlimeJumpAbility = player_->IsPinkSlimeMorphed();
     isJumpCharging_ = jumpRequest_.IsCharging();
     jumpChargeTimer_ = jumpRequest_.Charge();
@@ -249,6 +255,7 @@ void PlayerMover::Update(float deltaTime) {
 
     float chargeRatio = 0.0f;
 
+    // ジャンプ要求は一度だけ消費し、踏み切りの速度と通知を同じフレームに出す。
     if (jumpRequest_.Consume(chargeRatio)) {
         velocity.y = player_->GetJumpPower() * (usePinkSlimeJumpAbility ? (1.0f + chargeRatio * 0.65f) : 1.0f);
         player_->TriggerSlimeJumpTakeoff();
@@ -262,6 +269,7 @@ void PlayerMover::Update(float deltaTime) {
 #endif
         player_->SetSlimeJumpCharge(0.0f);
 
+        // ピンクの溜めジャンプは専用の踏み切り演出を地表に出し、それ以外は共通の砂煙を使う。
         if (usePinkSlimeJumpAbility && MeshEffectManager::GetInstance()) {
             engine::Vector3 effectPos = GroundEffectLocator::ResolveGroundPosition(player_->GetWorldPosition());
             effectPos.y += 0.08f;
@@ -288,11 +296,12 @@ void PlayerMover::Update(float deltaTime) {
     // 旧ホッピングは接地を途切れさせ、同フレームのジャンプ速度も上書きしていました。
     // 見た目の伸縮はPlayerSlimeAnimatorが担当します。
 
-    // --- 9. 最終的な速度をプレイヤーへ適用 ---
+    // 足場と能力の勢いはダッシュ以外で合成し、次の通常更新で差し引くために今回の加算量を記録する。
     previousAddedAirVelocity_ = {};
     if (!isDashing_) {
         previousAddedAirVelocity_ = platformAirVelocity_ + abilityAirVelocity_;
         velocity += platformAirVelocity_;
+        // 床の慣性は秒単位で指数減衰するので、フレーム刻みが変わっても同じ経過秒数で同程度に弱まります。
         platformAirVelocity_ = platformAirVelocity_ * std::exp(-0.8f * deltaTime);
         velocity += abilityAirVelocity_;
     }
@@ -308,6 +317,7 @@ float PlayerMover::UpdateLandingFeedback(float prePhysicsVelocityY, float deltaT
         return 0.0f;
     }
 
+    // 砂煙の再発生を抑えながら、空中で観測した最大下降速度を接地まで保持する。
     landingDustCooldown_ = (std::max)(0.0f, landingDustCooldown_ - deltaTime);
     const bool grounded = player_->IsGrounded();
     const float downwardSpeed = (std::max)({-prePhysicsVelocityY, -player_->GetVelocity().y, 0.0f});
@@ -316,12 +326,14 @@ float PlayerMover::UpdateLandingFeedback(float prePhysicsVelocityY, float deltaT
         airborneMaxDownSpeed_ = (std::max)(airborneMaxDownSpeed_, downwardSpeed);
     }
 
+    // 前回まで空中だったフレームから接地に変わった時だけ、演出へ渡す着地の強さを計算する。
     float impactRate = 0.0f;
     if (allowFeedback && hasGroundedHistory_ && !wasGroundedLastFrame_ && grounded &&
         airborneDuration_ >= 0.06f) {
         // 衝突解決がPlayer更新後に行われても、前フレームの下降速度を失わないようにします。
         const float impactSpeed = (std::max)(airborneMaxDownSpeed_, downwardSpeed);
         const float jumpPower = (std::max)(player_->GetJumpPower(), 0.01f);
+        // 小さな着地を切り捨てるしきい値を引き、現在のジャンプ初速を基準に演出用の強度へ換算します。
         const float impactRange = (std::max)(jumpPower - 3.5f, 1.0f);
         impactRate = std::clamp((impactSpeed - 3.5f) / impactRange, 0.0f, 1.65f);
         if (impactRate >= 0.18f && landingDustCooldown_ <= 0.0f) {
@@ -330,6 +342,7 @@ float PlayerMover::UpdateLandingFeedback(float prePhysicsVelocityY, float deltaT
         }
     }
 
+    // 今回の着地判定に使った滞空履歴を捨て、次に地面を離れる時点から集め直す。
     if (grounded) {
         airborneDuration_ = 0.0f;
         airborneMaxDownSpeed_ = 0.0f;
@@ -358,6 +371,12 @@ void PlayerMover::SetStrategy(std::unique_ptr<IMoveStrategy> strategy) {
     strategy_ = std::move(strategy);
 }
 
+void PlayerMover::CancelDashPanelBoost() {
+    dashPanelTimer_ = 0.0f;
+    dashPanelSpeedMultiplier_ = 1.0f;
+    dashPanelTurnMultiplier_ = 1.0f;
+}
+
 void PlayerMover::ApplyDashPanelBoost(float duration, float speedMultiplier, float turnMultiplier) {
     // 連続してパネルを踏んでも効果時間は短縮せず、速度だけ不足分を補う。
     dashPanelTimer_ = (std::max)(dashPanelTimer_, duration);
@@ -373,6 +392,7 @@ void PlayerMover::ApplyDashPanelBoost(float duration, float speedMultiplier, flo
     if (horizontalSpeed >= targetSpeed)
         return;
 
+    // 動いている間は現在の進行方向を保ち、ほぼ停止している場合だけ向いている方へ加速します。
     engine::Vector3 dir{};
 
     if (horizontalSpeed > 0.05f) {

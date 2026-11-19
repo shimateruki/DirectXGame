@@ -8,7 +8,7 @@ namespace engine {
 /// <summary>
 /// 初期化
 /// </summary>
-void SpriteCommon::Initialize(DirectXCommon* dxCommon) {
+void SpriteCommon::Initialize(engine::DirectXCommon* dxCommon) {
     assert(dxCommon);
     dxCommon_ = dxCommon;
 
@@ -21,6 +21,7 @@ void SpriteCommon::Initialize(DirectXCommon* dxCommon) {
 /// 共通描画設定
 /// </summary>
 void SpriteCommon::SetPipeline(ID3D12GraphicsCommandList* commandList) {
+    // 画像SRVの番号を解決できるよう、Spriteのルートテーブルが参照する共有ヒープを先に設定します。
     SrvManager::GetInstance()->SetDescriptorHeaps(commandList);
 
     // 描画前にパイプラインとルートシグネチャを設定する
@@ -44,6 +45,7 @@ void SpriteCommon::CreateRootSignature() {
 
     // ルートパラメータ
     D3D12_ROOT_PARAMETER rootParameters[3] = {};
+    // 頂点シェーダーのb0へ変換行列、ピクセルシェーダーのb1へ色などの材質データを渡します。
     rootParameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
     rootParameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
     rootParameters[0].Descriptor.ShaderRegister = 0;
@@ -105,6 +107,7 @@ void SpriteCommon::CreatePipeline() {
     inputElementDescs[1] = { "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
     D3D12_INPUT_LAYOUT_DESC inputLayoutDesc = { inputElementDescs, _countof(inputElementDescs) };
 
+    // RGBは画像のアルファで背景と合成し、出力先にすでにあるアルファは保持します。
     D3D12_BLEND_DESC blendDesc{};
     blendDesc.RenderTarget[0].RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
     blendDesc.RenderTarget[0].BlendEnable = TRUE;
@@ -120,6 +123,7 @@ void SpriteCommon::CreatePipeline() {
     rasterizerDesc.FillMode = D3D12_FILL_MODE_SOLID;
 
     D3D12_DEPTH_STENCIL_DESC depthStencilDesc{};
+    // 3Dの深度を参照しないため、重なり順はSpriteの描画順で決まります。
     depthStencilDesc.DepthEnable = false;
 
     // シェーダーのコンパイル

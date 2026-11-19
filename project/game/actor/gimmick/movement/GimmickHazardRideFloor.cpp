@@ -81,9 +81,11 @@ void GimmickHazardRideFloor::Update(float deltaTime) {
     stateTimer_ += deltaTime;
 
     switch (state_) {
+    // プレイヤーが乗るか外部イベントが届くまで、床を出発位置に残します。
     case State::Waiting:
         break;
 
+    // 発進予告では震えを強め、始動時に一度出発位置へ戻してから走行します。
     case State::Starting: {
         const float delay = GetStartDelay();
         const float normalized = delay > 0.0f ? (std::min)(stateTimer_ / delay, 1.0f) : 1.0f;
@@ -99,6 +101,7 @@ void GimmickHazardRideFloor::Update(float deltaTime) {
         break;
     }
 
+    // 進んだ距離の割合で連動する妨害を起動し、終点を超えないよう走行距離を制限します。
     case State::Moving: {
         travelledDistance_ = (std::min)(GetTravelDistance(), travelledDistance_ + GetTravelSpeed() * deltaTime);
         const float progress = GetTravelDistance() > 0.0f ? travelledDistance_ / GetTravelDistance() : 1.0f;
@@ -113,6 +116,7 @@ void GimmickHazardRideFloor::Update(float deltaTime) {
         break;
     }
 
+    // 終点に着いたことを揺れで伝え、落下が始まるまで床の高さを保ちます。
     case State::Warning: {
         const float intensity = 0.04f + (std::min)(stateTimer_ / GetEndWarningDuration(), 1.0f) * 0.08f;
         const engine::Vector3 endPosition = startPosition_ + GetTravelDirection() * GetTravelDistance();
@@ -127,6 +131,7 @@ void GimmickHazardRideFloor::Update(float deltaTime) {
         break;
     }
 
+    // 落下中は鉛直速度に重力を積分し、床の傾きを加えます。所定時間の後に非表示へ移します。
     case State::Falling:
         fallVelocityY_ -= GetFallGravity() * deltaTime;
         SetTranslateY(GetTranslate().y + fallVelocityY_ * deltaTime);
@@ -140,6 +145,7 @@ void GimmickHazardRideFloor::Update(float deltaTime) {
 
         break;
 
+    // 繰り返し使える設定の場合だけ、落下後の待機を終えて元の位置へ復帰します。
     case State::Hidden:
         if (ShouldReturnAfterRide() && stateTimer_ >= kReturnDelaySeconds) {
             ResetForRetry();
@@ -215,6 +221,7 @@ void GimmickHazardRideFloor::TriggerPendingHazards(float progress) {
     // 走行距離を均等分割した地点で、対応する危険イベントを一度ずつ発火します。
     const int count = GetHazardCount();
 
+    // 長いフレームで複数の発火地点を越えた場合も、通過した順番で通知します。
     while (nextHazardIndex_ < count) {
         const float triggerProgress = static_cast<float>(nextHazardIndex_ + 1) / static_cast<float>(count + 1);
 

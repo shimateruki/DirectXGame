@@ -72,6 +72,7 @@ void Player::SetCarriedEnemy(engine::Object3D* enemy) {
 
 void Player::ReleaseCarriedEnemy(bool restorePose) {
     // 吸収途中なら先に演出を止め、保持敵の姿勢を指定に従って復元する。
+    // チュートリアルでは工程切替で練習用の敵が除去されるため、吸収を片付ける前に借用参照を確認します。
     if (tutorialSafetyEnabled_) {
         if (pendingAbsorbEnemy_ && !IsTutorialEnemyPresent(pendingAbsorbEnemy_)) pendingAbsorbEnemy_ = nullptr;
         if (carriedEnemy_ && !IsTutorialEnemyPresent(carriedEnemy_)) SetCarriedEnemy(nullptr);
@@ -87,12 +88,14 @@ void Player::ReleaseCarriedEnemy(bool restorePose) {
     }
 
     if (auto* enemyBase = dynamic_cast<BaseEnemy*>(enemy)) {
+        // 敵クラスが自身の衝突設定や復帰時間を戻せるよう、解放の通知は表示姿勢の復元より先に行います。
         enemyBase->SetCarried(false);
     } else {
         enemy->SetCollisionAttribute(CollisionCategories::Get("enemy"));
         enemy->SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_bullet") | CollisionCategories::Get("player_attack"));
     }
 
+    // 運搬中の非表示を解除し、必要なら捕まえる前の姿勢と大きさを復元する。
     enemy->SetIsVisible(true);
 
     if (restorePose) {
@@ -104,11 +107,12 @@ void Player::ReleaseCarriedEnemy(bool restorePose) {
         enemy->UpdateWorldMatrix();
     }
 
+    // 捕獲時の姿勢を使い終えた後で参照を外します。SetCarriedEnemy() はその姿勢の保存値も初期化します。
     SetCarriedEnemy(nullptr);
 }
 
 bool Player::ShouldPlayAbsorbEffect(BaseEnemy* enemy) const {
-    // コピーできない敵には吸収演出を始めず、通常の解放経路へ戻す。
+    // 個別の吸い込み演出を使うのは通常スライムと炎スライム。ほかの対応形態はその場で変身する。
     if (!enemy) {
         return false;
     }
@@ -125,6 +129,7 @@ void Player::BeginAbsorbEffect(BaseEnemy* enemy) {
 
     pendingAbsorbType_ = ResolveEnemyMorphType(enemy->GetEnemyType());
 
+    // 専用演出のない変身先は、待ち時間を置かず成立処理へ進む。
     if (pendingAbsorbType_ != EnemyMorphType::Slime && pendingAbsorbType_ != EnemyMorphType::FireSlime) {
         StartEnemyMorph(enemy);
         return;
@@ -140,6 +145,7 @@ void Player::BeginAbsorbEffect(BaseEnemy* enemy) {
     absorbEffectEmitTimer_ = 0.0f;
     absorbEffectActive_ = true;
 
+    // 吸い込みの最中は敵を見せたまま衝突から外し、プレイヤーの初期姿勢を作る。
     enemy->SetCarried(true);
     enemy->SetCollisionAttribute(0);
     enemy->SetCollisionMask(0);
@@ -170,6 +176,7 @@ void Player::UpdateAbsorbEffect(float deltaTime) {
     absorbEffectTimer_ += deltaTime;
     absorbEffectEmitTimer_ -= deltaTime;
 
+    // 演出時間を0〜1に変換し、敵の捕獲位置からプレイヤー上方の吸収点へ補間する。
     const float t = std::clamp(absorbEffectTimer_ / kAbsorbEffectDuration, 0.0f, 1.0f);
     const float ease = Easing::SmoothStep(t);
     const engine::Vector3 playerPos = GetWorldPosition();
@@ -180,6 +187,7 @@ void Player::UpdateAbsorbEffect(float deltaTime) {
                       engine::Math::Lerp(pendingAbsorbEnemyStartPos_.z, targetPos.z, ease)};
     absorbPos.y += std::sin(t * kPi) * 0.22f;
 
+    // 中心へ近づく敵を回転させながら縮め、見た目の行列をその場で更新する。
     const float scaleRate = engine::Math::Lerp(1.0f, 0.06f, ease);
     const float squash = std::sin(t * kPi) * 0.22f;
     {
@@ -199,6 +207,7 @@ void Player::UpdateAbsorbEffect(float deltaTime) {
     pendingAbsorbEnemy_->SetCollisionAttribute(0);
     pendingAbsorbEnemy_->SetCollisionMask(0);
 
+    // 敵の色をプレイヤーと子オブジェクトへ重ね、吸収の進行を全身の発光で示す。
     const float flash = std::sin(t * kPi);
     const float colorRate = 0.35f + flash * 0.55f;
     engine::Vector4 flashColor{std::clamp(pendingAbsorbPlayerBaseColor_.x * (1.0f - colorRate) +
@@ -222,6 +231,7 @@ void Player::UpdateAbsorbEffect(float deltaTime) {
     const float bodyPulse = std::sin(t * kPi);
     SetScale({2.0f + bodyPulse * 0.55f, 2.0f - bodyPulse * 0.38f, 2.0f + bodyPulse * 0.55f});
 
+    // 吸い込む方向へ粒子を流す。姿勢は毎フレーム、粒子は設定した間隔で更新する。
     if (particleSystem_ && absorbEffectEmitTimer_ <= 0.0f) {
         engine::Vector3 toPlayer = targetPos - absorbPos;
         const float length = std::sqrt(toPlayer.x * toPlayer.x + toPlayer.y * toPlayer.y + toPlayer.z * toPlayer.z);
@@ -239,6 +249,7 @@ void Player::UpdateAbsorbEffect(float deltaTime) {
         absorbEffectEmitTimer_ = kAbsorbEffectParticleInterval;
     }
 
+    // 演出の終了で、表示だけの吸収から実際の能力獲得へ切り替える。
     if (absorbEffectTimer_ >= kAbsorbEffectDuration) {
         FinishAbsorbEffect();
     }
@@ -269,6 +280,7 @@ void Player::FinishAbsorbEffect() {
     absorbEffectTimer_ = 0.0f;
     absorbEffectEmitTimer_ = 0.0f;
 
+    // 色と大きさを元に戻して吸収フラグを落とした後に、保存しておいた対象から新しいコピーを開始します。
     StartEnemyMorph(enemy);
 }
 
@@ -282,6 +294,7 @@ void Player::CancelAbsorbEffect(bool restoreEnemy) {
             pendingAbsorbEnemy_->UpdateWorldMatrix();
         }
 
+        // 縮小と行列を先に戻してから再表示し、吸収途中の姿勢を描画へ残しません。
         pendingAbsorbEnemy_->SetIsVisible(true);
     }
 
@@ -319,6 +332,7 @@ void Player::StartEnemyMorph(BaseEnemy* enemy) {
         baseCombatController_->Cancel(*this, true);
     }
 
+    // 別能力へ変身する場合は、先に前のコピーセッションに後片付けを依頼する。
     if (isEnemyMorphed_ && copyAbilityController_) {
         copyAbilityController_->Cancel(*this);
     }
@@ -336,6 +350,7 @@ void Player::StartEnemyMorph(BaseEnemy* enemy) {
     enemyMorphEffectTimer_ = 0.0f;
     enemyMorphVisualTimer_ = 0.0f;
 
+    // 敵が持つ攻撃設定をセッションの開始に使い、固有技の進行をプレイヤー側へ渡す。
     if (copyAbilityController_) {
         copyAbilityController_->Activate(static_cast<int>(enemyMorphType_), enemy->GetAttackProfile());
     }
@@ -359,6 +374,7 @@ void Player::StartEnemyMorph(BaseEnemy* enemy) {
     enemy->SetMeshEffect1Name("");
     enemy->SetMeshEffect2Name("");
 
+    // 能力の準備後にモデル・素材・色をコピー元へ切り替える。未指定のモデルとテクスチャは触らない。
     if (!enemy->GetModelName().empty()) {
         SetModel(enemy->GetModelName());
     }
@@ -414,6 +430,7 @@ void Player::SaveEnemyMorphBaseAppearance(bool sourceVisible) {
 }
 
 void Player::CompleteEnemyMorphStart(float moveYaw) {
+    // 通常のコピーはチェックポイントにも記録する。特別な王冠コピーはこの保存経路に含めない。
     if (checkpointActivated_ && enemyMorphType_ != EnemyMorphType::Crown) {
         const std::string currentMorph = GetEnemyTypeForCurrentMorph();
 
@@ -423,7 +440,7 @@ void Player::CompleteEnemyMorphStart(float moveYaw) {
         }
     }
 
-    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera(); camera && !IsEditorInternal()) {
+    if (engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera(); camera && !IsEditorInternal()) {
         // コピー中の右クリックは固有能力専用なので、通常フックの一人称ズームを無効化します。
         camera->SetAimCameraSuppressed(true);
     }
@@ -507,6 +524,7 @@ void Player::UpdateEnemyMorph(float deltaTime) {
         return;
     }
 
+    // 制限付きなら解除までの時計を減らす。制限のないコピーでも色や粒子の時計は進める。
     if (enemyMorphHasTimeLimit_ && deltaTime > 0.0f) {
         enemyMorphTimer_ -= deltaTime;
         enemyMorphEffectTimer_ -= deltaTime;
@@ -531,6 +549,7 @@ void Player::UpdateEnemyMorph(float deltaTime) {
         }
     }
 
+    // 獲得演出の待ち時間を終えた後だけ、形態ごとの色・位置・周期で常時粒子を発生させる。
     if (enemyMorphEffectTimer_ <= 0.0f) {
         if (enemyMorphType_ == EnemyMorphType::ThunderSlime) {
             const float morphElapsed = enemyMorphVisualTimer_;

@@ -68,11 +68,13 @@ void GimmickChainCollapseFloor::Update(float deltaTime) {
 
     switch (state_) {
     case State::Idle:
+        // 待機中は配置を基準として記録し、崩れ始めた後の揺れや復帰位置に使う。
         startPosition_ = GetTransform()->translate;
         startRotation_ = GetTransform()->rotate;
         break;
 
     case State::Pending:
+        // 連鎖で通知された床は、順番に設定された待ちが尽きた時点で崩れ始める。
         pendingTimer_ -= deltaTime;
 
         if (pendingTimer_ <= 0.0f) {
@@ -83,6 +85,7 @@ void GimmickChainCollapseFloor::Update(float deltaTime) {
         break;
 
     case State::Shaking: {
+        // 元の位置を中心に水平の揺れを加え、予告が終わるまで落下へ移さない。
         timer_ += deltaTime;
 
         float intensity = 0.045f;
@@ -99,6 +102,7 @@ void GimmickChainCollapseFloor::Update(float deltaTime) {
     }
 
     case State::Falling:
+        // 重力と傾きを加えて落とし、落下用の時間が尽きたら非表示の状態へ移る。
         timer_ += deltaTime;
         velocityY_ -= GetGravity() * deltaTime;
         SetTranslateY(GetTranslate().y + velocityY_ * deltaTime);
@@ -113,6 +117,7 @@ void GimmickChainCollapseFloor::Update(float deltaTime) {
         break;
 
     case State::Hidden:
+        // 再出現する設定のときだけ待ち時間を数え、配置と衝突をリセットする。
         if (ShouldReturnAfterCollapse()) {
             returnTimer_ += deltaTime;
 
@@ -175,6 +180,7 @@ void GimmickChainCollapseFloor::ChangeState(State state) {
     timer_ = 0.0f;
 
     switch (state_) {
+    // 初期姿勢と衝突を戻し、前回の落下・連鎖・乗員検知の状態を破棄します。
     case State::Idle:
         SetIsVisible(true);
         SetCollisionAttribute(CollisionCategories::Get("ground"));
@@ -190,15 +196,18 @@ void GimmickChainCollapseFloor::ChangeState(State state) {
         SetColor({0.75f, 0.92f, 1.0f, 0.82f});
         break;
 
+    // 通知を受けた床は予告色にするだけで、遅延が尽きるまで支えを残します。
     case State::Pending:
         SetColor({0.95f, 0.85f, 0.35f, 0.9f});
         break;
 
+    // 揺れ始めは色を強め、次の床へ通知する権利を用意します。
     case State::Shaking:
         SetColor({1.0f, 0.95f, 0.45f, 0.9f});
         triggeredNext_ = false;
         break;
 
+    // 落下に入って初めて地面としての衝突を止め、次の床へ連鎖を通知します。
     case State::Falling:
         SetCollisionAttribute(0);
         SetCollisionMask(0);
@@ -206,6 +215,7 @@ void GimmickChainCollapseFloor::ChangeState(State state) {
         TriggerNextFloor();
         break;
 
+    // 落下後は姿と判定を消し、この時点から復帰までの時計を進められるようにします。
     case State::Hidden:
         SetIsVisible(false);
         SetCollisionAttribute(0);
@@ -226,6 +236,7 @@ void GimmickChainCollapseFloor::CheckPlayerContact() {
         return;
     }
 
+    // 床とプレイヤーの最新姿勢で足元と天面を比較し、前回の足元を越え判定に使います。
     UpdateLocalMatrix();
     UpdateWorldMatrix(false);
     player->UpdateLocalMatrix();
@@ -237,12 +248,14 @@ void GimmickChainCollapseFloor::CheckPlayerContact() {
     const bool overlapsXZ = body.max.x > deck.min.x + 0.02f && body.min.x < deck.max.x - 0.02f &&
         body.max.z > deck.min.z + 0.02f && body.min.z < deck.max.z - 0.02f;
     const bool nearTop = footY >= topY - 0.25f && footY <= topY + 0.25f;
+    // 現在の足元が天面の許容範囲を飛び越えても、前回が上側ならその間の通過を拾います。
     const bool crossedTop = hasPreviousPlayerFoot_ && previousPlayerFootY_ >= topY - 0.1f &&
         footY <= topY + 0.1f;
     previousPlayerFootY_ = footY;
     hasPreviousPlayerFoot_ = true;
 
-    const Collider* collider = GetCollider();
+    // 外接箱だけでは拾う余白を、フットプリントがある床では実際の形状でも確認します。
+    const engine::Collider* collider = GetCollider();
     const bool insideFootprint = !collider || collider->GetConfig().footprint.size() < 3 ||
         collider->OverlapsFootprint(player->GetCollider());
     if (overlapsXZ && (nearTop || crossedTop) && player->GetVelocity().y <= 0.1f && insideFootprint) {

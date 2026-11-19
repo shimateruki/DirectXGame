@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-class DirectXCommon;
+namespace engine { class DirectXCommon; }
 namespace engine { class Object3D; }
 class SceneManager;
 
@@ -53,7 +53,7 @@ public:
     static EffectPreviewStage* GetInstance();
 
     /// プレビュー用Object生成に必要なシーンと描画共通参照を保持する。
-    void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
+    void Initialize(SceneManager* sceneManager, engine::DirectXCommon* dxCommon);
 
     // プレビュー空間と再生状態を更新する。
     void Update();
@@ -76,6 +76,7 @@ public:
 
     bool IsLoopEnabled() const { return loopPreview_; }
 
+    // 停止中は進行量を 0 にする。表示欄に出す設定倍率が必要なときは GetConfiguredPlaybackSpeed を使う。
     float GetPlaybackSpeed() const { return transportPlaying_ ? playbackSpeed_ : 0.0f; }
 
     float GetConfiguredPlaybackSpeed() const { return playbackSpeed_; }
@@ -181,7 +182,7 @@ private:
 
 private:
     SceneManager* sceneManager_ = nullptr; // 現在シーンの取得元。借用参照。
-    DirectXCommon* dxCommon_ = nullptr;
+    engine::DirectXCommon* dxCommon_ = nullptr;
 
     bool enabled_ = false;
     bool isolatedSpace_ = true;

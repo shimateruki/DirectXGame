@@ -47,7 +47,7 @@ void LockOnSystem::Initialize(engine::InputManager* inputManager) {
     inputManager_ = inputManager;
 }
 
-void LockOnSystem::ResetLockOn(Camera* camera) {
+void LockOnSystem::ResetLockOn(engine::Camera* camera) {
     // 対象参照と見失い時計を同時に消し、カメラ側の追従も解除する。
     const bool active = isLockingOn_;
     isLockingOn_ = false;
@@ -57,15 +57,16 @@ void LockOnSystem::ResetLockOn(Camera* camera) {
     if (camera && active) {
         camera->SyncRotationToCurrentView();
         camera->SetLockOnTarget(nullptr);
-        if (camera->GetFollowMode() == Camera::FollowMode::LockOn)
-            camera->SetFollowMode(Camera::FollowMode::Aimable);
+        if (camera->GetFollowMode() == engine::Camera::FollowMode::LockOn)
+            camera->SetFollowMode(engine::Camera::FollowMode::Aimable);
     }
 }
 
-void LockOnSystem::Update(const std::vector<std::unique_ptr<engine::Object3D>>& objects, Camera* camera, Player* player,
+void LockOnSystem::Update(const std::vector<std::unique_ptr<engine::Object3D>>& objects, engine::Camera* camera, Player* player,
                           float deltaTime) {
     if (!player || !camera || !inputManager_)
         return;
+    // プレイヤー側の攻撃補助は先に無効化し、有効な対象を確認できたフレームだけ戻します。
     player->SetLockOn(false);
     player->SetLockOnAimPoint({}, false);
     if (!SceneManager::GetInstance()->IsPlaying() || player->IsDead() || player->IsCinematicLocked() ||
@@ -74,6 +75,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<engine::Object3D>>& 
         return;
     }
 
+    // 停止中や無効な経過時間では、入力切替と見失い判定を進めません。
     if (deltaTime <= 0 || !std::isfinite(deltaTime))
         return;
     if (lockOnTarget_) {
@@ -88,6 +90,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<engine::Object3D>>& 
         }
     }
 
+    // ロックオン入力は開始・解除を切り替え、対象送りだけが押されたときは現在のロックを維持します。
     if (inputManager_->IsActionTriggered("LockOn")) {
         if (isLockingOn_) {
             ResetLockOn(camera);
@@ -115,7 +118,8 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<engine::Object3D>>& 
         return;
     }
 
-    camera->SetFollowMode(Camera::FollowMode::LockOn);
+    // 遮蔽の猶予内ではカメラを対象へ向け、攻撃の照準補助は見通せる場合だけ設定します。
+    camera->SetFollowMode(engine::Camera::FollowMode::LockOn);
     camera->SetLockOnTarget(lockOnTarget_);
     player->SetLockOn(true);
 
@@ -123,7 +127,7 @@ void LockOnSystem::Update(const std::vector<std::unique_ptr<engine::Object3D>>& 
     player->SetLockOnAimPoint(AimCenter(lockOnTarget_), visible);
 }
 
-engine::Object3D* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<engine::Object3D>>& objects, Camera* camera,
+engine::Object3D* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr<engine::Object3D>>& objects, engine::Camera* camera,
                                        Player* player, bool next) {
     // ロックオン候補の借用参照と選択用スコア。候補を集めてから順序付けする。
     struct Candidate {
@@ -132,6 +136,7 @@ engine::Object3D* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr
     };
 
     std::vector<Candidate> candidates;
+    // カメラの視線を正規化し、視点と注視点が重なる場合はワールドの+Zを前にします。
     engine::Vector3 forward = camera->GetTargetPoint() - camera->GetEye();
     const float length = engine::Math::Length(forward);
     forward = length > 0.001f ? forward / length : engine::Vector3{0, 0, 1};
@@ -139,6 +144,7 @@ engine::Object3D* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr
     for (const auto& object : objects) {
         if (!Available(object.get()))
             continue;
+        // プレイヤー自身にぶら下がっているオブジェクトを、親階層をたどって候補から外します。
         bool owned = false;
 
         for (auto* parent = object.get(); parent; parent = parent->GetParent())
@@ -149,6 +155,7 @@ engine::Object3D* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr
 
         if (owned)
             continue;
+        // プレイヤーからの距離で先に絞り、カメラ正面かつ地面に遮られない候補を採点します。
         const float distance = engine::Math::Length(object->GetWorldPosition() - player->GetWorldPosition());
         if (distance > kMaxLockOnDistance_ || distance < 0.1f)
             continue;
@@ -157,8 +164,10 @@ engine::Object3D* LockOnSystem::FindBestTarget(const std::vector<std::unique_ptr
         if (cameraDistance < 0.001f)
             continue;
         const float dot = engine::Math::Dot(forward, delta / cameraDistance);
+        // 単位方向同士の内積が0.5未満なら、視線から約60度より外側なので候補から除く。
         if (dot < 0.5f || !Visible(player, object.get()))
             continue;
+        // 角度のずれを2倍、距離を最大射程で割って足す。小さいほど画面中央寄りで近い候補。
         candidates.push_back({object.get(), (1 - dot) * 2 + distance / kMaxLockOnDistance_});
     }
 

@@ -95,6 +95,7 @@ json Object3D::SerializeFeatureComponents() const {
         if (payload.empty()) {
             components.erase(typeId);
         } else {
+            // 未知の値が残る場合も、読み直したときに削除した既知コンポーネントを再生成しないよう存在印をfalseにします。
             payload["_editorPresent"] = false;
         }
     };
@@ -173,6 +174,7 @@ json Object3D::SerializeFeatureComponents() const {
         });
     }
 
+    // 組み込みのComponentを書き出した後、ゲーム側が登録したクラス固有の設定を同じcomponentsへ加える。
     EditorPropertyRegistry::GetInstance()->WriteClassProperties(*this, components);
     return components;
 }
@@ -230,6 +232,7 @@ void Object3D::DeserializeFeatureComponents(const json& objectData) {
                 ? particlePayload->value("gpuParticle", "") : legacyGpu);
     }
 
+    // メッシュ効果の2枠は、Component内の項目がなければ旧シーン直下の素材名をそれぞれ使う。
     const json* meshEffectPayload = getPayload(kMeshEffectComponentType);
     const std::string legacyPrimary = objectData.value("meshEffect1", "");
     const std::string legacySecondary = objectData.value("meshEffect2", "");
@@ -284,6 +287,7 @@ void Object3D::DeserializeFeatureComponents(const json& objectData) {
         component->SetPhaseOffset(pathPayload ? pathPayload->value("phaseOffset", legacyPhaseOffset) : legacyPhaseOffset);
     }
 
+    // イベントの送信元と接続先を別のIDとして読み、両方が未指定なら旧形式からはComponentを増やさない。
     const int legacyEventId = objectData.value("myEventID", -1);
     const int legacyTargetId = objectData.value("targetID", -1);
     const json* linkPayload = getPayload(kGameplayLinkComponentType);
@@ -332,6 +336,7 @@ json Object3D::ExportToJson() {
     }
 
     if (!isManagedCharacter) {
+        // PlayerとEnemyは共通設定からモデルを決める。通常の配置物だけモデル名とスケールをここで保存する。
         d["modelName"] = GetModelName();
     }
 
@@ -397,6 +402,7 @@ json Object3D::ExportToJson() {
     d["collisionMask"] = GetCollisionMask();
     d["collisionAttributeIds"] = CollisionCategories::GetIds(GetCollisionAttribute());
     d["collisionMaskIds"] = CollisionCategories::GetIds(GetCollisionMask());
+    // 名前付きカテゴリだけで表せないビットも別に保存し、読み直した際に現在のレジストリで未知のパターンを保ちます。
     d["collisionAttributeUnknownBits"] = GetCollisionAttribute() & ~CollisionCategories::GetKnownMask();
     d["collisionMaskUnknownBits"] = GetCollisionMask() & ~CollisionCategories::GetKnownMask();
 
@@ -506,6 +512,7 @@ json Object3D::ExportToJson() {
 
     d["meshEffect1"] = GetMeshEffect1Name();
     d["meshEffect2"] = GetMeshEffect2Name();
+    // Componentsと併せて直下の粒子名も出力し、古いデータ経路で読める表現を保持します。
     d["particleName"] = GetParticleName();
     d["gpuParticleName"] = GetGpuParticleName();
 
@@ -565,7 +572,7 @@ json Object3D::ExportToJson() {
 }
 
 void Object3D::ImportFromJson(const json& j) {
-    // 1. 基本設定
+    // GUIDを確定してから、旧形式を含むComponentとオブジェクトの種別を復元する。
     if (j.contains("guid") && j["guid"].is_string()) {
         SetPersistentGuid(j["guid"].get<std::string>());
     }
@@ -589,6 +596,7 @@ void Object3D::ImportFromJson(const json& j) {
         layer_ = "Default";
     }
 
+    // 配置分類と表示・編集のフラグを復元し、続いてPrefabとの関連を取り戻す。
     if (j.contains("saveCategory"))
         saveCategory_ = j["saveCategory"];
     if (j.contains("enemyType"))
@@ -636,7 +644,7 @@ void Object3D::ImportFromJson(const json& j) {
         }
     }
 
-    // 2. Transform
+    // 姿勢の正本を選び、後続のColliderやレコーダーが使う行列を更新する。
     if (j.contains("translate"))
         transform_.translate = { j["translate"][0], j["translate"][1], j["translate"][2] };
     if (!isManagedCharacter && j.contains("scale"))
@@ -656,10 +664,10 @@ void Object3D::ImportFromJson(const json& j) {
 
     transform_.UpdateMatrix();
 
-    // 3. Collider ＆ 衝突属性
+    // 既存Colliderへ形状を適用してから、衝突カテゴリと地形データを復元する。
     if (j.contains("collider") && collider_) {
         const auto& col = j["collider"];
-        ColliderConfig config = collider_->GetConfig();
+        engine::ColliderConfig config = collider_->GetConfig();
         if (col.contains("type"))
             config.type = static_cast<ColliderType>(col["type"]);
         if (col.contains("size"))
@@ -684,6 +692,7 @@ void Object3D::ImportFromJson(const json& j) {
         SetColliderConfig(config);
     }
 
+    // ID配列を優先し、新形式がなければ旧マスクを変換する。キーがなければ現在値を使う。
     auto loadCategoryMask = [&j](const char* idsKey, const char* legacyKey, uint32_t fallback) {
         if (j.contains(idsKey) && j[idsKey].is_array()) {
             std::vector<std::string> ids;
@@ -717,11 +726,11 @@ void Object3D::ImportFromJson(const json& j) {
         LoadTerrainCollisionFromFile(j["terrainCollisionPath"].get<std::string>());
     }
 
-    // 4. イベント関連
+    // イベント種別を復元してから、配置ごとのパラメータを読み込む。
     if (j.contains("eventType"))
         eventType_ = static_cast<EventType>(j["eventType"]);
 
-    // 5. Stats (Param)
+    // Player・Enemyの共通ステータスを保持しつつ、配置固有の値を復元する。
     if (j.contains("param")) {
         EntityParameter p = isManagedCharacter && param_.has_value() ? param_.value() : EntityParameter{};
         const auto& jp = j["param"];
@@ -785,6 +794,7 @@ void Object3D::ImportFromJson(const json& j) {
             p.startActive = jp["startActive"];
         if (jp.contains("returnOnOff"))
             p.returnOnOff = jp["returnOnOff"];
+        // ボリュームの発火条件・再発火待ち・環境切替時間を復元し、時間の負値は0に丸める。
         if (jp.contains("volumeMode") && jp["volumeMode"].is_number_integer())
             p.volumeMode = jp["volumeMode"].get<int>();
         if (jp.contains("volumePayload") && jp["volumePayload"].is_string())
@@ -799,6 +809,7 @@ void Object3D::ImportFromJson(const json& j) {
             p.volumeBlendDuration = (std::max)(0.0f, jp["volumeBlendDuration"].get<float>());
         if (jp.contains("editorPreviewFiring") && jp["editorPreviewFiring"].is_boolean())
             p.editorPreviewFiring = jp["editorPreviewFiring"].get<bool>();
+        // コピー能力の記憶装置は、各枠の能力名と表示・有効距離を配置ごとに復元する。
         if (jp.contains("copyMemoryTypeA"))
             p.copyMemoryTypeA = jp["copyMemoryTypeA"].get<std::string>();
         if (jp.contains("copyMemoryTypeB"))
@@ -820,6 +831,7 @@ void Object3D::ImportFromJson(const json& j) {
         if (!isManagedCharacter) {
             p.maxHp = (std::max)(p.maxHp, 1.0f);
 
+            // 最大HPだけ指定された場合は満タンから始めます。現在HPが最大を上回る保存値では最大HPを引き上げます。
             if (hasMaxHp && !hasHp) {
                 p.hp = p.maxHp;
             }
@@ -836,7 +848,7 @@ void Object3D::ImportFromJson(const json& j) {
         param_ = p;
     }
 
-    // 6. グラフィックス・マテリアル
+    // 描画方式を決めてから、Sceneに保存された材質・テクスチャ・水面の値を適用する。
     if (j.contains("color"))
         SetColor({ j["color"][0], j["color"][1], j["color"][2], j["color"][3] });
     if (j.contains("blendMode"))
@@ -848,7 +860,6 @@ void Object3D::ImportFromJson(const json& j) {
     if (j.contains("meshDrawIndex"))
         SetMeshDrawIndex(j["meshDrawIndex"].get<int>());
 
-    // ★追加: 金属度と粗さ
     if (j.contains("metallic"))
         SetMetallic(j["metallic"].get<float>());
     if (j.contains("roughness"))
@@ -885,6 +896,7 @@ void Object3D::ImportFromJson(const json& j) {
         }
     }
 
+    // Scene側の材質値を用意してから、利用可能ならリンク先の材質を適用する。
     if (j.contains("materialInstance") && j["materialInstance"].is_string()) {
         const std::string assetPath = j["materialInstance"].get<std::string>();
         std::string materialError;
@@ -895,6 +907,7 @@ void Object3D::ImportFromJson(const json& j) {
         }
     }
 
+    // Decal設定を復元した場合は、保存した寿命・フェードで再生を開始し直す。
     if (j.contains("decal") && j["decal"].is_object()) {
         const auto& decal = j["decal"];
         DecalSettings settings;
@@ -910,10 +923,11 @@ void Object3D::ImportFromJson(const json& j) {
         settings.fadeOut = decal.value("fadeOut", 0.35f);
         settings.transient = decal.value("transient", false);
         SetDecalSettings(settings);
+        // 色と材質の復元後に再生を始め、その時点のアルファを今後のフェードの基準として確定します。
         RestartDecalPlayback();
     }
 
-    // 7. アニメーション
+    // 描画設定の復元後、保存されたアニメーションとAnimator Controllerを接続する。
     if (j.contains("animation")) {
         const auto& anim = j["animation"];
         if (anim.contains("animName"))
@@ -931,13 +945,13 @@ void Object3D::ImportFromJson(const json& j) {
         }
     }
 
-    // 8. レコーダー (Ghost)
+    // 復元した配置とComponentを使い、指定があればGhost経路を再生する。
     if (recorder_ && !GetRecordPathName().empty()) {
         bool isCinematic = IsCameraObject();
         recorder_->Play(GetRecordPathName(), IsRecordLoop(), IsRecordRelative(), isCinematic);
     }
 
-    // 9. ローカルフォグ
+    // ローカルフォグのバッファが利用できる場合に、保存値を反映する。
     if (j.contains("localFog")) {
         if (auto* fogData = GetLocalFogData()) {
             const auto& jf = j["localFog"];

@@ -10,12 +10,30 @@
 #include <vector>
 #include <wrl.h>
 
+namespace engine {
+
 // 担当：視点・投影・追従と、一時的なカメラ演出を管理する。
 // 関連：CameraManager（選択・更新）、InputManager（操作）、Object3D（追従対象）
 // 主な入口：Initialize / Update / SetFollowTarget / StartOverride
 class Camera {
 public:
     // 自由操作を使うゲームと、構図をゲーム側で決めるゲームを同じカメラで扱う。
+    // ボス戦の構図設定。CameraEditorが保存し、シーンが対象を指定した間だけ使用する。
+    struct BossFramingSettings {
+        bool enabled = true;
+        float minDistance = 22.0f, maxDistance = 40.0f; // ワールド距離。
+        float height = 2.2f; // プレイヤー足元からの注視高さ。
+        float pitch = 25.0f; // 見下ろし角度（度）。
+        float fov = 0.75f; // 垂直画角（ラジアン）。
+        float targetWeight = 0.35f; // プレイヤーからボス側へ寄せる比率。
+        float turnSpeed = 60.0f; // 自動旋回の上限（度/秒）。
+        float response = 2.5f; // 距離と向きの応答（毎秒）。
+        void Validate(); // 非有限値と範囲外の編集値を補正する。
+    };
+    // bossの位置・範囲をコピーする。ポインターは保持せず、nullptrで通常構図へ戻す。
+    void ConfigureBossFraming(const BossFramingSettings& settings, const engine::Object3D* boss);
+    bool IsBossFramingActive() const { return bossFramingActive_; }
+
     enum class GameplayStyle { Free, Guided };
     enum class ObstacleResponse { ShortenDistance, PreserveComposition };
     void ConfigureGameplayStyle(GameplayStyle style, ObstacleResponse obstacles,
@@ -164,7 +182,10 @@ public:
 
     /// <summary>追従対象を設定する。対象は所有しない。</summary>
     void SetFollowTarget(engine::Object3D* target) {
+        // 別の対象へ切り替えるときだけ、旧対象の構図・高さ・衝突距離の履歴を無効にする。
         if (followObject_ != target) {
+            bossFramingActive_ = false;
+            bossFramingInitialized_ = false;
             guidedFocusInitialized_ = false;
             hasFollowHeight_ = false;
             collisionDistance_ = -1.0f;
@@ -319,6 +340,7 @@ public:
     }
     /// 通常カメラの投影設定を書き換えず、範囲の重みで合成する。
     void SetRegionProjection(float fov, float nearClip, float farClip, engine::Object3D* subject) {
+        // 範囲へ入った時点で画面に出ている投影値を補間の始点にする。同じ範囲を更新中は始点を保持する。
         if (!regionProjectionActive_) regionProjectionStart_ = renderedProjection_;
         regionProjection_ = {fov, nearClip, farClip};
         if (regionSafetySubject_ != subject) hasRegionSafeEye_ = false;
@@ -338,10 +360,8 @@ public:
     }
     // 手動視点入力の有無を返し、その通知を消費する。
     bool ConsumeManualLookInput() { const bool value = manualLookInput_; manualLookInput_ = false; return value; }
-    bool IsAimCameraRequested() const {
-        return inputManager_ && inputManager_->IsActionPressed("SecondaryAction") &&
-            !isAimCameraSuppressed_ && followMode_ != FollowMode::LockOn;
-    }
+    // 配置カメラの解除には、追従カメラが実際に照準へ入る条件を使います。
+    bool IsAimCameraRequested() const { return IsFollowAimInputActive(); }
 
     /// <summary>現在の視点行列から抽出した視錐台を返す。</summary>
     const engine::Frustum& GetFrustum() const { return frustum_; }
@@ -370,6 +390,20 @@ public:
 
 private:
     bool IsFollowAimInputActive() const;
+    // プレイヤー足元と保存済みボス範囲から、共通補間へ渡す視点を計算する。dtは秒。
+    void UpdateBossFraming(const engine::Vector3& player, float dt,
+        engine::Vector3& focus, engine::Vector3& eye);
+    BossFramingSettings bossFraming_;
+    bool bossFramingActive_ = false, bossFramingInitialized_ = false;
+    engine::Vector3 bossPosition_{}, bossBoundsMin_{}, bossBoundsMax_{}; // 当フレームのワールド座標。
+    float bossYaw_ = 0.0f, bossDistance_ = 22.0f; // 補間中の角度（rad）と距離。
+    bool bossAvoidanceActive_ = false; // 安全な回避方向を保持している間だけ有効。
+    float bossViewYaw_ = 0.0f, bossAvoidanceYaw_ = 0.0f; // 現在と回避先の旋回角（rad）。
+    float bossAvoidanceBlend_ = 0.0f, bossClearTime_ = 0.0f; // 回避構図への混合率と通常経路が安全な秒数。
+    engine::Vector3 bossPreviousSafeEye_{}; // 壁回避中の移動区間を検査する前フレームの視点。
+    bool bossHasSafeEye_ = false; // 初回・対象変更直後は古い視点からの区間検査を行わない。
+
+
 
     // 追従対象から誘導カメラの注視点を更新する。dtは秒。
     engine::Vector3 UpdateGuidedFocus(const engine::Vector3& subject, float frameDeltaTime);
@@ -389,6 +423,7 @@ private:
     bool guidedInputThisFrame_ = false;
 
     CameraVisibilitySettings visibilitySettings_;
+    // 衝突で調整済みの視点距離。負値は前回距離の履歴がない状態を表す。
     float collisionDistance_ = -1.0f;
 
     // View/Projectionから派生する行列、視錐台、GPU定数をまとめて更新します。
@@ -439,7 +474,7 @@ private:
     // 入力と追従対象への参照。Cameraは所有しない。
     engine::InputManager* inputManager_ = nullptr;
     engine::Object3D* followObject_ = nullptr;
-    engine::Object3D* targetObject_ = nullptr; // 追従対象。借用参照。
+    engine::Object3D* targetObject_ = nullptr; // 注視・ロックオン対象。借用参照。
 
     // 追従・一人称などの計算方式と、手動カメラ入力の許可状態。
     FollowMode followMode_ = FollowMode::Aimable;
@@ -480,6 +515,7 @@ private:
     engine::Vector3 orbitCenterOffset_ = engine::Vector3::ZERO;
     float orbitCenterHeight_ = 5.0f;
     float orbitHeight_ = 5.0f;
+    // 周回角の1更新あたりの増分（ラジアン）。
     float orbitSpeed_ = 0.005f;
     float orbitAngle_ = 0.0f; // 周回位置の角度（ラジアン）。
     engine::Vector3 fixedPointPos_ = { 0.0f, 5.0f, -10.0f };
@@ -531,3 +567,5 @@ private:
     // 通常視点から照準視点へ移る途中の補間率。
     float aimTransition_ = 0.0f;
 };
+
+} // namespace engine

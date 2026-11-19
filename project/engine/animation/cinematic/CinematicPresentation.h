@@ -11,7 +11,7 @@ namespace engine {
 // 既存移動トラックと見た目キーで、姿勢の形式を共有する。
 // 関連：CinematicSequence（保存）、CinematicPlayer（生成・評価）、GhostDirector（編集）
 struct CinematicTransformKey {
-    // 時刻はシーケンス先頭からの秒数、rotation はラジアン、scale は各軸の倍率。
+    // 時刻は秒。移動トラックではトラック開始が、見た目キーでは演出開始が0秒です。回転はラジアン、拡縮は各軸の倍率です。
     float time = 0.0f;
     engine::Vector3 position{}, rotation{}, scale{1, 1, 1};
     int easingToNext = 4;
@@ -23,6 +23,7 @@ template<class Key, class Blend>
 // 指定秒の両側のキーを探し、呼出側の補間関数で値を求める。
 Key SampleCinematicKeys(const std::vector<Key>& keys, float time, Blend blend) {
     if (keys.empty()) return {};
+    // 指定時刻より後ろの最初のキーを探します。同時刻のキーが並ぶ場合は最後のキーを補間の左端に選びます。
     auto upper = std::upper_bound(keys.begin(), keys.end(), time,
         [](float t, const Key& key) { return t < key.time; });
     if (upper == keys.begin()) return keys.front();
@@ -91,6 +92,7 @@ struct CinematicObjectClip {
     bool inheritVisibility = false;
     engine::Vector3 rotationMask{1, 1, 1};
     bool inheritScale = true, inheritRotation = true, clipScaleHeight = false;
+    // 基準位置からの床の高さです。既定値は床による押し上げを通常の演出範囲で起こさないための低い値です。
     float floorHeight = -100000.0f;
     float clipCenterOffset = 0.0f;
     float clipEdgeWidth = 0.075f, clipDissolve = 0.20f;
@@ -111,6 +113,7 @@ struct CinematicViewKey {
     std::string reference, lookToward, eyeReference;
     float time = 0.0f, focusMix = 0.0f;
     engine::Vector3 focusOffset{}, scaledFocusOffset{}, eyeOffset{}, jitter{};
+    // fov は垂直画角のラジアン、bars は上下の演出帯の高さを PostEffect に渡すための画面比率です。
     float fov = 0.62f, bars = 0.0f;
 };
 

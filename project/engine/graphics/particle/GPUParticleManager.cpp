@@ -100,7 +100,7 @@ uint32_t GpuParticleManager::ResolveParticleCapacity(const GpuParticleConfig& co
     return applyLodLimit((std::min)(capacity, GpuParticleSystem::kMaxParticles));
 }
 
-void GpuParticleManager::Initialize(DirectXCommon* dxCommon) {
+void GpuParticleManager::Initialize(engine::DirectXCommon* dxCommon) {
     dxCommon_ = dxCommon;
 
     // テクスチャはScenePreloaderの転送バッチで準備します。
@@ -111,7 +111,7 @@ void GpuParticleManager::Initialize(DirectXCommon* dxCommon) {
 }
 
 void GpuParticleManager::InitializeWithPresets(
-    DirectXCommon* dxCommon, const std::vector<std::string>& presetNames) {
+    engine::DirectXCommon* dxCommon, const std::vector<std::string>& presetNames) {
     // 呼出し側が指定したプリセットだけを登録する。空の一覧では追加読込を行わない。
     dxCommon_ = dxCommon;
 
@@ -144,6 +144,7 @@ void GpuParticleManager::Update(float deltaTime) {
 
             if (emitter.timer >= it->second.emitInterval) {
                 Emit(emitter.presetName, emitter.position, emitter.transform);
+                // 1フレームに一度だけ放出し、間隔を超えた分は次の放出へ繰り越さない。
                 emitter.timer = 0.0f;
             }
         }
@@ -283,7 +284,7 @@ void GpuParticleManager::EmitFromConfig(const GpuParticleConfig& config) {
     GpuParticleConfig resolvedConfig = config;
 
     if (config.lod.enabled) {
-        if (const Camera* camera = CameraManager::GetInstance()->GetActiveCamera()) {
+        if (const engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera()) {
             const engine::Vector3 eye = camera->GetEye();
             const float x = config.emitPos.x - eye.x;
             const float y = config.emitPos.y - eye.y;
@@ -343,6 +344,7 @@ void GpuParticleManager::EmitDirected(
     config.emitPos = position;
     config.emitterWorldMatrix = emitterWorldMatrix;
 
+    // 有効な方向がある場合だけ初速の向きを差し替え、速さはプリセットを基準に倍率で調整する。
     const float directionLength = engine::Math::Length(direction);
 
     if (directionLength > 0.0001f) {
@@ -395,6 +397,7 @@ void GpuParticleManager::LoadPresetFiles(
             fs::path root(directoryPath);
             if (!root.has_filename()) root = root.parent_path();
             auto relative = presetPath.lexically_relative(root);
+            // プリセット名の衝突を避けるため、拡張子を外した相対パスで登録する。
             const auto key = relative.replace_extension().generic_u8string();
             const std::string filename(key.begin(), key.end());
             std::ifstream file(presetPath);
@@ -445,6 +448,7 @@ uint32_t GpuParticleManager::PlayAutoEmitter(const std::string& presetName, cons
     return em.id;
 }
 
+// 指定IDの今後の放出だけ止める。既に放出した粒子はGPU Systemで寿命まで表示する。
 void GpuParticleManager::StopAutoEmitter(uint32_t id) {
     autoEmitters_.erase(std::remove_if(autoEmitters_.begin(), autoEmitters_.end(), [id](const AutoEmitter& e) { return e.id == id; }), autoEmitters_.end());
 }
@@ -493,6 +497,7 @@ void GpuParticleManager::ClearSceneRuntime() {
     meshBoneSrv_ = 0;
 }
 
+// 制作用の表示は直ちに止め、各Systemの粒子状態を次に使えるよう戻す。System自体は保持する。
 void GpuParticleManager::ClearAuthoringPreview() {
     authoringPreviewVisible_ = false;
 
@@ -542,6 +547,7 @@ bool GpuParticleManager::ShowAuthoringPreview(const std::string& preset, const e
 #ifdef USE_IMGUI
 void GpuParticleManager::BeginEditorSession() {
     if (editorSession_) return;
+    // 通常再生とプレビューでGPUの粒子バッファを分け、通常再生の時間倍率と借用メッシュも退避する。
     savedEditorScale_ = timeScale_;
     savedEditorMesh_ = meshVb_; savedEditorMeshCount_ = meshVCount_; savedEditorMeshStride_ = meshVStride_; savedEditorMeshBones_ = meshBoneSrv_;
     systems_.swap(savedEditorSystems_); autoEmitters_.swap(savedEditorEmitters_);
@@ -549,6 +555,7 @@ void GpuParticleManager::BeginEditorSession() {
     ResetSimulation(); timeScale_ = 1; updatedThisFrame_ = false; editorSession_ = true;
 }
 void GpuParticleManager::EndEditorSession() {
+    // 終了時はプレビューの放出停止を予約してから、退避した通常再生のバッファを戻す。
     if (!editorSession_) return;
     ResetSimulation();
     systems_.swap(savedEditorSystems_); autoEmitters_.swap(savedEditorEmitters_);

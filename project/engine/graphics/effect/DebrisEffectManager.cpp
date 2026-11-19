@@ -81,7 +81,7 @@ void DebrisEffectManager::Initialize(engine::Object3DCommon* common) {
         cameraData_ = nullptr;
 
         if (common_ && common_->GetDxCommon()) {
-            cameraResource_ = common_->GetDxCommon()->CreateBufferResource(sizeof(MeshRenderer::CameraForGpu));
+            cameraResource_ = common_->GetDxCommon()->CreateBufferResource(sizeof(engine::MeshRenderer::CameraForGpu));
 
             if (!cameraResource_) {
                 DebugConsole::GetInstance()->AddLog(LogLevel::Error, "[DebrisEffect] camera buffer creation failed.");
@@ -110,6 +110,7 @@ engine::Object3DCommon* DebrisEffectManager::ResolveCommon() {
     BaseScene* scene = sceneManager ? sceneManager->GetCurrentScene() : nullptr;
     engine::Object3DCommon* sceneCommon = scene ? scene->GetObject3DCommon() : nullptr;
 
+    // 初期化も同じロックを取るため、多段呼び出しに対応する再帰ミューテックスで保護する。
     if (sceneCommon && sceneCommon != common_) {
         Initialize(sceneCommon);
     }
@@ -128,7 +129,7 @@ void DebrisEffectManager::Update(float deltaTime) {
     // このフレームのカメラ・ライト行列は全破片で共有し、休止中の破片にも視点変更を反映する。
     engine::Math math;
     engine::Matrix4x4 viewProjection = engine::Math::MakeIdentity4x4();
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
     if (camera) {
         viewProjection = math.Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
@@ -138,7 +139,7 @@ void DebrisEffectManager::Update(float deltaTime) {
         }
     }
 
-    engine::Matrix4x4 lightViewProjection = LightManager::GetInstance()->GetDirectionalLight().lightViewProj;
+    engine::Matrix4x4 lightViewProjection = engine::LightManager::GetInstance()->GetDirectionalLight().lightViewProj;
     const engine::Matrix4x4* lightViewProjectionPtr = kEnableDebrisShadowWvp ? &lightViewProjection : nullptr;
 
     for (size_t index = 0; index < activePieces_.size();) {
@@ -156,6 +157,7 @@ void DebrisEffectManager::Update(float deltaTime) {
 
         // 休止中は運動計算だけを止め、寿命の進行と後続の縮小処理は続ける。
         if (!piece.sleeping) {
+            // 経過秒を掛けて重力を速度へ反映し、空気抵抗の係数を掛けた速度で位置を進めます。
             piece.velocity.y -= piece.gravity * deltaTime;
             float drag = (std::max)(0.0f, 1.0f - piece.airDrag * deltaTime);
             piece.velocity.x *= drag;
@@ -166,6 +168,7 @@ void DebrisEffectManager::Update(float deltaTime) {
             engine::Vector3 rotation = piece.rotation + piece.angularVelocity * deltaTime;
 
             if (piece.collideGround && position.y <= piece.groundY && piece.velocity.y < 0.0f) {
+                // 降下中に床を越えた破片を面へ戻します。反発は鉛直速度、摩擦は水平と回転の速度に掛けます。
                 position.y = piece.groundY;
                 piece.velocity.y = -piece.velocity.y * piece.restitution;
                 piece.velocity.x *= piece.friction;
@@ -187,6 +190,7 @@ void DebrisEffectManager::Update(float deltaTime) {
 
         // 消失区間だけ基準サイズから縮め、前フレームの縮小値を累積して掛けない。
         if (piece.shrinkOnFade && lifeRatio > piece.fadeStartRatio) {
+            // 寿命全体の割合を消失部分だけの0～1へ変換し、縮小が始まる前の大きさを変えないようにします。
             float fadeT = (lifeRatio - piece.fadeStartRatio) / (std::max)(0.001f, 1.0f - piece.fadeStartRatio);
             scale *= (std::max)(0.001f, 1.0f - fadeT);
         }
@@ -221,6 +225,7 @@ void DebrisEffectManager::Draw(ID3D12Resource* pointLightResource, ID3D12Resourc
             continue;
         }
 
+        // 影用の変換を持つ破片は、画面用WVPに加えてライトから見たWVPを束縛する。
         if (piece.shadowWvpResource) {
             commandList->SetGraphicsRootConstantBufferView(11, piece.shadowWvpResource->GetGPUVirtualAddress());
         }
@@ -228,7 +233,7 @@ void DebrisEffectManager::Draw(ID3D12Resource* pointLightResource, ID3D12Resourc
         SrvManager::GetInstance()->SetGraphicsRootDescriptorTable(commandList, 12, shadowMapSrvHandle);
         piece.model->Draw(
             piece.wvpResource.Get(),
-            LightManager::GetInstance()->GetDirectionalLightResource(),
+            engine::LightManager::GetInstance()->GetDirectionalLightResource(),
             cameraResource_.Get(),
             pointLightResource,
             spotLightResource,
@@ -421,6 +426,7 @@ bool DebrisEffectManager::SaveConfig(const std::filesystem::path& filePath, cons
     j["collideGround"] = config.collideGround;
     j["shrinkOnFade"] = config.shrinkOnFade;
 
+    // すべての設定値をJSONに組み立ててからファイルを開き、書き込み結果を返す。
     std::ofstream file(filePath);
 
     if (!file.is_open()) {
@@ -607,7 +613,7 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
 
     for (int i = 0; i < count; ++i) {
         const std::string& modelName = modelNames[RandomIndex(static_cast<int>(modelNames.size()))];
-        Model* model = ModelManager::GetInstance()->LoadModel(modelName);
+        engine::Model* model = ModelManager::GetInstance()->LoadModel(modelName);
 
         if (!model) {
             continue;
@@ -659,14 +665,14 @@ void DebrisEffectManager::SpawnFromConfig(const DebrisEffectConfig& config, cons
         }
 
         // 登録前に初期行列まで書き込み、次のUpdateを待たず描画できる状態にする。
-        Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+        engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
         engine::Matrix4x4 viewProjection = engine::Math::MakeIdentity4x4();
 
         if (camera) {
             viewProjection = engine::Math::Multiply(camera->GetViewMatrix(), camera->GetProjectionMatrix());
         }
 
-        engine::Matrix4x4 lightViewProjection = LightManager::GetInstance()->GetDirectionalLight().lightViewProj;
+        engine::Matrix4x4 lightViewProjection = engine::LightManager::GetInstance()->GetDirectionalLight().lightViewProj;
         UpdatePieceMatrix(piece, viewProjection, kEnableDebrisShadowWvp ? &lightViewProjection : nullptr);
         piece.matrixDirty = false;
         activePieces_.push_back(std::move(piece));
@@ -689,6 +695,7 @@ void DebrisEffectManager::RecyclePiece(size_t index) {
         return;
     }
 
+    // ModelManagerから借りたモデル参照を外してから、次の発生で使う描画バッファだけをプールへ移します。
     activePieces_[index].model = nullptr;
 
     if (pooledPieces_.size() < kMaxActiveDebrisPieces) {
@@ -711,10 +718,10 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
         return false;
     }
 
-    DirectXCommon* dxCommon = common_->GetDxCommon();
+    engine::DirectXCommon* dxCommon = common_->GetDxCommon();
 
     if (!piece.wvpResource) {
-        piece.wvpResource = dxCommon->CreateBufferResource(sizeof(MeshRenderer::TransformationMatrix));
+        piece.wvpResource = dxCommon->CreateBufferResource(sizeof(engine::MeshRenderer::TransformationMatrix));
 
         if (!piece.wvpResource) {
             return false;
@@ -731,7 +738,7 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
 
     // 影用行列は影描画が有効な構成だけ用意し、通常描画のバッファとは別に保持する。
     if (kEnableDebrisShadowWvp && !piece.shadowWvpResource) {
-        piece.shadowWvpResource = dxCommon->CreateBufferResource(sizeof(MeshRenderer::TransformationMatrix));
+        piece.shadowWvpResource = dxCommon->CreateBufferResource(sizeof(engine::MeshRenderer::TransformationMatrix));
 
         if (!piece.shadowWvpResource) {
             return false;
@@ -747,7 +754,7 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
     }
 
     if (!piece.materialResource) {
-        piece.materialResource = dxCommon->CreateBufferResource(sizeof(MeshRenderer::MaterialData));
+        piece.materialResource = dxCommon->CreateBufferResource(sizeof(engine::MeshRenderer::MaterialData));
 
         if (!piece.materialResource) {
             return false;
@@ -782,7 +789,7 @@ bool DebrisEffectManager::InitializePieceResources(DebrisPiece& piece, const Deb
     }
 
     // 以前の材質値が混ざらないよう、今回のプリセット値で全体を初期化する。
-    std::memset(piece.materialData, 0, sizeof(MeshRenderer::MaterialData));
+    std::memset(piece.materialData, 0, sizeof(engine::MeshRenderer::MaterialData));
     piece.materialData->color = config.color;
     piece.materialData->enableLighting = 1;
     piece.materialData->uvTransform = engine::Math::MakeIdentity4x4();
@@ -808,6 +815,7 @@ void DebrisEffectManager::UpdatePieceMatrix(DebrisPiece& piece, const engine::Ma
     engine::Matrix4x4 world = engine::Math::MakeAffineMatrix(scale, piece.rotation, piece.position);
     piece.wvpData->wvp = engine::Math::Multiply(world, viewProjection);
     piece.wvpData->world = world;
+    // 法線を正しい方向へ変換するため、位置用のワールド行列と逆転置行列を別々にシェーダーへ渡します。
     piece.wvpData->worldInverseTranspose = engine::Math::Transpose(engine::Math::Inverse(world));
 
     if (piece.materialData) {
@@ -863,6 +871,7 @@ engine::Vector3 DebrisEffectManager::RandomDirection(const DebrisEffectConfig& c
 
 std::filesystem::path DebrisEffectManager::ResolvePresetPath(const std::string& presetName) const {
     const std::filesystem::path path(std::u8string(presetName.begin(), presetName.end()));
+    // 明示したファイル名はそのまま使い、拡張子なしの名前だけ破片プリセットのルートから解決する。
     if (path.is_absolute() || path.extension() == ".json") return path;
     return std::filesystem::path(kDebrisPresetDirectory) /
         std::filesystem::path(std::u8string(presetName.begin(), presetName.end()) + u8".json");
@@ -873,12 +882,14 @@ void DebrisEffectManager::BeginEditorSession() {
     std::scoped_lock lock(mutex_);
     if (editorSession_) return;
     savedEditorScale_ = timeScale_; savedEditorRandom_ = randomEngine_;
+    // 本番の破片を一時退避し、プレビュー用の乱数を固定して同じ条件から再生します。
     activePieces_.swap(savedEditorPieces_); randomEngine_.seed(0xD3B1u);
     timeScale_ = 1; editorSession_ = true;
 }
 void DebrisEffectManager::EndEditorSession() {
     std::scoped_lock lock(mutex_);
     if (!editorSession_) return;
+    // プレビューで生成した破片を先に回収し、その後で本番の破片、時間倍率、乱数の続きへ戻します。
     Clear(); activePieces_.swap(savedEditorPieces_);
     timeScale_ = savedEditorScale_; randomEngine_ = savedEditorRandom_; editorSession_ = false;
 }

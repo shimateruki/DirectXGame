@@ -22,11 +22,14 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     }
 #endif
 
+    // ImGuiが消費しなかった通知だけを、アプリのウィンドウ操作として処理する。
     switch (msg) {
+    // 閉じる操作を要求に変換し、未保存の確認をゲーム側に任せる。
     case WM_CLOSE:
         WinApp::RequestClose();
         return 0;
 
+    // 非アクティブへ変わった時点でカーソルを解放し、別アプリの操作を妨げない。
     case WM_ACTIVATE:
         if (LOWORD(wparam) == WA_INACTIVE) {
             ClipCursor(nullptr); // 解放
@@ -34,6 +37,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 
         break;
 
+    // 最小化で届く幅・高さ0の通知は無視し、描画先の再作成はDeviceが有効な場合だけ予約する。
     case WM_SIZE:
         if (wparam != SIZE_MINIMIZED) {
             const int32_t width = LOWORD(lparam);
@@ -42,8 +46,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
             if (width <= 0 || height <= 0)
                 return 0;
             WinApp::SetWindowSize(width, height);
-            if (DirectXCommon::GetInstance()->GetDevice()) {
-                DirectXCommon::GetInstance()->RequestResize(width, height);
+            if (engine::DirectXCommon::GetInstance()->GetDevice()) {
+                engine::DirectXCommon::GetInstance()->RequestResize(width, height);
             }
         }
 
@@ -51,6 +55,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 
     case WM_DPICHANGED: {
         // モニター移動時はWindowsの推奨矩形へ追従し、WM_SIZEで描画先を更新します。
+        // 枠なし表示ではDPI変更後もモニター全体を使い、通常の窓だけ推奨矩形に合わせる。
         if ((GetWindowLongPtr(hwnd, GWL_STYLE) & WS_OVERLAPPEDWINDOW) == 0) {
             MONITORINFO monitor{sizeof(MONITORINFO)};
             if (GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &monitor))
@@ -78,6 +83,7 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
     // ウィンドウ生成前に設定し、座標の仮想化による描画・クリックのずれを防ぎます。
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     hInstance_ = GetModuleHandle(nullptr);
+    // Windowsのタイマー分解能を1ミリ秒単位で要求する。
     timeBeginPeriod(1);
 
     WNDCLASS wc{};
@@ -108,6 +114,7 @@ void WinApp::Initialize(const wchar_t* title, int width, int height) {
     windowWidth_ = clientRect.right - clientRect.left;
     windowHeight_ = clientRect.bottom - clientRect.top;
 
+    // まず最大化して表示し、その後に保存済みの解像度・枠なし設定があれば適用する。
     ShowWindow(hwnd_, SW_SHOWMAXIMIZED);
 
     // 保存済み表示設定のみ起動時に反映。破損した設定では従来の起動を維持します。
@@ -141,10 +148,12 @@ bool WinApp::SetDisplayMode(int width, int height, bool borderless) {
     if (!GetMonitorInfo(MonitorFromWindow(hwnd_, MONITOR_DEFAULTTONEAREST), &monitor))
         return false;
     RECT rect{0, 0, width, height};
+    // 枠なしはモニター全体を使う。通常の窓だけクライアント寸法に枠を足して作業領域へ収める。
     const LONG style = borderless ? WS_POPUP : WS_OVERLAPPEDWINDOW;
     if (borderless)
         rect = monitor.rcMonitor;
     else {
+        // 解像度は描画領域の画素数で受け取るため、そのモニターのDPIでタイトルバーと枠の分を足す。
         AdjustWindowRectExForDpi(&rect, style, FALSE, 0, GetDpiForWindow(hwnd_));
         width = rect.right - rect.left;
         height = rect.bottom - rect.top;
@@ -155,6 +164,7 @@ bool WinApp::SetDisplayMode(int width, int height, bool borderless) {
                 work.left + (work.right-work.left+width)/2, work.top + (work.bottom-work.top+height)/2};
     }
 
+    // 最大化などの状態を解除してから様式と矩形を設定し、新しい枠をWindowsに再計算させる。
     ShowWindow(hwnd_, SW_RESTORE);
     SetWindowLongPtr(hwnd_, GWL_STYLE, style | WS_VISIBLE);
     return SetWindowPos(hwnd_, nullptr, rect.left, rect.top, rect.right-rect.left, rect.bottom-rect.top,

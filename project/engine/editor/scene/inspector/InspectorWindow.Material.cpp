@@ -19,6 +19,7 @@ void InspectorWindow::DrawEffectMaterialSettings(engine::Object3D* selectedObjec
             auto* waterData = selectedObject->GetMeshRenderer()->GetWaterParamData();
 
             // effectType は材質内の見た目の種類を表し、該当するプルダウンだけを表示します。
+            // 炎は形状と動く模様を調整します。立体設定を持つ種類でのみ奥行き、乱流、風を表示します。
             if (currentMatType == 11) {
                 ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.08f, 1.0f), ICON_FA_FIRE " --- Fire Settings ---");
                 const char* fireTypes[] = {
@@ -64,6 +65,7 @@ void InspectorWindow::DrawEffectMaterialSettings(engine::Object3D* selectedObjec
                 if (ImGui::DragFloat("炎の強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 5.0f))
                     isGraphicsChanged = true;
             }
+            // レーザーは流れる縞と発光を調整します。模様の倍率と外縁の柔らかさは独立です。
             else if (currentMatType == 12) {
                 ImGui::TextColored(ImVec4(0.25f, 0.85f, 1.0f, 1.0f), ICON_FA_BOLT " --- Laser Settings ---");
                 if (ImGui::DragFloat("流れる速度 (Speed)", &waterData->waveSpeed, 0.05f, 0.05f, 20.0f))
@@ -77,6 +79,7 @@ void InspectorWindow::DrawEffectMaterialSettings(engine::Object3D* selectedObjec
                 if (ImGui::DragFloat("発光の強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 8.0f))
                     isGraphicsChanged = true;
             }
+            // ジェルは揺れの大きさと、内部模様や背景を曲げる見た目の強さを調整します。
             else if (currentMatType == 13) {
                 ImGui::TextColored(ImVec4(0.15f, 1.0f, 0.8f, 1.0f), ICON_FA_WATER " --- Slime Gel Settings ---");
                 if (ImGui::DragFloat("ぷるぷる速度 (Speed)", &waterData->waveSpeed, 0.05f, 0.05f, 10.0f))
@@ -92,6 +95,7 @@ void InspectorWindow::DrawEffectMaterialSettings(engine::Object3D* selectedObjec
                 if (ImGui::DragFloat("透明感の強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 5.0f))
                     isGraphicsChanged = true;
             }
+            // 地面の衝撃波では共通の柔らかさ欄をリング幅に使い、広がる速度や半径と分けます。
             else if (currentMatType == 14) {
                 ImGui::TextColored(ImVec4(0.45f, 0.85f, 1.0f, 1.0f), ICON_FA_BULLSEYE " --- Ground Shockwave Settings ---");
                 if (ImGui::DragFloat("広がる速度 (Speed)", &waterData->waveSpeed, 0.05f, 0.05f, 10.0f))
@@ -105,6 +109,7 @@ void InspectorWindow::DrawEffectMaterialSettings(engine::Object3D* selectedObjec
                 if (ImGui::DragFloat("明るさ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 6.0f))
                     isGraphicsChanged = true;
             }
+            // 液面との接触帯は泡か蒸気を選び、帯そのものと流れる方向を別々に調整します。
             else if (currentMatType == 15) {
                 ImGui::TextColored(ImVec4(1.0f, 0.55f, 0.18f, 1.0f), ICON_FA_BURN " --- Liquid Contact Settings ---");
                 const char* contactTypes[] = { "水の泡 (Foam)", "マグマ蒸気 (Steam)" };
@@ -134,6 +139,7 @@ void InspectorWindow::DrawEffectMaterialSettings(engine::Object3D* selectedObjec
                 if (ImGui::DragFloat("Flow Speed Y", &waterData->flowSpeedY, 0.01f, -50.0f, 50.0f))
                     isGraphicsChanged = true;
             }
+            // 亀裂の形を選び、深さや細かさと発光の脈動を別の値で調整します。
             else if (currentMatType == 16) {
                 ImGui::TextColored(ImVec4(1.0f, 0.32f, 0.18f, 1.0f), ICON_FA_EXCLAMATION_TRIANGLE " --- Damage Crack Settings ---");
                 const char* crackTypes[] = { "ブロック亀裂 (Block Crack)", "ガラス亀裂 (Glass Crack)", "弱点コア亀裂 (Core Crack)" };
@@ -157,6 +163,7 @@ void InspectorWindow::DrawEffectMaterialSettings(engine::Object3D* selectedObjec
                 if (ImGui::DragFloat("発光の強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 8.0f))
                     isGraphicsChanged = true;
             }
+            // 上昇気流、渦、横風の形を切り替え、同じ定数欄で風の筋や揺れを調整します。
             else if (currentMatType == 17) {
                 ImGui::TextColored(ImVec4(0.45f, 0.95f, 1.0f, 1.0f), ICON_FA_WIND " --- Updraft Settings ---");
                 const char* updraftTypes[] = { "上昇柱 (Column)", "渦リング (Vortex Ring)", "横風スラッシュ (Wind Slash)" };
@@ -180,6 +187,7 @@ void InspectorWindow::DrawEffectMaterialSettings(engine::Object3D* selectedObjec
                 if (ImGui::DragFloat("透明感/強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 8.0f))
                     isGraphicsChanged = true;
             }
+            // 拘束表現の形と、電撃の流れる速さやリングの太さを調整します。
             else if (currentMatType == 18) {
                 ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.25f, 1.0f), ICON_FA_BOLT " --- Stun Bind Settings ---");
                 const char* stunTypes[] = { "拘束リング (Bind Rings)", "電撃ケージ (Electric Cage)", "スタン球 (Stun Orb)" };
@@ -201,6 +209,7 @@ void InspectorWindow::DrawEffectMaterialSettings(engine::Object3D* selectedObjec
                 if (ImGui::DragFloat("発光の強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 10.0f))
                     isGraphicsChanged = true;
             }
+            // 王冠解放の紋章を切り替え、光線の密度や発光を設定します。
             else if (currentMatType == 19) {
                 ImGui::TextColored(ImVec4(1.0f, 0.84f, 0.25f, 1.0f), ICON_FA_MAGIC " --- Crown Unlock Settings ---");
                 const char* crownTypes[] = { "魔法陣 (Magic Circle)", "王冠バースト (Crown Burst)", "解放ポータル (Unlock Portal)" };
@@ -222,6 +231,7 @@ void InspectorWindow::DrawEffectMaterialSettings(engine::Object3D* selectedObjec
                 if (ImGui::DragFloat("神々しさ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 10.0f))
                     isGraphicsChanged = true;
             }
+            // 毒の見た目を選び、霧の厚みと胞子の模様を独立に調整します。
             else if (currentMatType == 20) {
                 ImGui::TextColored(ImVec4(0.55f, 1.0f, 0.25f, 1.0f), ICON_FA_SMOG " --- Poison Spore Settings ---");
                 const char* sporeTypes[] = { "毒霧 (Poison Mist)", "胞子雲 (Spore Cloud)", "毒リング (Poison Ring)" };
@@ -245,6 +255,7 @@ void InspectorWindow::DrawEffectMaterialSettings(engine::Object3D* selectedObjec
                 if (ImGui::DragFloat("毒の強さ (Intensity)", &waterData->effectIntensity, 0.05f, 0.05f, 8.0f))
                     isGraphicsChanged = true;
             }
+            // 雲は厚みや模様スケールに加え、カメラへ向ける描画板の大きさを持ちます。
             else if (currentMatType == 21) {
                 ImGui::TextColored(ImVec4(0.75f, 0.9f, 1.0f, 1.0f), ICON_FA_CLOUD " --- Cloud Settings ---");
                 const char* cloudTypes[] = { "雲の塊 (Puff)", "流れる雲 (Drift)", "足元の煙 (Ground Mist)" };
@@ -302,6 +313,7 @@ void InspectorWindow::DrawEffectMaterialSettings(engine::Object3D* selectedObjec
                 if (ImGui::DragFloat("発光の強さ (Intensity)", &waterData->effectIntensity, 0.01f, 0.05f, 8.0f, "%.3f"))
                     isGraphicsChanged = true;
             }
+            // 風弾は渦の種類を選び、帯の速度・屈折・発光を調整します。
             else if (currentMatType == 26) {
                 ImGui::TextColored(ImVec4(0.42f, 1.0f, 0.82f, 1.0f), ICON_FA_WIND " --- Wind Orb Settings ---");
                 const char* windOrbTypes[] = { "安定した風弾 (Stable)", "高速の渦 (Fast)", "圧縮した風 (Compressed)" };
@@ -325,6 +337,7 @@ void InspectorWindow::DrawEffectMaterialSettings(engine::Object3D* selectedObjec
                 if (ImGui::DragFloat("発光の強さ (Intensity)", &waterData->effectIntensity, 0.01f, 0.05f, 5.0f, "%.3f"))
                     isGraphicsChanged = true;
             }
+            // マグマは隆起と黒い殻の境界、水平の流れを分けて調整します。
             else if (currentMatType == 9) {
                 ImGui::TextColored(ImVec4(1.0f, 0.28f, 0.04f, 1.0f), ICON_FA_FIRE " --- Magma Settings ---");
                 if (ImGui::DragFloat("流れる速度 (Flow Speed)", &waterData->waveSpeed, 0.01f, 0.05f, 6.0f))

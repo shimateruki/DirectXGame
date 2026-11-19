@@ -109,6 +109,7 @@ inline void DamageEnemy(Player& player, engine::Object3D* target, float damage, 
 // 重複 Collider を持つ敵には一度だけダメージを送ります。
 inline void DamageSphere(Player& player, const engine::Vector3& center, float radius, float damage, DamageType type,
                          float horizontalKnockback, float verticalKnockback) {
+    // 敵カテゴリに対象を絞り、子Colliderの重複は本体ごとに除く。
     PhysicsQueryFilter filter;
     filter.mask = CollisionCategories::Get("enemy");
     filter.ignoredObject = &player;
@@ -118,6 +119,7 @@ inline void DamageSphere(Player& player, const engine::Vector3& center, float ra
         if (!target || !damaged.insert(target).second) {
             continue;
         }
+        // 球の中心から外へ押し出す水平成分と、指定された上向き成分を命中通知へ渡す。
         const engine::Vector3 direction = NormalizePlanar(target->GetWorldPosition() - center);
         DamageEnemy(player, target, damage, type,
                     {direction.x * horizontalKnockback, verticalKnockback, direction.z * horizontalKnockback});

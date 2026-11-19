@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "2b8bd4b95a6f4391bc387bd908aafec5",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/coral_spike_orb/coral_spike_orb.glb",
+  "version": 1
+}

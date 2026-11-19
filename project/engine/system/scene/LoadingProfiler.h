@@ -18,10 +18,12 @@ inline void LogSlowLoadingOperation(const std::string& operation, double elapsed
 
     char path[2048]{};
     const DWORD length = GetEnvironmentVariableA("CG2_LOADING_PROFILE_LOG", path, sizeof(path));
+    // ファイル出力先が未指定またはバッファに収まらない場合は、デバッガー出力だけで終了する。
     if (length == 0 || length >= sizeof(path)) {
         return;
     }
     static std::mutex logMutex;
+    // 先読み用のスレッドが同時に記録しても、同じ出力ファイルの行が交ざらないよう追記を直列にする。
     std::lock_guard<std::mutex> lock(logMutex);
     std::ofstream log(path, std::ios::app);
     log << line;

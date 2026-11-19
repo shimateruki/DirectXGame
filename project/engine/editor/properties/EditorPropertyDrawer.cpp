@@ -71,9 +71,11 @@ bool EditorPropertyDrawer::DrawValue(
         std::int64_t current = value.is_number_unsigned() || value.is_number_integer()
             ? value.get<std::int64_t>()
             : 0;
+        // 例として 0 始まりの保存値を画面では 1 始まりにできる。数値入力の確定時に足した分を戻す。
         current += ui.integerDisplayOffset;
         if (!property.enumLabels.empty()) {
             std::string preview = value.dump();
+            // 明示の保存値が全選択肢にそろう場合はそれを使う。従来形式は選択肢の位置を保存値にする。
             const auto choiceValue = [&](std::size_t index) -> json {
                 return property.enumValues.size() == property.enumLabels.size()
                     ? property.enumValues[index] : json(index);
@@ -160,6 +162,7 @@ bool EditorPropertyDrawer::DrawValue(
             };
             const fs::path root(ui.assetDirectory);
             const fs::path stored(std::u8string(current.begin(), current.end()));
+            // 演出素材の旧パスも解決したうえで、一覧には素材ルートからの相対パスを出す。
             const auto resolved = ui.assetEditor == EditorPropertyAssetEditor::Scenario
                 ? CinematicAssetPath::Resolve(root, stored) : stored;
             const auto preview = current.empty() ? std::string("(なし)") : utf8(resolved.lexically_relative(root));
@@ -241,6 +244,7 @@ bool EditorPropertyDrawer::DrawValue(
             ReadArrayNumber(value, 3, 1.0f),
         };
 
+        // 色指定のときは第 4 成分をアルファとして編集する。欠けた成分は不透明の 1 から始める。
         changed = ui.useColorPicker
             ? ImGui::ColorEdit4(id, current, ImGuiColorEditFlags_Float)
             : ImGui::DragFloat4(id, current, ui.speed, ui.minValue, ui.maxValue, format);

@@ -27,6 +27,7 @@ void GimmickAppearingFloor::Initialize(engine::Object3DCommon* common, const std
 
 // Play中だけタイマーを進め、Editorでは足場を常に見える状態に戻します。
 void GimmickAppearingFloor::Update(float deltaTime) {
+    // 保持時間は配置値を毎回参照し、0以下のときは実行時だけ3秒を使います。
     if (GetParameters().has_value()) {
         appearDuration_ = GetParameters()->interval;
         if (appearDuration_ <= 0.0f)
@@ -39,6 +40,7 @@ void GimmickAppearingFloor::Update(float deltaTime) {
         isPlaying = sceneManager->IsPlaying();
     }
 
+    // 編集に戻ったら足場を可視・有効にし、次のプレイ開始時に当たり判定を取り直します。
     if (!isPlaying) {
         initializedForPlay_ = false;
         SetFloorActive(true);
@@ -60,6 +62,7 @@ void GimmickAppearingFloor::Update(float deltaTime) {
         initializedForPlay_ = true;
     }
 
+    // 秒単位で有効時間を減らす。点滅中もタイマーが残る間は衝突を有効に保ちます。
     if (visibleTimer_ > 0.0f) {
         visibleTimer_ -= deltaTime;
         if (visibleTimer_ < 0.0f)

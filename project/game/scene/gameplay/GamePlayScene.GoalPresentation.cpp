@@ -48,6 +48,7 @@ void GamePlayScene::InitializeGoalCinematicTimeline() {
 
     goalCinematicTimelineLoaded_ = goalCinematicSequence_.Load(kGoalCinematicTimelinePath);
 
+    // 読めない場合は調整値から再生用の合図とクリップを組み立て、読めた場合はシーケンス側の時刻を採用します。
     if (!goalCinematicTimelineLoaded_) {
         DebugConsole::GetInstance()->AddLog(std::string("Goal Timeline load failed: ") + kGoalCinematicTimelinePath);
         goalCinematicSequence_.Clear();
@@ -66,6 +67,7 @@ void GamePlayScene::ApplyGoalCinematicTimingFromSequence() {
     // JSONの合図時刻を演出パラメータへ反映し、旧来の固定値とずれないようにする。
     GoalClearPlayerAnimator::Tuning animation = goalClearPlayerAnimator_.GetTuning();
 
+    // 無効なマーカーは飛ばし、以前の値を残したまま読み取れた時刻だけ置き換えます。
     for (const auto& marker : goalCinematicSequence_.signals) {
         if (!marker.enabled) {
             continue;
@@ -92,6 +94,7 @@ void GamePlayScene::ApplyGoalCinematicTimingFromSequence() {
         }
     }
 
+    // 受け取った時刻の順序を補正してから、実際の姿勢更新で使います。
     goalClearPlayerAnimator_.SetTuning(animation);
     SanitizeGoalPresentationTuning();
 }
@@ -115,6 +118,7 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
         goalCinematicSequence_.signals.push_back(marker);
     };
 
+    // 王冠の構図から帰還可能になるまでの節目を、同じ再生時計へ書き戻します。
     setSignalTime("goal.crown_focus_end", "Crown Focus End", goalPresentationTuning_.crownFocusEndTime);
     setSignalTime("goal.crown_move_start", "Crown Move Start", goalPresentationTuning_.crownMoveStartTime);
     setSignalTime("goal.crown_land", "Crown Land", animation.crownLandTime);
@@ -176,6 +180,7 @@ void GamePlayScene::SyncGoalCinematicTimelineFromTuning() {
     syncVfxTrack(GoalCinematicVfx::kResult, animation.apexTime);
     syncVfxTrack(GoalCinematicVfx::kVictory, animation.victoryLandTime);
 
+    // 帰還できる時刻までを全尺とし、追加したトラックを含めて時刻順を整えます。
     goalCinematicSequence_.duration = animation.readyTime;
     goalCinematicSequence_.Sort();
 }
@@ -219,6 +224,7 @@ void GamePlayScene::InitializeGoalPresentationOverlay() {
     const uint32_t returnTextHandle =
         TextureManager::GetInstance()->Load("Resources/sprite/ui/result/clear/returning_select_text.png");
 
+    // 着地の全画面フラッシュは、文字とは独立した一枚として用意します。
     goalOverlayFlash_ = std::make_unique<engine::Sprite>();
     goalOverlayFlash_->Initialize(GetSpriteCommon(), whiteHandle);
     goalOverlayFlash_->SetName("GoalClear_Flash");
@@ -236,6 +242,7 @@ void GamePlayScene::InitializeGoalPresentationOverlay() {
         "Resources/sprite/ui/result/clear/slime_letters/letter_a.png",
         "Resources/sprite/ui/result/clear/slime_letters/letter_r.png"};
 
+    // 一文字ずつ落下させるため、文字と接地光を別々のSpriteに分けます。
     for (size_t i = 0; i < goalOverlayStageClearLetters_.size(); ++i) {
         auto& letter = goalOverlayStageClearLetters_[i];
         letter = std::make_unique<engine::Sprite>();
@@ -275,6 +282,7 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
     const float uiScale = baseScale * presentation.resultUiScale;
     const float centerX = screenW * presentation.resultUiCenterX;
     const float baselineY = screenH * presentation.resultUiCenterY;
+    // 戻る案内は結果の直後に出さず、文字が見えた後か帰還可能の手前の遅い方に合わせます。
     const float returnStartTime = std::max(animation.resultUiTime + 0.52f, animation.readyTime - 0.48f);
     const float returnIn = Easing::SmoothStep01((t - returnStartTime) / 0.34f);
     const float flashIn = Easing::OutCubic01((t - animation.resultUiTime) / 0.04f);
@@ -378,6 +386,7 @@ void GamePlayScene::UpdateGoalPresentationOverlay() {
         }
     }
 
+    // 戻る案内は文字の跳ねに追従させず、文章の下へ独立して滑り込ませます。
     if (goalOverlayReturnText_) {
         goalOverlayReturnText_->SetPosition({centerX, baselineY + (100.0f + 8.0f * (1.0f - returnIn)) * uiScale});
         goalOverlayReturnText_->SetSize({278.0f * uiScale, 33.0f * uiScale});
@@ -393,6 +402,7 @@ void GamePlayScene::DrawGoalPresentationOverlay() {
         return;
     }
 
+    // フラッシュと接地光を先に重ね、その上に文字と帰還案内を描きます。
     if (goalOverlayFlash_) {
         goalOverlayFlash_->Draw();
     }
@@ -428,6 +438,7 @@ void GamePlayScene::LoadGoalPresentationTuning() {
         file >> root;
         GoalClearPlayerAnimator::Tuning animation = goalClearPlayerAnimator_.GetTuning();
 
+        // カット全体の長さと各動作の開始時刻を読み、後続の再生が参照する基準を作る。
         if (const auto it = root.find("timeline"); it != root.end() && it->is_object()) {
             const auto& j = *it;
             goalPresentationTuning_.crownFocusEndTime =
@@ -443,6 +454,7 @@ void GamePlayScene::LoadGoalPresentationTuning() {
             animation.readyTime = j.value("readyTime", animation.readyTime);
         }
 
+        // 操作を引き取った後のプレイヤーの姿勢や動きを、カメラとは独立して読み込む。
         if (const auto it = root.find("player"); it != root.end() && it->is_object()) {
             const auto& j = *it;
             animation.settleDuration = j.value("settleDuration", animation.settleDuration);
@@ -456,6 +468,7 @@ void GamePlayScene::LoadGoalPresentationTuning() {
             animation.resultYawBias = j.value("resultYawBias", animation.resultYawBias);
         }
 
+        // 王冠の移動・回転・最後の揺れの調整を、この演出専用の設定へ反映する。
         if (const auto it = root.find("crown"); it != root.end() && it->is_object()) {
             const auto& j = *it;
             goalPresentationTuning_.crownDropHeight = j.value("dropHeight", goalPresentationTuning_.crownDropHeight);
@@ -463,6 +476,7 @@ void GamePlayScene::LoadGoalPresentationTuning() {
             goalPresentationTuning_.crownWearWidthRatio = j.value("wearWidthRatio", goalPresentationTuning_.crownWearWidthRatio);
         }
 
+        // カメラの寄り方と画角を読み、プレイヤーと王冠を画面内に収める計算に使う。
         if (const auto it = root.find("camera"); it != root.end() && it->is_object()) {
             const auto& j = *it;
             goalPresentationTuning_.cameraSafeMargin = j.value("safeMargin", goalPresentationTuning_.cameraSafeMargin);
@@ -494,6 +508,7 @@ void GamePlayScene::LoadGoalPresentationTuning() {
             goalPresentationTuning_.resultFov = j.value("resultFov", goalPresentationTuning_.resultFov);
         }
 
+        // クリア後に見せるリザルトの時刻など、表示側の値を読み込む。
         if (const auto it = root.find("ui"); it != root.end() && it->is_object()) {
             const auto& j = *it;
             goalPresentationTuning_.resultUiCenterX = j.value("centerX", goalPresentationTuning_.resultUiCenterX);
@@ -539,6 +554,7 @@ void GamePlayScene::SaveGoalPresentationTuning() const {
                         {"resultUiTime", a.resultUiTime},
                         {"victoryLandTime", a.victoryLandTime},
                         {"readyTime", a.readyTime}};
+    // 時間の節目と見た目の補正値を、読み込み時と同じ区分・キーで書き出します。
     root["player"] = {{"settleDuration", a.settleDuration}, {"jumpHeight", a.jumpHeight},
                       {"forwardDistance", a.forwardDistance},
                       {"anticipationDepth", a.anticipationDepth},
@@ -597,6 +613,7 @@ void GamePlayScene::SanitizeGoalPresentationTuning() {
     a.resultUiTime = std::max(a.resultUiTime, a.apexTime + 0.02f);
     a.victoryLandTime = std::max(a.victoryLandTime, a.apexTime + 0.36f);
     a.readyTime = std::max(a.readyTime, a.victoryLandTime + 0.55f);
+    // イベントの順序を決めた後、姿勢・画角・UIの値を描画可能な範囲へ制限します。
     a.settleDuration = std::clamp(a.settleDuration, 0.05f, 0.65f);
     a.jumpHeight = std::clamp(a.jumpHeight, 1.0f, 7.0f);
     a.forwardDistance = std::clamp(a.forwardDistance, 0.0f, 3.0f);
@@ -689,6 +706,7 @@ void GamePlayScene::DrawGoalPresentationEditor() {
     changed |= ImGui::DragFloat("跳ね減衰", &g.resultLetterBounceDamping, 0.05f, 1.0f, 8.0f, "%.2f");
     changed |= ImGui::DragFloat("跳ね速度", &g.resultLetterBounceFrequency, 0.05f, 4.0f, 18.0f, "%.2f");
 
+    // 編集のたびに時刻順を補正し、現在の調整値をプレビューが使用するタイムラインへ渡します。
     if (changed) {
         SanitizeGoalPresentationTuning();
         SyncGoalCinematicTimelineFromTuning();
@@ -704,6 +722,7 @@ void GamePlayScene::DrawGoalPresentationEditor() {
         StopGoalPresentationPreview();
     }
 
+    // 設定とタイムラインを同じ調整値で保存し、次回ロードしても時刻が食い違わないようにします。
     if (ImGui::Button(ICON_FA_SAVE " JSON保存")) {
         SanitizeGoalPresentationTuning();
         SyncGoalCinematicTimelineFromTuning();
@@ -719,6 +738,7 @@ void GamePlayScene::DrawGoalPresentationEditor() {
     }
 
     ImGui::SameLine();
+    // ゴール演出の最中は参照中のタイムラインを読み替えないようにします。
     ImGui::BeginDisabled(isGoal_);
 
     if (ImGui::Button(ICON_FA_FILM " Timeline再読込")) {

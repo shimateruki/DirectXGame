@@ -21,7 +21,7 @@ SceneControllerFactory::SceneControllerFactory() {
 // 同名を再登録した時は生成関数だけ差し替え、一覧の順番は保持します。
 // シーン制御は名前から生成し、シーン本体とステージ固有の操作を切り離します。
 bool SceneControllerFactory::RegisterController(const std::string& name, Creator creator) {
-    // 既存名なら生成関数を置き換え、新規登録かどうかを返す。
+    // 無効な名前または生成関数ならfalse、有効な新規登録・差し替えはいずれもtrueを返す。
     if (name.empty() || !creator) {
         return false;
     }
@@ -29,6 +29,7 @@ bool SceneControllerFactory::RegisterController(const std::string& name, Creator
     const bool isNew = creators_.find(name) == creators_.end();
     creators_[name] = std::move(creator);
 
+    // 初回にだけ候補一覧へ追加し、既存名の差し替えで表示順を変えません。
     if (isNew) {
         registrationOrder_.push_back(name);
     }

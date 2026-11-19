@@ -1,0 +1,77 @@
+{
+    "designResolution": [
+        724,
+        480
+    ],
+    "scaleToWindow": true,
+    "sprites": [
+        {
+            "name": "DashPanelVideo",
+            "texture": "guide_sign/dash_poster.png",
+            "position": [
+                64,
+                51
+            ],
+            "size": [
+                596,
+                335.25
+            ],
+            "anchor": [
+                0,
+                0
+            ],
+            "color": [
+                1,
+                1,
+                1,
+                1
+            ],
+            "video": "guide_sign/dash_panel.mp4",
+            "emissive": 1.48
+        },
+        {
+            "name": "WoodFrame",
+            "texture": "guide_sign/wood_frame.png",
+            "position": [
+                0,
+                0
+            ],
+            "size": [
+                724,
+                480
+            ],
+            "anchor": [
+                0,
+                0
+            ],
+            "color": [
+                1,
+                1,
+                1,
+                1
+            ]
+        },
+        {
+            "name": "DashTitle",
+            "texture": "guide_sign/dash_title.png",
+            "position": [
+                362,
+                429
+            ],
+            "size": [
+                486,
+                37.05
+            ],
+            "anchor": [
+                0.5,
+                0.5
+            ],
+            "color": [
+                1,
+                1,
+                1,
+                1
+            ]
+        }
+    ]
+}

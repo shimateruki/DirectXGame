@@ -186,7 +186,7 @@ void LightEditor::DrawSkyboxTextureList() {
 
 void LightEditor::Initialize() {
     // 実際の照明状態を持つManagerへ編集UIを接続します。
-    lightManager_ = LightManager::GetInstance();
+    lightManager_ = engine::LightManager::GetInstance();
 }
 
 void LightEditor::SetObject3DCommon(engine::Object3DCommon* common) {
@@ -206,6 +206,7 @@ void LightEditor::Update() {
     auto& pointLights = lightManager_->GetPointLights(); // 今や vector<Instance>
 
     // ギズモの数を合わせる
+    // ライトと同じ添字で表示物を対応付け、追加・削除された分だけ表示物の配列を更新する。
     if (pointLightGizmos_.size() != pointLights.size()) {
         pointLightGizmos_.resize(pointLights.size());
 
@@ -246,6 +247,7 @@ void LightEditor::Update() {
     // ==========================================================
     auto& spotLights = lightManager_->GetSpotLights();
 
+    // 点光源と別の配列へ同期する。位置の目印は縦長にして見分けられるようにする。
     if (spotLightGizmos_.size() != spotLights.size()) {
         spotLightGizmos_.resize(spotLights.size());
 
@@ -388,6 +390,7 @@ void LightEditor::DrawEnvironmentProfilePanel() {
 
     ImGui::SameLine();
 
+    // 選択した環境へ、現在の環境から指定秒数で補間する要求を送る。進捗は Manager から取得する。
     if (ImGui::Button(ICON_FA_PLAY " Profileを適用")) {
         const bool applied = lightManager_->ApplyEnvironmentProfile(
             profilePathString,
@@ -435,7 +438,7 @@ void LightEditor::DrawImGui() {
 
     // 背景色はManagerの保存値に加えて、実際の画面クリアに使う値も同時に更新する。
     if (ImGui::ColorEdit4(ICON_FA_PALETTE " 背景色 (Clear Color)", &clearColor.x)) {
-        DirectXCommon::GetInstance()->SetRenderClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
+        engine::DirectXCommon::GetInstance()->SetRenderClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
     }
 
     ImGui::Spacing();
@@ -466,6 +469,7 @@ void LightEditor::DrawImGui() {
 
         ImGui::SameLine();
 
+        // 読み込みを実行した後で同期済みパスを破棄し、次の描画で実際の適用先を取り直す。
         if (ImGui::Button(ICON_FA_UPLOAD " ロード (Load)")) {
             const bool loaded = lightManager_->LoadState(fullPath);
             syncedLightPath_.clear();
@@ -507,7 +511,7 @@ void LightEditor::DrawImGui() {
             sun.ambientColor = { 0.34f, 0.38f, 0.42f };
             sun.fogColor = { 0.66f, 0.76f, 0.86f };
             clearColor = { 0.52f, 0.68f, 0.84f, 1.0f };
-            DirectXCommon::GetInstance()->SetRenderClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
+            engine::DirectXCommon::GetInstance()->SetRenderClearColor(clearColor.x, clearColor.y, clearColor.z, clearColor.w);
             SetStatusMessage("明るい影プリセットを適用しました", true);
         }
 
@@ -591,6 +595,7 @@ void LightEditor::DrawImGui() {
 
         auto& pointLights = lightManager_->GetPointLights();
 
+        // 別ファイルの読込や削除で点光源が減った場合は、無効な選択位置を持ち越さない。
         if (selectedPointLightIndex_ >= static_cast<int>(pointLights.size())) {
             selectedPointLightIndex_ = -1;
         }
@@ -614,7 +619,7 @@ void LightEditor::DrawImGui() {
         for (int i = 0; i < pointLights.size(); ++i) {
             ImGui::PushID(i);
             // 編集中はInstanceのコピーを使い、末尾のSetterでライト管理側へ書き戻す。
-            LightManager::PointLightInstance instance = pointLights[i];
+            engine::LightManager::PointLightInstance instance = pointLights[i];
             auto& data = instance.data;
 
             if (selectedPointLightIndex_ == i) {
@@ -665,7 +670,7 @@ void LightEditor::DrawImGui() {
                 int currentMode = (int)instance.mode;
 
                 if (ImGui::Combo(ICON_FA_PLAY_CIRCLE " モード", &currentMode, modes, IM_ARRAYSIZE(modes))) {
-                    instance.mode = (LightManager::LightMode)currentMode;
+                    instance.mode = (engine::LightManager::LightMode)currentMode;
                 }
 
                 if (instance.target) {
@@ -707,6 +712,7 @@ void LightEditor::DrawImGui() {
 
         auto& spotLights = lightManager_->GetSpotLights();
 
+        // スポットライト側も件数変更後に選択位置を検証する。
         if (selectedSpotLightIndex_ >= static_cast<int>(spotLights.size())) {
             selectedSpotLightIndex_ = -1;
         }
@@ -730,7 +736,7 @@ void LightEditor::DrawImGui() {
         for (int i = 0; i < spotLights.size(); ++i) {
             ImGui::PushID(i + 1000);
             // スポットライトもコピーを編集して最後に書き戻し、削除した要素への反映は飛ばす。
-            LightManager::SpotLightInstance instance = spotLights[i];
+            engine::LightManager::SpotLightInstance instance = spotLights[i];
             auto& data = instance.data;
 
             if (selectedSpotLightIndex_ == i) {
@@ -755,8 +761,7 @@ void LightEditor::DrawImGui() {
 
                 ImGui::Text(ICON_FA_COGS " --- 挙動設定 ---");
 
-                // (PointLightと同様の追従対象Combo)
-                // ... (中略) ...
+                // 既存の追従先があれば相対位置を調整する。未設定時はワールド位置と向きを編集する。
 
                 if (instance.target) {
                     ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 位置ズレ (Offset)", &instance.offset.x, 0.1f);

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "game/actor/enemy/combat/EnemyAttackSelection.h"
 
 #include "BaseEnemy.h"
@@ -34,14 +34,14 @@ class EnemyFalseKingSlime final : public BaseEnemy {
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
 
     /// <summary>指定カメラ向けにボス本体と攻撃表示物を描画する。</summary>
-    void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource,
+    void DrawForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource,
                        int previewBufferIndex = 0) override;
 
     /// <summary>床の描画後に、所有する加算・半透明の攻撃表示物を描く。</summary>
     void DrawOwnedTransparentVisuals(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
 
     /// <summary>指定カメラの半透明パスへ所有する攻撃表示物を描く。</summary>
-    void DrawOwnedTransparentVisualsForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+    void DrawOwnedTransparentVisualsForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource,
                                               ID3D12Resource* spotLightResource, int previewBufferIndex = 0) override;
 
     /// <summary>スイッチイベントを受け、ボスの有効状態を切り替える。</summary>
@@ -63,7 +63,7 @@ class EnemyFalseKingSlime final : public BaseEnemy {
     void DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t grabSrvHandle) override;
 
     /// <summary>指定カメラ向けに所有表示物の特殊マテリアルパスを描画する。</summary>
-    void DrawOwnedSpecialMaterialVisualsForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
+    void DrawOwnedSpecialMaterialVisualsForCamera(engine::Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
                                                   int previewBufferIndex = 0) override;
 
     /// <summary>敵攻撃プレビューで指定技だけを繰り返します。</summary>
@@ -128,11 +128,11 @@ class EnemyFalseKingSlime final : public BaseEnemy {
     /// <summary>王冠の防護を開き、封印解除の演出へ進める。</summary>
     void OpenCrownArmor();
 
+    // シーンが幕間の開始に成功した後、第二形態の攻撃演出を止める。
+    void OnCrownFinaleStarted();
+
     /// <summary>指定位置を中心に最終戦の闘技場を開始する。</summary>
     void BeginFinalArena(const engine::Vector3& position);
-
-    /// <summary>王冠継承の演出開始を受けて、戦闘中の表示を片付ける。</summary>
-    void OnCrownFinaleStarted();
 
     /// <summary>王冠封印から最終戦までの進行を中断・片付ける。</summary>
     void AbortCrownFinale();
@@ -349,14 +349,11 @@ class EnemyFalseKingSlime final : public BaseEnemy {
     /// <summary>攻撃の予備・発動・硬直を進め、技固有の処理へ振り分ける。</summary>
     void UpdateAttack(float deltaTime, const engine::Vector3& targetDirection, float targetDistance, engine::Vector3& velocity);
 
-    /// <summary>攻撃前の予備動作と予告表示を更新する。</summary>
-    void UpdateWindup(float deltaTime, const engine::Vector3& targetDirection);
+    /// <summary>予兆または攻撃中の技を進め、残り時間が尽きたら次の段階へ移す。</summary>
+    void UpdateAttackPattern(AttackState phase, float deltaTime, const engine::Vector3& targetDirection, engine::Vector3& velocity);
 
     /// <summary>予備動作を終え、攻撃の有効期間へ移る。</summary>
     void BeginActive();
-
-    /// <summary>現在の技の攻撃本体を更新する。</summary>
-    void UpdateActive(float deltaTime, const engine::Vector3& targetDirection, engine::Vector3& velocity);
 
     /// <summary>攻撃の有効期間を終え、硬直へ移る。</summary>
     void BeginRecovery();
@@ -692,7 +689,7 @@ class EnemyFalseKingSlime final : public BaseEnemy {
     void UpdateState(float deltaTime);
     void UpdateBossAura(float deltaTime);
     void UpdateAuraVisual(float strength, float poseBurst, float deltaTime);
-    void AlignBossAura(Camera* camera);
+    void AlignBossAura(engine::Camera* camera);
     void ClearBossAura();
     float bossAuraStrength_ = 0.0f;
     float bossAuraTime_ = 0.0f;

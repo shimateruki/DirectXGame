@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "84c7529b40c4e179accbd246ec42a00e",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/move_selected_cyan.png",
+  "version": 1
+}

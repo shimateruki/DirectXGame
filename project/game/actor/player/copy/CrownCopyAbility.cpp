@@ -22,6 +22,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
             Cancel(player);
             return;
         }
+        // ゲートの通過が終わるまで、槍の溜めと追加の回避を受け付けない。
         if (warp_.Active())
             return;
         if (melee_.Active()) {
@@ -38,6 +39,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
             if (input.specialTriggered) melee_.QueueNext();
             return;
         }
+        // 近接中でなければ、回避、近接開始、槍の溜めの順に入力を処理する。
         if (input.secondaryTriggered && BeginWarp(player))
             return;
         if (input.specialTriggered && melee_.Ready()) {
@@ -63,6 +65,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
             Cancel(player);
             return;
         }
+        // 共通の経過時間と残光を更新してから、回避・近接・槍の形成を進める。
         time_ += deltaTime;
         effects_.Update(deltaTime);
         readyFlashTime_ = (std::max)(0.0f, readyFlashTime_ - deltaTime);
@@ -72,6 +75,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         UpdateLanceCharge(player, deltaTime);
         const auto& tuning = CrownFinaleTuning::Get();
 
+        // 命中済みの槍は見た目だけを消散させ、予約から生まれた弾をこの後の命中判定へ加える。
         std::erase_if(remnants_, [deltaTime](Shot& shot) { return UpdateShotDissolve(shot, deltaTime); });
         UpdateGates(player, deltaTime);
         for (auto it = shots_.begin(); it != shots_.end();) {
@@ -112,6 +116,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
                 continue;
             }
 
+            // 命中しなかった弾は移動を確定し、柄までゲートを通過したら断面表示を外す。
             it->position += movement;
             it->visual->SetTranslate(it->position);
             it->visual->Update(step);
@@ -121,6 +126,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
                 it->emerging = false;
             }
             UpdateTrail(*it, 0.0f, step);
+            // 寿命切れは命中通知を出さず、消えていく表示だけを残す。
             if (it->life <= 0.0f) {
                 BeginShotDissolve(*it);
                 UpdateShotDissolve(*it, 0.0f);
@@ -139,12 +145,13 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         }
     }
 
-    void Draw(Player& player, ID3D12Resource* point, ID3D12Resource* spot, Camera* camera,
+    void Draw(Player& player, ID3D12Resource* point, ID3D12Resource* spot, engine::Camera* camera,
               int previewBufferIndex) override {
         melee_.Draw(point, spot, camera, previewBufferIndex);
         effects_.Draw(point, spot, camera, previewBufferIndex);
         warp_.DrawEffects(point, spot, camera, previewBufferIndex);
 
+        // 未発射の槍、飛行中の槍、消散中の槍と軌跡を通常パスで描く。ゲートは専用描画側が担当する。
         for (const auto& gate : gates_) {
             if (!gate.fired)
                 DrawVisual(gate.lance.get(), point, spot, camera, previewBufferIndex);
@@ -160,7 +167,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
     }
 
     bool HasOwnedVisuals() const override { return melee_.Active() || warp_.Active() || !gates_.empty(); }
-    void DrawOwnedVisuals(Player& player, uint32_t depth, uint32_t grab, Camera* camera, int bufferIndex) override {
+    void DrawOwnedVisuals(Player& player, uint32_t depth, uint32_t grab, engine::Camera* camera, int bufferIndex) override {
         // ゲートは深度・画面色を参照する専用パスへ渡し、通常の槍と二重描画しません。
         if (player.IsDead() || player.IsCinematicLocked())
             return;
@@ -192,11 +199,13 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         melee_.End(player);
     }
     void Cancel(Player& player) override {
+        // 同期の命中通知から解除された場合、通知前の弾参照を使えないことを世代番号で伝える。
         ++cancelGeneration_;
         melee_.End(player);
         melee_.ClearEffects();
         effects_.Clear();
         warp_.ClearEffects();
+        // 溜め中と発射済みの表示を両方回収し、回避中であれば解除時に操作と断面も復元する。
         StopLanceCharge(player);
         player.ClearSlimeAbilityMotion();
         warp_.End(player);
@@ -242,11 +251,13 @@ class CrownCopyAbility final : public ICopyAbilitySession {
     std::unique_ptr<engine::Object3D> MakeGatePortal() {
         auto portal = MakeVisual("Gimmicks/portal_surface");
         if (!portal) return {};
+        // 背景の照明に左右されない発光ゲートを作り、姿勢はクォータニオンで合わせる。
         portal->SetMaterialType(22);
         portal->SetBlendMode(BlendMode::Normal);
         portal->SetEnableLighting(false);
         portal->SetEmissive(2.5f);
         portal->SetQuaternionMaster(true);
+        // ゲート用の材質がある場合は、厚みを抑えた面に波と縁の見た目を設定する。
         if (auto* material = portal->GetMeshRenderer()->GetWaterParamData()) {
             material->waveSpeed = 2.25f;
             material->waveHeight = 1.18f;
@@ -263,6 +274,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
     }
     bool BeginWarp(Player& player) {
         if (!warp_.Ready()) return false;
+        // 安全な経路とゲートを用意できなければ失敗を返し、槍の溜めもそのまま続ける。
         if (!warp_.Begin(player, CrownLanceSettings::Get(), [this](const auto& normal) {
                 auto gate = MakeGatePortal();
                 if (gate) {
@@ -276,7 +288,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         return true;
     }
 
-    static void DrawVisual(engine::Object3D* visual, ID3D12Resource* point, ID3D12Resource* spot, Camera* camera,
+    static void DrawVisual(engine::Object3D* visual, ID3D12Resource* point, ID3D12Resource* spot, engine::Camera* camera,
                            int previewBufferIndex) {
         // 指定カメラがあればプレビューへ描き、なければ現在シーンのカメラを使う。
         if (!visual)
@@ -304,6 +316,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
     static engine::Quaternion AimRotation(const engine::Vector3& axis, const engine::Vector3& direction) {
         const auto to = Unit(direction, axis);
         const float dot = std::clamp(engine::Math::Dot(axis, to), -1.0f, 1.0f);
+        // 向きが一致するなら恒等回転を返します。ほぼ正反対では外積が小さくなるため、別途半回転の軸を選びます。
         if (dot > 0.9999f)
             return {0, 0, 0, 1};
         if (dot < -0.9999f) {
@@ -311,6 +324,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
             return {perpendicular.x, perpendicular.y, perpendicular.z, 0};
         }
         const auto cross = engine::Math::Cross(axis, to);
+        // 外積を回転軸の成分に使い、内積から半角に対応する係数を求めて単位クォータニオンを組み立てます。
         const float q = std::sqrt((1 + dot) * 2);
         return {cross.x / q, cross.y / q, cross.z / q, q * 0.5f};
     }
@@ -426,6 +440,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         return false;
     }
     void BeginLanceCharge(Player& player) {
+        // 溜め始めに設定をコピーし、エディターで調整しても実行中の発射段階や見た目を変えない。
         lanceSettings_ = CrownLanceSettings::Get();
         lanceSettings_.Sanitize();
         presentation_ = CrownPresentationSettings::Get();
@@ -451,6 +466,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         const float previousCharge = chargeTime_;
         chargeTime_ = (std::min)(lanceSettings_.fullChargeTime, chargeTime_ + deltaTime);
         const int count = lanceSettings_.GateCount(chargeTime_);
+        // 溜めが進むほどゲートを増やし、ゲートと槍を両方作れた分だけ編隊へ加える。
         while (static_cast<int>(gates_.size()) < count) {
             Gate gate;
             gate.index = static_cast<int>(gates_.size());
@@ -475,6 +491,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
             gates_.push_back(std::move(gate));
         }
         UpdateGateFormation(player);
+        // 最大溜めに達した瞬間に、中央ゲートで強調表示を一度だけ出す。
         if (!fullCuePlayed_ && chargeTime_ >= lanceSettings_.fullChargeTime) {
             fullCuePlayed_ = true;
             readyFlashTime_ = 0.16f;
@@ -494,14 +511,18 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         const engine::Vector3 right{forward.z, 0, -forward.x};
         const auto aim = Unit(player.GetLockOnAttackDirection(), forward);
         const auto anchor = player.GetWorldPosition() + engine::Vector3{0, 1.2f, 0};
+        // 照準にある敵か地面を共通の発射先にし、何にも当たらなければ前方の仮の点を使う。
         PhysicsQueryFilter filter;
         filter.mask = CollisionCategories::Get("enemy") | CollisionCategories::Get("ground");
         filter.ignoredObject = &player;
         const auto hit = CollisionManager::GetInstance()->Raycast(anchor, aim, 32, filter);
         const auto target = hit.isHit ? hit.hitPoint : anchor + aim * 18;
+        // 五本目のしきい値以降の溜めを最大溜めまでで評価し、中央槍の大きさに使う。
         const float full = SmoothStep((chargeTime_ - lanceSettings_.fiveGateTime) /
                                       (lanceSettings_.fullChargeTime - lanceSettings_.fiveGateTime));
+        // 中央と左右を交互に並べ、各ゲートの位置から同じ照準点へ向ける。
         for (auto& gate : gates_) {
+            // 並びは中央、左、右の順に外側へ広げます。外側の出口ほど低く置きます。
             const int column = gate.index == 0 ? 0 : (gate.index + 1) / 2 * (gate.index % 2 ? -1 : 1);
             gate.position = player.GetWorldPosition() - forward * 0.35f +
                             right * (static_cast<float>(column) * lanceSettings_.gateSpacing * std::sqrt(presentation_.lanceGateScale)) +
@@ -517,6 +538,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         charging_ = false;
         releaseTime_ = 0;
         lanceCooldown_ = lanceSettings_.cooldown;
+        // 全ゲートが開き切る時刻を基準にし、外側を先に、中央の槍を最後に予約する。
         float readyWait = 0.0f;
         for (const auto& gate : gates_)
             readyWait = (std::max)(readyWait, lanceSettings_.openDuration - gate.age);
@@ -529,6 +551,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         releasePosePlayed_ = false;
     }
     void FireGate(Player& player, Gate& gate) {
+        // 弾を生成できるかにかかわらず予約を消費し、ゲートは閉じ始める。最初の予約で反動を再生する。
         gate.fired = true;
         gate.closeAge = 0;
         if (!releasePosePlayed_) {
@@ -544,12 +567,14 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         PhysicsQueryFilter wall;
         wall.mask = CollisionCategories::Get("ground");
         wall.ignoredObject = &player;
+        // 本体と射出口の間の壁を調べ、塞がれている場合は接触点の演出だけを出す。
         const auto obstruction =
             CollisionManager::GetInstance()->SphereCast(anchor, 0.16f * gate.scale, Unit(delta), distance, wall);
         if (obstruction.isHit) {
             EmitLanceImpact(obstruction.hitPoint, Unit(obstruction.normal, gate.direction * -1.0f), false, presentation_);
             return;
         }
+        // ゲートの槍を飛行中の弾へ引き継ぎ、座標・速度・寿命・消散の設定を独立させる。
         Shot shot;
         shot.visual = std::move(gate.lance);
         shot.visual->SetIsVisible(true);
@@ -569,6 +594,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
         shot.visual->SetQuaternion(AimRotation({0, -1, 0}, gate.direction));
         shot.visual->SetTranslate(shot.position);
         shot.visual->SetScale({0.6f * gate.scale, kAxialScale * gate.scale, 0.6f * gate.scale});
+        // 弾を登録した後、発射口に閃光と輪を出し、最大溜めの中央槍だけ粒子を強める。
         shots_.push_back(std::move(shot));
         EmitLanceEffect(shots_.back().isFullChargeCenter ? "player/copy/crown/player_crown_muzzle_full" : "player/copy/crown/player_crown_muzzle",
                         gate.position, gate.direction, presentation_.particleScale);
@@ -598,6 +624,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
             if (shots_.size() > before)
                 shots_.back().firstStep = gate.closeAge;
         }
+        // 発射前は開き具合に合わせて槍を見せ、発射後はゲートだけを縮める。
         for (auto& gate : gates_) {
             gate.age += deltaTime;
             const float visibility = gate.fired ? 1 - SmoothStep(gate.closeAge / lanceSettings_.closeDuration)
@@ -627,6 +654,7 @@ class CrownCopyAbility final : public ICopyAbilitySession {
                 gate.lance->Update(deltaTime);
             }
         }
+        // 閉じ切ったゲートを取り除き、次の溜めを開始できる状態へ戻す。
         std::erase_if(gates_,
                       [&](const Gate& gate) { return gate.fired && gate.closeAge >= lanceSettings_.closeDuration; });
     }

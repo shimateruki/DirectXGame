@@ -18,12 +18,14 @@ struct CrownBarrageCameraPose {
 
 inline CrownBarrageCameraPose EvaluateCrownBarrageCamera(float seconds, const engine::Vector3& boss,
                                                           const engine::Vector3& strike, const CrownFinaleTuning& tuning) {
+    // ボスから着弾地点への水平線を基準とし、ほぼ同じ位置ならワールドの+Zを前向きに使います。
     const engine::Vector3 horizontal{strike.x - boss.x, 0.0f, strike.z - boss.z};
     const float distance = std::sqrt(horizontal.x * horizontal.x + horizontal.z * horizontal.z);
     const engine::Vector3 forward = distance > 0.01f
                                 ? engine::Vector3{horizontal.x / distance, 0.0f, horizontal.z / distance}
                                 : engine::Vector3{0.0f, 0.0f, 1.0f};
     const engine::Vector3 right{forward.z, 0.0f, -forward.x};
+    // 各カットの前後・横と高さに別々の調整倍率を適用します。
     const auto offset = [&](const engine::Vector3& origin, float along, float side, float height) {
         return origin + forward * (along * tuning.sealBarrageCameraDistance) +
                right * (side * tuning.sealBarrageCameraDistance) +
@@ -41,6 +43,7 @@ inline CrownBarrageCameraPose EvaluateCrownBarrageCamera(float seconds, const en
         // 放電が全域へ満ちた後に引き、闘技場全体の被害と消滅を見せる。
         {offset(strike, 28.0f, 18.0f, 12.0f), boss + engine::Vector3{0.0f, 2.5f, 0.0f}, 0.90f},
     };
+    // 演出開始からの経過秒でカットを選び、最初のカットには補間を掛けません。
     const float boundaries[] = {0.0f, 0.56f, 1.18f, 2.62f, 3.65f};
     int shot = 0;
     for (int index = 1; index < 5; ++index)
@@ -48,7 +51,9 @@ inline CrownBarrageCameraPose EvaluateCrownBarrageCamera(float seconds, const en
             shot = index;
     if (shot == 0)
         return shots[0];
+    // 切替直後の0.16秒だけ、視点・注視点・画角を前カットから一緒に補間します。
     const float blend = std::clamp((seconds - boundaries[shot]) / 0.16f, 0.0f, 1.0f);
+    // 補間の始点と終点で速度を緩め、視点と注視点の位置、およびラジアンの画角を同じ進行率で合わせる。
     const float eased = Easing::SmoothStep(blend);
     return {shots[shot - 1].eye + (shots[shot].eye - shots[shot - 1].eye) * eased,
             shots[shot - 1].target + (shots[shot].target - shots[shot - 1].target) * eased,

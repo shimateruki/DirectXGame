@@ -105,6 +105,7 @@ void AudioSettingsWindow::DrawAudioEventEditor() {
 
     ImGui::SameLine();
 
+    // 試聴に渡すのはイベントのパスです。編集中の値は保存してから、ゲームと同じイベント再生経路で確認します。
     if (ImGui::Button(ICON_FA_PLAY " 試聴##AudioEvent")) {
         const auto handle =
             AudioEventSystem::GetInstance()->Play(eventPathString);
@@ -185,6 +186,7 @@ void AudioSettingsWindow::DrawAudioEventEditor() {
             "無音になる距離",
             &audioEventDefinition_.maxDistance,
             0.1f,
+            // 開始距離と終了距離の間隔を確保し、減衰を評価する区間の長さが0にならないようにします。
             audioEventDefinition_.minDistance + 0.01f,
             2000.0f);
     }
@@ -291,6 +293,7 @@ void AudioSettingsWindow::DrawImGui() {
             entry.category = newAudioBgm_ ? "BGM" : "SE";
             entry.path = path.generic_string();
 
+            // IDを登録できた場合にだけ一覧を保存し、次の入力に備えて欄を空にします。
             if (audioSettings->AddEntry(entry)) {
                 audioSettings->Save();
                 newAudioId_[0] = newAudioName_[0] = newAudioPath_[0] = '\0';

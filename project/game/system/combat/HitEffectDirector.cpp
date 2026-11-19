@@ -64,6 +64,7 @@ void SpawnThunderShockHitBurst(engine::Object3D* target) {
     constexpr int kSparkCount = 5;
     constexpr float kTwoPi = (2.0f * std::numbers::pi_v<float>);
 
+    // 接触を一点に重ねず、水平の輪と高さの揺れで電撃の位置を分散させます。
     for (int i = 0; i < kSparkCount; ++i) {
         const float angle = kTwoPi * static_cast<float>(i) / static_cast<float>(kSparkCount) + 0.28f;
         engine::Vector3 pos = center;
@@ -86,6 +87,7 @@ engine::Vector3 ResolveBodyHitPosition(engine::Object3D* target, engine::Object3
 
     awayDirection = NormalizePlanar(awayDirection);
 
+    // 対象の大きさに応じて位置を横へずらして持ち上げ、モデルの原点に埋もれないようにします。
     const engine::Vector3 scale = target ? target->GetScale() : engine::Vector3{1.0f, 1.0f, 1.0f};
     const float bodyScale = (std::max)({1.0f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)});
     engine::Vector3 position = target ? target->GetWorldPosition() : engine::Vector3{};
@@ -200,6 +202,7 @@ void HitEffectDirector::SpawnPullCatchHit(const engine::Vector3& position) {
 
 void HitEffectDirector::SpawnThrowSlamShockwave(const engine::Vector3& position, float impactSpeed) {
     // 速度による追加リングの有無だけを変え、配置は地面の高さに合わせる。
+    // 衝突速度を基準速度22で割って無次元の強さにする。1.1を超えると二枚目の輪を重ねる。
     const float power = (std::max)(0.75f, (std::min)(1.45f, impactSpeed / 22.0f));
     const engine::Vector3 groundPos = ResolveGroundEffectPosition(position);
     engine::Vector3 effectPos = groundPos;
@@ -246,6 +249,7 @@ void HitEffectDirector::SpawnDamageEventHit(engine::Object3D* target, engine::Ob
         if (auto* meshes = MeshEffectManager::GetInstance()) {
             const engine::Vector3 position = ResolveBodyHitPosition(target, attacker, knockbackVelocity);
             const engine::Vector3 direction = NormalizePlanar(target->GetWorldPosition() - attacker->GetWorldPosition());
+            // +Zを基準にワールドの水平角を求め、攻撃者から敵へ向けて短い線を扇状に分ける。
             const float yaw = std::atan2(direction.x, direction.z);
             meshes->SpawnEffectAt("Resources/json/effect/player/copy/pink/effect_player_pink_hit_core.json", position,
                                   {0.0f, yaw, 0.0f});
@@ -261,6 +265,7 @@ void HitEffectDirector::SpawnDamageEventHit(engine::Object3D* target, engine::Ob
         return;
     }
 
+    // ピンクの物理攻撃に該当しなければ属性別の演出を選び、該当した時点で共通演出を省きます。
     if (damageType == DamageType::Fire) {
         SpawnFireDamageHit(target, attacker, knockbackVelocity);
         return;
@@ -276,11 +281,13 @@ void HitEffectDirector::SpawnDamageEventHit(engine::Object3D* target, engine::Ob
         return;
     }
 
+    // 属性専用演出を使わないプレイヤー被弾では、攻撃が来た側から体の変形を見せます。
     if (targetClass == "Player" && attackerClass != "Player") {
         SpawnPlayerPuniDamageHit(target, attacker, knockbackVelocity);
         return;
     }
 
+    // 通常の対敵攻撃で吹き飛びがない場合に限り、対象位置へ共通の弾力エフェクトを出します。
     if (attackerClass == "Player" && targetClass != "Player" && IsAlmostZero(knockbackVelocity)) {
         SpawnSlimeElasticHit(target->GetWorldPosition());
     }

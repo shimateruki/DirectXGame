@@ -117,6 +117,7 @@ std::string DebugEditor::MakeUniquePresetObjectName(BaseScene* scene, const std:
     return MakeUniquePresetObjectNameImpl(scene, baseName, reservedNames);
 }
 
+// 選択表示や配置の箱には全軸で正の幅が必要。厚みが 0 の箱は別の境界へ切り替える。
 bool DebugEditor::IsValidAabb(const Aabb& aabb) {
     return aabb.max.x > aabb.min.x &&
         aabb.max.y > aabb.min.y &&
@@ -144,6 +145,7 @@ void DebugEditor::AssignPresetInstanceNames(BaseScene* scene, const std::string&
         baseName = preset.value("presetDisplayName", baseName);
     }
 
+    // シーン内の既存名と今回使用した名前の両方を避ける。子の命名時にもルート名を予約済みとして扱う。
     const std::string rootName = MakeUniquePresetObjectName(scene, baseName, reservedNames);
     objects.front()->SetName(rootName);
     reservedNames.push_back(rootName);
@@ -167,7 +169,7 @@ void DebugEditor::AssignPresetInstanceNames(BaseScene* scene, const std::string&
 // ========================================================================
 // 初期化
 // ========================================================================
-void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon) {
+void DebugEditor::Initialize(SceneManager* sceneManager, engine::DirectXCommon* dxCommon) {
     // Editor各機能へSceneと描画基盤を接続し、前Sceneの選択・Undo状態は破棄します。
     sceneManager_ = sceneManager;
     dxCommon_ = dxCommon;
@@ -228,8 +230,6 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
     inspectorWindow_.Initialize(this);
     serializer_.Initialize(this);
     primitiveDrawer_.Initialize(dxCommon);
-    sceneInventoryWindow_.Initialize(sceneManager, this);
-    materialPreviewBoard_.Initialize(sceneManager, this);
     EffectPreviewStage::GetInstance()->Initialize(sceneManager, dxCommon);
 #ifdef USE_IMGUI
     animationWorkbench_.Initialize(sceneManager, dxCommon);
@@ -259,6 +259,7 @@ void DebugEditor::Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon
 
             if (!ec) {
                 const auto now = fs::file_time_type::clock::now();
+                // 通常は起動前の通知を読み飛ばすが、直前 30 秒の変換結果は起動後にも通知する。
                 const auto recentWindow = std::chrono::seconds(30);
 
                 if (writeTime <= now && now - writeTime <= recentWindow) {
@@ -302,6 +303,7 @@ bool DebugEditor::BeginPrefabEditSession(const std::string& prefabName) {
     EditorTransactionManager::GetInstance()->Clear();
     prefabEditPreviousVisibility_.clear();
 
+    // 元の表示状態を控えてからシーン全体を隠す。Prefab の編集用オブジェクトは次の段階で追加する。
     for (auto& sceneObject : scene->GetObjects()) {
         if (!sceneObject)
             continue;
@@ -344,6 +346,7 @@ bool DebugEditor::SavePrefabEditSession() {
         return false;
     }
 
+    // 保存前後の Prefab 定義を比較して既存インスタンスへ反映し、編集用の仮 Object は同期の後に取り除く。
     const int synchronizedObjects = prefabManager->SynchronizePrefabInstances(
         beforePrefabs,
         *prefabEditScene_,
@@ -404,6 +407,7 @@ void DebugEditor::EndPrefabEditSession(bool clearTransactions) {
             }
         }
 
+        // 仮 Object の所有権を一時配列に移し、取り外し対象を走査している間はその実体を生かしておく。
         std::vector<std::unique_ptr<engine::Object3D>> removedObjects;
         removedObjects.reserve(editObjects.size());
 
@@ -579,9 +583,11 @@ void DebugEditor::Update() {
     //  モードB: 通常選択・編集モード
     // =========================================================
     else {
-        if (!ImGui::GetIO().WantCaptureKeyboard) {
+        CameraEditor* cameraEditor = CameraEditor::GetInstance();
+        const bool isCameraEditorSelected = current == cameraEditor;
 
-            // --- ショートカットキー処理 ---
+        if (!ImGui::GetIO().WantCaptureKeyboard) {
+            // 入力欄で編集中はショートカットを実行しない。
             if (input->IsKeyTriggered(DIK_DELETE)) {
                 // パス編集モード中なら「点」を消す！
                 if (isPathEditMode_ && selectedObject_ && selectedObject_->GetRecorder() && selectedObject_->GetRecorder()->IsPinSelected()) {
@@ -612,17 +618,15 @@ void DebugEditor::Update() {
                 EditorCommandRegistry::GetInstance()->Execute(EditorCommandId::ObjectDropToFloor);
             }
 
-            // カメラフォーカス機能
-            if (input->IsKeyTriggered(DIK_F) && current == CameraEditor::GetInstance()) {
-                CameraEditor::GetInstance()->FocusSelectedCameraObject();
-            }
-            else if (input->IsKeyTriggered(DIK_F) && selectedObject_) {
-                FocusSceneObject(selectedObject_);
+            // Fはカメラ編集を優先し、それ以外は選択中のScene Objectへ寄せる。
+            if (input->IsKeyTriggered(DIK_F)) {
+                if (isCameraEditorSelected) {
+                    cameraEditor->FocusSelectedCameraObject();
+                } else if (selectedObject_) {
+                    FocusSceneObject(selectedObject_);
+                }
             }
         }
-
-        CameraEditor* cameraEditor = CameraEditor::GetInstance();
-        const bool isCameraEditorSelected = current == cameraEditor;
 
         if (isCameraEditorSelected) {
             cameraEditor->DrawOrbitCenterGizmo(gameViewOffset_, gameViewSize_, isGridSnapEnabled_, snapValue_);
@@ -637,6 +641,7 @@ void DebugEditor::Update() {
             isGameViewHovered_ && !ImGuizmo::IsOver();
         if (canStartSelection || isSelectionRectDragging_) {
             const bool isShiftPressed = ImGui::GetIO().KeyShift;
+            // マウスの小さなぶれを箱選択にしないよう、画像上で 6 ピクセル以上動いたときだけ枠を表示する。
             constexpr float kSelectionDragThreshold = 6.0f;
 
             if (canStartSelection && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
@@ -694,7 +699,7 @@ void DebugEditor::Update() {
                         curOp = ImGuizmo::SCALE;
                 }
 
-                Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+                engine::Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
 
                 if (cam) {
                     ImGuizmo::SetDrawlist();
@@ -795,6 +800,7 @@ void DebugEditor::Update() {
 
                         selectedObject_->SetTranslate(t);
                         selectedObject_->SetScale(s);
+                        // 回転の本体はローカル行列から求めた Quaternion。Inspector の確認用回転は ImGuizmo の角度をラジアンに直して渡す。
                         selectedObject_->SetQuaternionWithEulerHint(math_.MatrixToQuaternion(newLocalMat), { ToRadians(rDeg.x), ToRadians(rDeg.y), ToRadians(rDeg.z) });
 
                         selectedObject_->UpdateLocalMatrix();
@@ -842,6 +848,7 @@ void DebugEditor::Update() {
                         }
 
                     }
+                    // ドラッグ終了時に編集履歴を確定し、Director の自動キーが有効なら選択対象の確定姿勢を記録する。
                     else if (isDraggingTransform_) {
                         isDraggingTransform_ = false;
 
@@ -877,6 +884,7 @@ void DebugEditor::Update() {
     // 3. UI描画関連 (最前面)
     // =========================================================
     PollDdsCacheNotifications();
+    // 復元用の時計には現在、実測フレーム差ではなく 60 fps 相当の固定秒数を渡す。
     UpdateCrashRecovery(1.0f / 60.0f);
     DrawSaveNotification();
     DrawSavePreview();
@@ -1073,6 +1081,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                 const float length=math.Length(delta);
                 if (length<0.0001f)
                     continue;
+                // 辺を細い箱で表す。XZ 平面上の長さから上下角を求め、水平角と合わせて箱の Z 軸を辺へ向ける。
                 const float horizontal=std::sqrt(delta.x*delta.x+delta.z*delta.z);
                 const auto world=math.Multiply(math.Multiply(math.MakeScaleMatrix({0.025f,0.025f,length}),
                     math.Multiply(math.MakeRotateXMatrix(-std::atan2(delta.y,horizontal)),
@@ -1085,7 +1094,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 
         // 判定に使う凸輪郭をそのまま表示し、箱の四隅を判定面として誤認させない。
         if (obj->GetCollider() && obj->GetColliderConfig().footprint.size() >= 3) {
-            const Collider* collider = obj->GetCollider();
+            const engine::Collider* collider = obj->GetCollider();
             const auto top = collider->GetFootprintWorldVertices(obj->GetColliderConfig().size.y);
             const auto drawSegment = [&](const engine::Vector3& from, const engine::Vector3& to) {
                 if (instanceCount >= kMaxDrawLimit)
@@ -1237,6 +1246,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                     continue;
                 const engine::Vector3 previous = path[index - 1] + engine::Vector3{ 0.0f, 0.12f, 0.0f };
                 const engine::Vector3 difference = point - previous;
+                // Nav 経路の線は XZ 平面の向きと距離で描く。上下位置は隣接する地点の中間を使う。
                 const float length = std::sqrt(difference.x * difference.x + difference.z * difference.z);
                 if (length <= 0.001f)
                     continue;
@@ -1411,6 +1421,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
 
                     float outerR = ring.outerRadius;
                     float innerR = ring.innerRadius;
+                    // 素材から半径を取る場合も内側と外側を数値順にそろえ、内周と外周を正しく色分けする。
                     if (innerR > outerR)
                         std::swap(innerR, outerR);
 
@@ -1427,6 +1438,7 @@ void DebugEditor::DrawDebug(ID3D12GraphicsCommandList* commandList) {
                         matCollRot = math.Multiply(mRZ, math.Multiply(mRX, mRY));
                     }
 
+                    // 半径と高さで別途寸法を指定するため、Object のワールド行列は軸を正規化して回転・位置だけ使う。
                     engine::Matrix4x4 matObjWorldNoScale = effect->GetWorldMatrix();
 
                     for (int i = 0; i < 3; ++i) {

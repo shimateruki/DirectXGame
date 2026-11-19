@@ -19,6 +19,7 @@ struct PairHash {
     std::size_t operator()(const std::pair<engine::Object3D*, engine::Object3D*>& p) const {
         auto hashA = std::hash<engine::Object3D*>{}(p.first);
         auto hashB = std::hash<engine::Object3D*>{}(p.second);
+        // ハッシュの合成はペアの並び順に依存するため、キーにする前に同じ順序へ揃えておく。
         return hashA ^ (hashB << 1);
     }
 };

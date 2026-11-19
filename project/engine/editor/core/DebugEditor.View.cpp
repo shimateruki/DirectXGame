@@ -1,5 +1,6 @@
 #define NOMINMAX
 #include "DebugEditor.h"
+#include "engine/editor/graphics/camera/CameraObjectBadge.h"
 #include <numbers>
 #include "game/ui/SettingsMenuOverlay.h"
 #include "SceneManager.h"    
@@ -73,7 +74,7 @@ namespace {
 // ========================================================================
 
 engine::Ray DebugEditor::ScreenPointToRay(const engine::Vector2& mousePos) {
-    const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    const engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
     if (!camera)
         return engine::Ray{};
@@ -99,6 +100,7 @@ engine::Ray DebugEditor::ScreenPointToRay(const engine::Vector2& mousePos) {
 
     // 3. NDC変換
     engine::Vector3 nearPos, farPos;
+    // 画像内のピクセルを DirectX の正規化座標に移す。Y は上向きに反転し、深度 0 と 1 から近面・遠面の点を作る。
     nearPos.x = (2.0f * localMouseX) / gameViewSize_.x - 1.0f;
     nearPos.y = 1.0f - (2.0f * localMouseY) / gameViewSize_.y;
     nearPos.z = 0.0f;
@@ -153,6 +155,7 @@ bool DebugEditor::IntersectRayPlane(const engine::Ray& ray, engine::Vector3& int
         return false;
 
     // 距離tの計算
+    // 単位方向を使うため t はレイ始点からのワールド距離。置き場所の候補として、始点より先の平面だけを採用する。
     float t = (planeHeight - math.Dot(ray.origin, planeNormal)) / dotDir;
 
     // tがマイナス＝カメラの後ろ側にあるので無視
@@ -182,6 +185,7 @@ void DebugEditor::DrawPreview(ID3D12Resource* pointLightResource, ID3D12Resource
             object->SetClassName("Model");
         }
 
+        // 表示経路を一時的に変えた Object は、描画直後に元のクラスを戻す。保存や選択には本来のクラスを使う。
         object->Draw(pointLightResource, spotLightResource);
 
         if (useClassOverride) {
@@ -331,7 +335,7 @@ void DebugEditor::DrawSaveNotification() {
 // 3D座標をGameViewのスクリーン座標に変換
 // ========================================================================
 engine::Vector3 DebugEditor::WorldToScreen(const engine::Vector3& worldPos) {
-    Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* cam = CameraManager::GetInstance()->GetActiveCamera();
 
     if (!cam)
         return { 0, 0, -1 }; // カメラが無い場合はZを-1(無効)にして返す
@@ -359,6 +363,7 @@ engine::Vector3 DebugEditor::WorldToScreen(const engine::Vector3& worldPos) {
 void DebugEditor::Draw3DIcons() {
     int left=0,top=0,right=0,bottom=0;
     GetGameViewScreenRect(left,top,right,bottom);
+    // 設定画面にも同じ Game View の矩形を渡す。設定画面を操作中は、その上に 3D アイコンを重ねない。
     SettingsMenuOverlay::SetEditorViewport(left,top,right,bottom);
     if (SettingsMenuOverlay::IsAnyActive())
         return;
@@ -383,6 +388,7 @@ void DebugEditor::Draw3DIcons() {
         if (!obj->GetIsRenderVisible())
             continue;
         std::string className = obj->GetClassName();
+        const bool isCamera = obj->IsCameraObject();
         const char* iconStr = nullptr;
         ImU32 iconColor = IM_COL32(255, 255, 255, 200); // デフォルト白（半透明）
 
@@ -402,9 +408,10 @@ void DebugEditor::Draw3DIcons() {
             iconStr = ICON_FA_BOX_OPEN;
             iconColor = IM_COL32(255, 150, 50, 200);  // オレンジ
         }
-        else if (obj->IsCameraObject()) {
-            iconStr = ICON_FA_VIDEO;
-            iconColor = IM_COL32(255, 100, 255, 200); // ピンク
+        else if (isCamera) {
+            const auto badge = GetCameraObjectBadge(obj->GetSceneCameraSettings());
+            iconStr = badge.label;
+            iconColor = badge.color;
         }
 
         // アイコンが設定されたオブジェクトのみ処理
@@ -413,7 +420,7 @@ void DebugEditor::Draw3DIcons() {
             engine::Vector3 worldPos = { obj->GetWorldMatrix().m[3][0], obj->GetWorldMatrix().m[3][1], obj->GetWorldMatrix().m[3][2] };
 
             // カメラの場合は、頭上にアイコンを出すためにY軸を少し上げる
-            if (obj->IsCameraObject()) {
+            if (isCamera) {
                 worldPos.y += 1.5f;
             }
 
@@ -425,7 +432,7 @@ void DebugEditor::Draw3DIcons() {
                 // 選択中のオブジェクトはアイコンを少し大きく、不透明にする
                 const bool isSelected = IsObjectSelected(obj.get());
                 float fontSize = isSelected ? ImGui::GetFontSize() * 1.5f : ImGui::GetFontSize() * 1.2f;
-                if (isSelected)
+                if (isSelected && !isCamera)
                     iconColor = IM_COL32(255, 255, 0, 255); // 選択中は黄色
 
                 // 影（アウトライン）を黒で描画して見やすくする
@@ -459,6 +466,7 @@ void DebugEditor::DrawEventIdOverlay() {
     auto& objects = sceneManager_->GetCurrentScene()->GetObjects();
 
     // 1. EventIDを持つオブジェクトをマップに集める (線を描画するため)
+    // 同じ受信 ID の Object が複数ある場合に、送信元から各受信先への接続を描けるよう一覧で保持する。
     std::unordered_map<int, std::vector<engine::Object3D*>> eventMap;
 
     for (const auto& obj : objects) {

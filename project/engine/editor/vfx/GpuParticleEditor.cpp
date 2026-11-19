@@ -34,6 +34,7 @@ void GpuParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
         return;
     }
 
+    // 粒子寿命の後に0.25秒の余白を加え、タイムライン上で消える瞬間を確認できるようにする。
     const float previewDuration = (std::max)(0.1f, config_.emitLife + 0.25f);
     auto restartPreview = [&](float seekTime) {
         // シークは一度発生をやり直し、目標時刻までEditor用の時計を進めて近似する。
@@ -123,6 +124,7 @@ void GpuParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
     uint64_t estimatedParticleCount = static_cast<uint64_t>((std::max)(config_.emitCount, 0));
 
     if (config_.isLooping && config_.emitInterval > 0.0f) {
+        // 寿命内に重なる発生回数の上限と、開始から現在まで実際に発生できた回数の小さい方を使う。
         const double batchesByLifetime = std::ceil(
             static_cast<double>(config_.emitLife) / config_.emitInterval);
         const double batchesByElapsed = 1.0 + std::floor(
@@ -135,6 +137,7 @@ void GpuParticleEditor::Update(float deltaTime, bool sceneIsPlaying) {
 
     EffectPreviewStage::PerformanceMetrics performance;
     performance.available = true;
+    // 見積もった粒子数の上限は、このプリセットに確保する容量。
     performance.particleCount = static_cast<int>((std::min)(
         estimatedParticleCount,
         static_cast<uint64_t>(capacity)));
@@ -254,6 +257,7 @@ void GpuParticleEditor::DrawImGui() {
         const uint32_t resolvedCapacity = GpuParticleManager::ResolveParticleCapacity(config_);
         ImGui::TextDisabled("実行容量: %u particles / System", resolvedCapacity);
 
+        // 一度に出す数が確保枠を超えると全粒子を保持できない。手動で決めた容量がこの条件のとき警告する。
         if (config_.maxParticles > 0 && config_.maxParticles < config_.emitCount) {
             ImGui::TextColored(
                 ImVec4(1.0f, 0.55f, 0.2f, 1.0f),
@@ -272,6 +276,7 @@ void GpuParticleEditor::DrawImGui() {
 
         ImGui::ColorEdit4("発生時の色 (Base Color)", &config_.baseColor.x);
         ImGui::ColorEdit4("中間の色 (Mid Color)", &config_.midColor.x);
+        // 中間色の時刻は秒ではなく寿命に対する割合。0.5 なら寿命の半分で中間色に達する。
         ImGui::DragFloat("色がMidになる時間(割合)", &config_.colorMidTime, 0.01f, 0.01f, 0.99f);
         ImGui::ColorEdit4("消滅時の色 (End Color)", &config_.endColor.x);
         ImGui::DragFloat(ICON_FA_SUN " 発光強度 (HDR Intensity)", &config_.colorIntensity, 0.1f, 0.0f, 20.0f);
@@ -337,6 +342,7 @@ void GpuParticleEditor::DrawImGui() {
                     config_.midSize = value.keys[1].value;
                 } else {
                     config_.sizeMidTime = 0.5f;
+                    // 中央キーがない入力でも GPU 用の三点形式を保つため、寿命の半分で評価したサイズを使う。
                     config_.midSize = value.Evaluate(0.5f, config_.baseSize);
                 }
                 config_.sizeEaseType = static_cast<int>(value.keys.front().easing);
@@ -364,6 +370,7 @@ void GpuParticleEditor::DrawImGui() {
                     config_.midColor = value.keys[1].color;
                 } else {
                     config_.colorMidTime = 0.5f;
+                    // 中央キーがない入力では、寿命の半分の補間色を GPU 用の中間値へ入れる。
                     config_.midColor = value.Evaluate(0.5f, config_.baseColor);
                 }
                 config_.colorEaseType = static_cast<int>(value.keys.front().easing);
@@ -377,6 +384,7 @@ void GpuParticleEditor::DrawImGui() {
             [this](const VfxLodSettings& value) { config_.lod = value; },
             static_cast<int>(GpuParticleSystem::kMinParticles),
             static_cast<int>(GpuParticleSystem::kMaxParticles));
+        // 入力したプレビュー距離における LOD の発生率を、元の発生数に対する割合で確認する。
         const float previewScale = config_.lod.EvaluateEmissionScale(previewDistance_);
         ImGui::TextDisabled(
             "Preview距離 %.1f では発生数 %.0f%%",
@@ -630,11 +638,12 @@ void GpuParticleEditor::EmitWithPreview() {
     GpuParticleConfig tempConfig = config_;
     EffectPreviewStage* previewStage = EffectPreviewStage::GetInstance();
 
+    // 隔離空間が有効なら、その発生位置を最優先する。無効の場合のみカメラ前方の一時位置を使う。
     if (previewStage && previewStage->IsEnabled()) {
         tempConfig.emitPos = previewStage->GetPreviewPosition();
     }
     else if (isPreviewMode_) {
-        const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+        const engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
         if (camera) {
             engine::Vector3 camEye = camera->GetEye();
@@ -647,6 +656,7 @@ void GpuParticleEditor::EmitWithPreview() {
                 forward = { dir.x / length, dir.y / length, dir.z / length };
             }
 
+            // プレビュー距離はワールド単位。正規化した視線の先へ一時コピーの発生位置を置く。
             tempConfig.emitPos = {
                 camEye.x + forward.x * previewDistance_,
                 camEye.y + forward.y * previewDistance_,
@@ -701,6 +711,7 @@ bool GpuParticleEditor::Load(const std::filesystem::path& path) {
         GpuParticlePresetJsonCodec::Read(j, loaded);
 
     }
+    // 読み込みが済んだ一時設定をまとめて適用する。ファイルを開けない段階では編集値に触れない。
     config_ = std::move(loaded);
     return true;
 }

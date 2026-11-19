@@ -5,6 +5,7 @@
 
 engine::Vector3 CombatGroundQuery::FindGroundPoint(const engine::Vector3& samplePosition, const engine::Object3D* owner, ProbeRange range,
                                            float fallbackHeight) {
+    // 指定座標の上から下へ地面だけを探し、所有者自身は照会から外します。
     engine::Vector3 rayStart = samplePosition;
     rayStart.y += range.startHeight;
     PhysicsQueryFilter filter;
@@ -18,6 +19,7 @@ engine::Vector3 CombatGroundQuery::FindGroundPoint(const engine::Vector3& sample
         return hit.hitPoint;
     }
 
+    // 地面を拾えない場合も水平位置は維持し、高さだけ呼び出し側の既定値に置き換えます。
     engine::Vector3 fallback = samplePosition;
     fallback.y = fallbackHeight;
     return fallback;
@@ -25,6 +27,7 @@ engine::Vector3 CombatGroundQuery::FindGroundPoint(const engine::Vector3& sample
 
 bool CombatGroundQuery::CanWalkTo(const engine::Vector3& currentPosition, const engine::Vector3& candidatePosition,
                                   const engine::Object3D* owner, ProbeRange range, float maxHeightDifference) {
+    // 現在地と移動候補に同じ地面フィルターと下向きのレイを使います。
     PhysicsQueryFilter filter;
     filter.mask = CollisionCategories::Get("ground");
     filter.ignoredObject = const_cast<engine::Object3D*>(owner);
@@ -41,6 +44,7 @@ bool CombatGroundQuery::CanWalkTo(const engine::Vector3& currentPosition, const 
         return true;
     }
 
+    // 移動先に地面があり、傾きと現在地からの段差がどちらも許容範囲なら通します。
     const RaycastHit candidate = probe(candidatePosition);
     return candidate.isHit && candidate.normal.y >= 0.55f &&
            std::abs(candidate.hitPoint.y - current.hitPoint.y) <= maxHeightDifference;

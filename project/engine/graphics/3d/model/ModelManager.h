@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-class DirectXCommon;
+namespace engine { class DirectXCommon; }
 class ModelCommon;
 
 // 担当：モデルの名前解決、CPU読込、GPU生成とキャッシュを管理する。
@@ -20,7 +20,7 @@ public:
     /// <summary>
     /// モデル共通情報を初期化する。
     /// </summary>
-    void Initialize(DirectXCommon* dxCommon);
+    void Initialize(engine::DirectXCommon* dxCommon);
 
     /// <summary>
     /// 読み込み済みモデルと共通リソースを解放する。
@@ -30,7 +30,8 @@ public:
     /// <summary>
     /// モデル名から読み込み済みモデルを取得し、未読み込みなら読み込む。
     /// </summary>
-    Model* LoadModel(const std::string& modelName);
+    // 戻り値はキャッシュが所有するモデルへの借用参照です。ReloadModelやFinalizeで無効になります。
+    engine::Model* LoadModel(const std::string& modelName);
 
     // ファイル解析とテクスチャデコードをCPU側だけ先行し、GPU生成はLoadModelまで遅延します。
     bool PrepareModel(const std::string& modelName);
@@ -61,7 +62,7 @@ private:
     struct PreparedModel {
         std::string directoryPath;
         std::string fileName;
-        Model::ModelData data;
+        engine::Model::ModelData data;
     };
 
     ModelManager() = default;
@@ -80,7 +81,7 @@ private:
 private:
     // モデル描画共通情報と読み込み済みモデルのキャッシュ。
     std::unique_ptr<ModelCommon> modelCommon_;
-    std::map<std::string, std::unique_ptr<Model>> models_;
+    std::map<std::string, std::unique_ptr<engine::Model>> models_;
     std::map<std::string, std::unique_ptr<PreparedModel>> preparedModels_;
     mutable std::recursive_mutex mutex_;
 

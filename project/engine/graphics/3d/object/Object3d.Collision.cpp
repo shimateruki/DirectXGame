@@ -51,7 +51,7 @@ std::filesystem::path ResolveTerrainCollisionFilePath(const std::string& path) {
 // ========================================================================
 // ========================================================================
 
-void Object3D::SetColliderConfig(const ColliderConfig& config) {
+void Object3D::SetColliderConfig(const engine::ColliderConfig& config) {
     // 静的オブジェクトの形状変更は空間グリッドの再構築を要求する。
     if (collider_) {
         collider_->SetConfig(config);
@@ -65,9 +65,9 @@ void Object3D::RefreshModelSurfaceCollision() {
     // 接地用の面は描画モデルから一度だけ抽出し、毎フレームの衝突判定では再生成しない。
     if (!collider_)
         return;
-    std::vector<ModelSurfaceTriangle> triangles;
+    std::vector<engine::ModelSurfaceTriangle> triangles;
     const bool volume = collider_->GetConfig().useModelVolume;
-    Model* model = (collider_->GetConfig().useModelSurface || volume) ? GetModel() : nullptr;
+    engine::Model* model = (collider_->GetConfig().useModelSurface || volume) ? GetModel() : nullptr;
 
     if (model) {
         const auto& meshes = model->GetModelData().meshes;
@@ -76,7 +76,7 @@ void Object3D::RefreshModelSurfaceCollision() {
             // メッシュ分割後の子Objectでは、その子が表示する部品だけを判定へ取り込む。
             if (GetMeshDrawIndex() >= 0 && meshIndex != static_cast<size_t>(GetMeshDrawIndex()))
                 continue;
-            const Model::Mesh& mesh = meshes[meshIndex];
+            const engine::Model::Mesh& mesh = meshes[meshIndex];
 
             for (size_t index = 0; index + 2 < mesh.indices.size(); index += 3) {
                 const uint32_t ia = mesh.indices[index];
@@ -96,6 +96,7 @@ void Object3D::RefreshModelSurfaceCollision() {
                                              ab.z * ac.x - ab.x * ac.z,
                                              ab.x * ac.y - ab.y * ac.x};
                 const float length = std::sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+                // ほぼ面積ゼロの三角形を除きます。接地だけに使う場合は単位法線のY成分が小さい面も外し、壁を床として扱いません。
                 if (length < 0.000001f || (!volume && std::abs(normal.y) / length < 0.45f))
                     continue;
                 triangles.push_back({a, b, c});
@@ -115,7 +116,7 @@ void Object3D::SetColliderType(ColliderType type) {
     // 形状種別の変更後は静的衝突グリッドを無効化し、古い登録位置を使わせない。
     if (!collider_)
         return;
-    ColliderConfig config = collider_->GetConfig();
+    engine::ColliderConfig config = collider_->GetConfig();
     config.type = type;
     collider_->SetConfig(config);
     if (isStatic_)
@@ -131,7 +132,7 @@ void Object3D::SetCollisionSize(const engine::Vector3& size) {
     // 大きさを変更した静的物体は衝突グリッドへ再登録する。
     if (!collider_)
         return;
-    ColliderConfig config = collider_->GetConfig();
+    engine::ColliderConfig config = collider_->GetConfig();
     config.size = size;
     collider_->SetConfig(config);
     if (isStatic_)
@@ -200,7 +201,7 @@ bool Object3D::LoadTerrainCollisionFromFile(const std::string& path) {
     if (!data.is_object())
         return false;
 
-    TerrainCollisionData terrain;
+    engine::TerrainCollisionData terrain;
     terrain.enabled = true;
     terrain.resolution = data.value("resolution", 0);
     terrain.sizeX = data.value("sizeX", 1.0f);
@@ -211,6 +212,7 @@ bool Object3D::LoadTerrainCollisionFromFile(const std::string& path) {
     if (data.contains("heightSamples") && data["heightSamples"].is_array()) {
         const auto& samples = data["heightSamples"];
 
+        // 二次元の行配列と旧形式の平坦な配列をどちらも数値の一次元配列へ揃えます。
         if (!samples.empty() && samples.front().is_array()) {
             for (const auto& row : samples) {
                 if (!row.is_array())
@@ -230,6 +232,7 @@ bool Object3D::LoadTerrainCollisionFromFile(const std::string& path) {
         }
     }
 
+    // resolutionは格子の区間数です。両端を含む標本が1軸につき一つ多いことを確認します。
     const int sampleCount = terrain.resolution + 1;
     if (terrain.resolution <= 0 ||
         static_cast<int>(terrain.heights.size()) < sampleCount * sampleCount) {
@@ -240,7 +243,7 @@ bool Object3D::LoadTerrainCollisionFromFile(const std::string& path) {
     return true;
 }
 
-void Object3D::SetTerrainCollisionData(const TerrainCollisionData& data, const std::string& path) {
+void Object3D::SetTerrainCollisionData(const engine::TerrainCollisionData& data, const std::string& path) {
     // 判定本体と再読込用パスを同時に保存し、静的グリッドへ変更を通知する。
     if (!collider_)
         return;
@@ -250,11 +253,11 @@ void Object3D::SetTerrainCollisionData(const TerrainCollisionData& data, const s
         CollisionManager::GetInstance()->MarkStaticGridDirty();
 }
 
-const TerrainCollisionData* Object3D::GetTerrainCollisionData() const {
+const engine::TerrainCollisionData* Object3D::GetTerrainCollisionData() const {
     // 地形判定が無効ならデータ参照を返さず、通常Colliderと区別する。
     if (!collider_)
         return nullptr;
-    const TerrainCollisionData& data = collider_->GetTerrainData();
+    const engine::TerrainCollisionData& data = collider_->GetTerrainData();
     return data.enabled ? &data : nullptr;
 }
 
@@ -269,7 +272,7 @@ Obb Object3D::GetObb() const {
 }
 
 Aabb Object3D::GetModelWorldAabb() const {
-    Model* model = GetModel();
+    engine::Model* model = GetModel();
 
     if (!model) {
         // モデルがない場合は位置を基準にデフォルトサイズ
@@ -296,6 +299,7 @@ Aabb Object3D::GetModelWorldAabb() const {
     worldAabb.min = { FLT_MAX, FLT_MAX, FLT_MAX };
     worldAabb.max = { -FLT_MAX, -FLT_MAX, -FLT_MAX };
 
+    // ローカルの最小・最大だけでは回転後の範囲を取れないため、8隅を変換してから各軸の最小・最大を選び直します。
     for (int i = 0; i < 8; ++i) {
         engine::Vector3 worldPos = engine::Math::Transform(corners[i], transform_.matWorld);
         worldAabb.min.x = (std::min)(worldAabb.min.x, worldPos.x);

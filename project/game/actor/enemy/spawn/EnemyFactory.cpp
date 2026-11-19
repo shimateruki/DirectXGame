@@ -50,6 +50,7 @@ EnemyFactory* EnemyFactory::GetInstance() {
 std::unique_ptr<BaseEnemy> EnemyFactory::CreateEnemy(const std::string& enemyName, engine::Object3DCommon* common) {
     std::unique_ptr<BaseEnemy> newEnemy = nullptr;
 
+    // 登録済みの名前ごとに実体の型と標準モデルを選び、各敵の初期化を済ませてから共通設定へ進みます。
     if (enemyName == "Slime") {
         auto slime = std::make_unique<EnemySlime>();
 

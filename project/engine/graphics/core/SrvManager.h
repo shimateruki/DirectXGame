@@ -5,7 +5,7 @@
 #include <mutex>
 #include <wrl.h>
 
-class DirectXCommon;
+namespace engine { class DirectXCommon; }
 
 // 担当：シェーダー可視の記述子ヒープとスロットの払い出しを管理する。
 // 関連：DirectXCommon（デバイス）、TextureManager / Model / 粒子描画（利用）
@@ -20,7 +20,7 @@ public:
 
     /// <summary>DirectX デバイスから SRV ヒープを作成し、払い出し位置を初期化します。</summary>
     /// <param name="dxCommon">初期化済みの DirectX 管理オブジェクト。</param>
-    void Initialize(DirectXCommon* dxCommon);
+    void Initialize(engine::DirectXCommon* dxCommon);
 
     /// <summary>次のゲーム用スロットに SRV を作成します。</summary>
     /// <param name="resource">参照対象の GPU リソース。</param>

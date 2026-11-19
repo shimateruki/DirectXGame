@@ -18,6 +18,8 @@
 #include <DebugConsole.h>
 #include <LightManager.h>
 
+namespace engine {
+
 
 
 // ==========================================
@@ -92,6 +94,7 @@ void Model::DrawMeshOnly(int meshDrawIndex) {
 
 // 頂点配列から一時的なモデルデータを構築し、プリミティブやデバッグ表示に使える形へ変換する。
 void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData>& vertices, const std::vector<uint32_t>& indices) {
+    // 手作りメッシュへ置き換えるので、以前のモデルのスキニング済み頂点を参照しない状態へ戻します。
     computeSkinningAvailable_ = false;
     computeSkinningDirty_ = true;
     computeSkinningOutputReady_ = false;
@@ -135,6 +138,7 @@ void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData
     // ==========================================
     // 1. 頂点バッファ (Vertex Buffer) の作成
     // ==========================================
+    // 頂点数に1頂点のバイト数を掛け、CPUから直接書き込めるUpload Heapに確保します。
     UINT vbSize = static_cast<UINT>(sizeof(VertexData) * vertices.size());
 
     D3D12_HEAP_PROPERTIES uploadHeap{};
@@ -175,6 +179,7 @@ void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData
         return;
     }
 
+    // 書き込み後はMapを解除し、描画が参照する番地と1頂点の間隔をビューへ登録します。
     memcpy(mappedVerts, vertices.data(), vbSize);
     mesh.vertexResource->Unmap(0, nullptr);
 
@@ -186,6 +191,7 @@ void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData
     // ==========================================
     // 2. インデックスバッファ (Index Buffer) の作成
     // ==========================================
+    // インデックスは32ビット値です。この配列で頂点を共有しながら三角形の組み合わせを指定します。
     UINT ibSize = static_cast<UINT>(sizeof(uint32_t) * indices.size());
 
     D3D12_RESOURCE_DESC ibDesc = vbDesc;
@@ -217,6 +223,7 @@ void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData
         return;
     }
 
+    // インデックスも転送したあと、GPUが32ビット単位で読むようビューの形式を揃えます。
     memcpy(mappedIndices, indices.data(), ibSize);
     mesh.indexResource->Unmap(0, nullptr);
 
@@ -229,3 +236,5 @@ void Model::CreateFromVertices(ModelCommon* common, const std::vector<VertexData
 // ==========================================
 // Skeleton & Joint の実装 (深さ優先探索)
 // ==========================================
+
+} // namespace engine

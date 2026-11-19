@@ -21,6 +21,9 @@
 #include "SrvManager.h"
 #include "PostEffect.h"
 #include"ImGuiManager.h"
+#include "ProfilerManager.h"
+
+namespace engine {
 
 // ログ出力用のヘルパー関数（グローバル）
 // デバッグ出力へ文字列を流し、DirectX初期化やリソース生成の状態を追えるようにする。
@@ -237,6 +240,7 @@ bool CollectShaderDependencies(const std::filesystem::path& source,
     const auto absolutePath = std::filesystem::absolute(source, error).lexically_normal();
     if (error)
         return false;
+    // 同じファイルを再訪したときは依存に重複登録せず、循環したincludeでも探索を止めます。
     if (!visited.insert(absolutePath).second)
         return true;
 
@@ -294,6 +298,7 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::CompileShader(
 
 	static std::mutex cacheMutex;
 	static std::map<ShaderKey, CachedShader> shaderCache;
+	// 同じHLSLでもシェーダーの種類や入口が異なれば別バイナリなので、3項目を組にしてキャッシュします。
 	const ShaderKey key{filePath, profile, entryPoint};
 	std::lock_guard<std::mutex> cacheLock(cacheMutex);
 	const auto found = shaderCache.find(key);
@@ -421,6 +426,7 @@ Microsoft::WRL::ComPtr<IDxcBlob> DirectXCommon::TryCompileShader(
         errorMessage = "DXCの実行に失敗しました";
         return nullptr;
     }
+    // DXC呼び出しが成功してもシェーダー自体がエラーになるため、コンパイル結果を別に確認します。
     HRESULT status = E_FAIL;
     result->GetStatus(&status);
     if (FAILED(status)) {
@@ -708,6 +714,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DirectXCommon::CreateDepthStencilTextureR
 	resourceDesc.MipLevels = 1;
 	resourceDesc.DepthOrArraySize = 1;
 
+	// 同じ24ビット深度をDSVでは深度・ステンシル、SRVでは深度のみとして扱えるよう、リソース本体は型なしで確保します。
 	resourceDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
 
 	resourceDesc.SampleDesc.Count = 1;
@@ -771,6 +778,7 @@ void DirectXCommon::UploadTextureData(const Microsoft::WRL::ComPtr<ID3D12Resourc
 
 	for (size_t mipLevel = 0; mipLevel < metadata.mipLevels; mipLevel++)
 	{
+		// ミップ階層ごとに同じ番号のサブリソースへ書きます。この経路は配列の先頭面だけを扱います。
 		const DirectX::Image* img = mipImages.GetImage(mipLevel, 0, 0);
 		HRESULT hr = texture->WriteToSubresource
 		(
@@ -899,6 +907,7 @@ void DirectXCommon::FlushCommandQueue(bool reset) {
 	}
 
 	// --- リセット処理（必要な場合のみ）---
+	// アロケーターの記録領域はGPUの完了後に先に戻し、その領域を渡してリストを再度開きます。
 	if (reset) {
 		// まだコマンドリストがOpen状態の場合はここではResetしない
 		// GPU完了を待っているので安全にリセットできる
@@ -958,6 +967,24 @@ DXGI_FORMAT DirectXCommon::GetDsvFormat() const {
 	return DXGI_FORMAT_D24_UNORM_S8_UINT;
 }
 
+namespace {
+// キューへフェンスを積み、必要なときだけCPUを待たせる。リストの再開は呼び出し元が担当する。
+void SignalAndWaitForGpu(ID3D12CommandQueue& queue, ID3D12Fence& fence, UINT64& value, HANDLE event, const char* label) {
+	value++;
+	HRESULT hr = queue.Signal(&fence, value);
+	assert(SUCCEEDED(hr));
+
+	if (fence.GetCompletedValue() < value) {
+		fence.SetEventOnCompletion(value, event);
+		const auto waitStart = std::chrono::steady_clock::now();
+		WaitForSingleObject(event, INFINITE);
+		const auto waitMs = std::chrono::duration<double, std::milli>(
+			std::chrono::steady_clock::now() - waitStart).count();
+		LogSlowLoadingOperation(label, waitMs);
+	}
+}
+}
+
 // GPU完了待ち後にコマンドアロケータとコマンドリストを再利用できる状態へ戻す。
 void DirectXCommon::WaitForGpuAndReset() {
 	// --- フェンス未生成または破棄済みならスキップ ---
@@ -966,19 +993,7 @@ void DirectXCommon::WaitForGpuAndReset() {
 		return;
 	}
 
-	// --- GPUが完了するまで待機 ---
-	fenceValue_++;
-	HRESULT hr = commandQueue_->Signal(fence_.Get(), fenceValue_);
-	assert(SUCCEEDED(hr));
-
-	if (fence_->GetCompletedValue() < fenceValue_) {
-		fence_->SetEventOnCompletion(fenceValue_, fenceEvent_);
-		const auto waitStart = std::chrono::steady_clock::now();
-		WaitForSingleObject(fenceEvent_, INFINITE);
-		const auto waitMs = std::chrono::duration<double, std::milli>(
-			std::chrono::steady_clock::now() - waitStart).count();
-		LogSlowLoadingOperation("DirectXCommon GPU fence wait", waitMs);
-	}
+	SignalAndWaitForGpu(*commandQueue_.Get(), *fence_.Get(), fenceValue_, fenceEvent_, "DirectXCommon GPU fence wait");
 
 	// 記録中のリストは保持し、閉じている場合だけ次の描画用に開く。
 	EnsureCommandListReadyForDraw();
@@ -990,18 +1005,7 @@ void DirectXCommon::WaitForGpuIdle() {
 		return;
 	}
 
-	fenceValue_++;
-	HRESULT hr = commandQueue_->Signal(fence_.Get(), fenceValue_);
-	assert(SUCCEEDED(hr));
-
-	if (fence_->GetCompletedValue() < fenceValue_) {
-		fence_->SetEventOnCompletion(fenceValue_, fenceEvent_);
-		const auto waitStart = std::chrono::steady_clock::now();
-		WaitForSingleObject(fenceEvent_, INFINITE);
-		const auto waitMs = std::chrono::duration<double, std::milli>(
-			std::chrono::steady_clock::now() - waitStart).count();
-		LogSlowLoadingOperation("DirectXCommon WaitForGPUIdle", waitMs);
-	}
+	SignalAndWaitForGpu(*commandQueue_.Get(), *fence_.Get(), fenceValue_, fenceEvent_, "DirectXCommon WaitForGPUIdle");
 }
 
 void DirectXCommon::CreateRenderTexture() {
@@ -1163,7 +1167,7 @@ void DirectXCommon::PreDrawBackBuffer() {
 	backBufferIndex_ = swapChain_->GetCurrentBackBufferIndex();
 
 	// ★追加: リソースバリア (表示モード -> 書き込みモードへ変更)
-	// これがないとGPUはバックバッファへの描画を無視します
+	// 表示中のバッファを描画先として使える状態へ遷移させます。
 	D3D12_RESOURCE_BARRIER barrier{};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -1378,7 +1382,6 @@ void DirectXCommon::ResetGpuProfiles() {
     nextQueryIndex_ = 0;
 }
 
-#include "ProfilerManager.h"
 void DirectXCommon::ReadAllGpuProfiles() {
     // GPUタイムスタンプ結果を読み戻し、ProfilerManagerへミリ秒単位で記録する。
     // 前フレームの結果を読み取る
@@ -1397,6 +1400,7 @@ void DirectXCommon::ReadAllGpuProfiles() {
             uint64_t end = mappedData[startIndex + 1];
 
             if (end > start && gpuFrequency_ > 0) {
+                // GPUタイムスタンプの差を毎秒カウント数で割って秒へ変え、1000倍でミリ秒にします。
                 float timeMs = static_cast<float>(end - start) / static_cast<float>(gpuFrequency_) * 1000.0f;
                 ProfilerManager::GetInstance()->RecordGpuTime(name, timeMs);
 
@@ -1503,6 +1507,7 @@ void DirectXCommon::ResizeSwapChain(int32_t width, int32_t height) {
     if (desc.Width == static_cast<UINT>(width) && desc.Height == static_cast<UINT>(height))
         return;
     WaitForGpuIdle();
+    // 実行済みフレームの参照が残らないのを待ち、古いバックバッファをすべて手放してからResizeBuffersを呼びます。
     for (auto& resource : swapChainResources_)
         resource.Reset();
     HRESULT hr = swapChain_->ResizeBuffers(static_cast<UINT>(backBufferCount_),
@@ -1544,3 +1549,5 @@ void DirectXCommon::SetRenderClearColor(float r, float g, float b, float a) {
     clearColor_[2] = workingColor.z;
     clearColor_[3] = workingColor.w;
 }
+
+} // namespace engine

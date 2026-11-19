@@ -17,7 +17,7 @@ class PostEffect;
 // 担当：Framework上でシーン更新、Editor、画面効果、時間計測を統合する。
 // 関連：Framework（共通ループ）、SceneManager（遷移）、GameEditorController（Editor）
 // 主な入口：Initialize / Update / Draw / Finalize
-class Game : public Framework {
+class Game : public engine::Framework {
 public:
 	/// <summary>エンジン基盤、シーン、画面効果とエディター機能を初期化する。</summary>
 	void Initialize() override;

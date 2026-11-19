@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "c049ae2000e3556c9fa76a84453b4485",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Stages/select_route_glyph_three/select_route_glyph_three.obj",
+  "version": 1
+}

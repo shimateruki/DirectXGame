@@ -61,6 +61,7 @@ void EditorCommandRegistry::UnregisterOwner(const void* owner) {
         std::remove_if(
             registrationOrder_.begin(),
             registrationOrder_.end(),
+            // 表示順の一覧を掃除しながら対応する定義を外す。他の登録者は残し、古い ID だけの行は表示一覧から外す。
             [this, owner, &removed](const std::string& id) {
                 const auto it = commands_.find(id);
                 if (it == commands_.end()) {

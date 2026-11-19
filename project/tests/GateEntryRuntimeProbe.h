@@ -30,7 +30,7 @@ inline GimmickStageGate* FindGate(BaseScene* scene,bool node = false) {
     return nullptr;
 }
 inline void Capture(const std::string& path) {
-    auto* dx = DirectXCommon::GetInstance();
+    auto* dx = engine::DirectXCommon::GetInstance();
     auto* texture = PostEffect::GetInstance()->GetRenderTexture();
     DirectX::ScratchImage image, converted;
     Require(SUCCEEDED(DirectX::CaptureTexture(dx->GetCommandQueue(),texture,false,image,

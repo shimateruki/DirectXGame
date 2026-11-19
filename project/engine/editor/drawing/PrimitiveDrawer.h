@@ -3,7 +3,7 @@
 #include <wrl.h>
 #include "engine/utility/math/Math.h"
 
-class DirectXCommon;
+namespace engine { class DirectXCommon; }
 
 // 定数バッファの一スロットを 256 バイトにするための余白付き行列。要素を並べても CBV の間隔を保つ。
 // 関連：PrimitiveDrawer（この型を使う機能の本体）
@@ -31,9 +31,9 @@ public:
     ~PrimitiveDrawer();
 
     // ワイヤー描画のパイプライン・頂点と定数バッファを準備する。
-    void Initialize(DirectXCommon* dxCommon);
+    void Initialize(engine::DirectXCommon* dxCommon);
 
-    // 描画用GPU資源と保持状態を解放する。
+    // 常時マップしている行列・色バッファを解除する。GPU資源自体はメンバーが管理する。
     void Finalize();
 
     // 描画開始前のパイプライン設定
@@ -50,7 +50,7 @@ public:
     void DrawWireCylinder(ID3D12GraphicsCommandList* commandList, const engine::Matrix4x4& worldMatrix, const engine::Vector4& color, int instanceIndex);
 
 private:
-    DirectXCommon* dxCommon_ = nullptr;
+    engine::DirectXCommon* dxCommon_ = nullptr;
     static const int kMaxInstances = 8192;
 
     // --- プリミティブ描画リソース ---

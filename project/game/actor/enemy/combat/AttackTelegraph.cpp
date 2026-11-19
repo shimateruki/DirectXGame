@@ -246,6 +246,7 @@ void AttackTelegraph::ConfigureEffectShape(EffectObject3D* effect, Shape shape) 
     const bool isCue = effect == cueEffect_.get();
 
     if (shape == Shape::Circle || shape == Shape::ImpactDisc) {
+        // 円環は内側を空け、着弾の面表示は内半径をゼロにして塗りつぶす。
         effect->SetProceduralType(10);
         effect->SetMeshSetting(&EffectObject3D::MeshSettings::ringOuterRadius, 1.0f);
         effect->SetMeshSetting(&EffectObject3D::MeshSettings::ringInnerRadius, shape == Shape::ImpactDisc ? 0.0f : kCircleInnerRate);
@@ -255,6 +256,7 @@ void AttackTelegraph::ConfigureEffectShape(EffectObject3D* effect, Shape shape) 
         effect->SetIntensity(shape == Shape::ImpactDisc ? 0.92f : (isCue ? 4.4f : 2.35f));
         effect->SetEdgeFadeStrength(shape == Shape::ImpactDisc ? 0.0f : (isCue ? 0.35f : 1.0f));
     } else if (shape == Shape::DecalCircle) {
+        // 円形デカールは既定の形状を作らず、正方形の板へ指定画像を貼る。
         effect->SetProceduralType(7);
         effect->SetMeshSetting(&EffectObject3D::MeshSettings::planeSize, {2.0f, 2.0f});
         effect->SetMeshSetting(&EffectObject3D::MeshSettings::meshSegments, 1);
@@ -264,6 +266,7 @@ void AttackTelegraph::ConfigureEffectShape(EffectObject3D* effect, Shape shape) 
         effect->SetEdgeFadeStrength(0.0f);
     } else {
         effect->SetProceduralType(7);
+        // 直線や扇形の区間には細長く変形できる白い板を割り当てる。
         effect->SetMeshSetting(&EffectObject3D::MeshSettings::planeSize, {1.0f, 1.0f});
         effect->SetMeshSetting(&EffectObject3D::MeshSettings::meshSegments, 1);
         effect->SetTexture(kWhiteTexturePath);
@@ -575,6 +578,7 @@ void AttackTelegraph::ShowImpactAreas(const engine::Vector3* centers, std::size_
     BeginPattern(Shape::Circle, centerCount);
     BeginTiming(Shape::Circle, centerCount);
     const engine::Vector4 displayColor = MakeDisplayColor(color, progress);
+    // 予告ごとに時刻の表示をずらし、先に着弾する地点から外周を絞る。
     const float sequenceStep = centerCount > 1 ? (std::min)(0.105f, 0.38f / static_cast<float>(centerCount - 1)) : 0.0f;
 
     for (std::size_t index = 0; index < centerCount; ++index) {
@@ -595,6 +599,7 @@ void AttackTelegraph::ShowImpactAreas(const engine::Vector3* centers, std::size_
 
 void AttackTelegraph::ShowReadableImpactAreas(const engine::Vector3* centers, std::size_t centerCount, float radius,
                                               float progress, const engine::Vector4& color) {
+    // 着弾点が一つもなければ、前フレームの範囲と時計を隠す。
     if (!centers || centerCount == 0) {
         Hide();
         return;
@@ -740,7 +745,7 @@ void AttackTelegraph::TriggerWarningCue(engine::Object3D* target, const engine::
 }
 
 void AttackTelegraph::Hide() {
-    // 範囲・時間・合図をまとめて隠し、次の攻撃へ前回の予告を残さない。
+    // 地面の範囲と時間の表示、複数地点の点滅を隠す。単独の合図と頭上の警告は個別の寿命で消える。
     isVisible_ = false;
 
     if (effect_) {
@@ -774,6 +779,7 @@ void AttackTelegraph::Update(float deltaTime) {
         }
     }
 
+    // 複数地点の合図は各地点の色に重ね、専用のエフェクトを追加しない。
     if (patternCueTimer_ > 0.0f && patternActiveCount_ > 0) {
         patternCueTimer_ = (std::max)(0.0f, patternCueTimer_ - (std::max)(deltaTime, 0.0f));
         const float progress = 1.0f - std::clamp(patternCueTimer_ / cueDuration_, 0.0f, 1.0f);
@@ -786,6 +792,7 @@ void AttackTelegraph::Update(float deltaTime) {
         }
     }
 
+    // 単一地点の合図は最後の形状に沿って広げながら消す。
     if (cueEffect_ && cueTimer_ > 0.0f && hasLastShape_) {
         cueTimer_ = (std::max)(0.0f, cueTimer_ - (std::max)(deltaTime, 0.0f));
         const float progress = 1.0f - std::clamp(cueTimer_ / cueDuration_, 0.0f, 1.0f);
@@ -806,6 +813,7 @@ void AttackTelegraph::Update(float deltaTime) {
         cueEffect_->SetIsVisible(false);
     }
 
+    // 頭上の警告は地面用の点滅と別の再生時間で更新する。
     UpdateWarningEffect(deltaTime);
 }
 
@@ -817,6 +825,7 @@ void AttackTelegraph::UpdateWarningEffect(float deltaTime) {
     warningEffect_->Update((std::max)(deltaTime, 0.0f));
     const float progress = warningEffect_->GetPlaybackProgress();
 
+    // 素材が最後まで進んだら、位置合わせする前に表示を終える。
     if (!warningEffect_->IsPlaying() && progress >= 1.0f) {
         warningEffect_->SetIsVisible(false);
         return;
@@ -833,11 +842,12 @@ void AttackTelegraph::UpdateWarningEffect(float deltaTime) {
                           commonColor.y + (warningAccentColor_.y - commonColor.y) * accentRate,
                           commonColor.z + (warningAccentColor_.z - commonColor.z) * accentRate, warningAccentColor_.w};
 
+    // 対象の移動に追従してから、警告の板をカメラへ向けて少し手前に出す。
     warningCenter_ = warningTarget_ ? warningTarget_->GetWorldPosition() + warningOffset_ : warningCenter_;
     engine::Vector3 position = warningCenter_;
     float yaw = 0.0f;
     float pitch = 0.0f;
-    Camera* camera = CameraManager::GetInstance() ? CameraManager::GetInstance()->GetActiveCamera() : nullptr;
+    engine::Camera* camera = CameraManager::GetInstance() ? CameraManager::GetInstance()->GetActiveCamera() : nullptr;
 
     if (camera) {
         engine::Vector3 toCamera = camera->GetEye() - position;

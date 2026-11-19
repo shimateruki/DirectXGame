@@ -59,7 +59,7 @@ void Fade::InitializeSprites() {
 
     if (!spriteCommon_) {
         spriteCommon_ = std::make_unique<engine::SpriteCommon>();
-        spriteCommon_->Initialize(DirectXCommon::GetInstance());
+        spriteCommon_->Initialize(engine::DirectXCommon::GetInstance());
     }
 
     // 連番画像を読み込めない場合も画面を覆えるよう、白一枚を黒く着色するSpriteを持つ。
@@ -144,6 +144,7 @@ void Fade::Update(float deltaTime) {
 
 // スタイルに応じた連番画像を描き、画像が使えない場合は黒画面で被覆します。
 void Fade::Draw() {
+    // 画面の被覆が実質ゼロの間は、連番の読み込みと描画を行いません。
     if (coverage_ <= 0.001f) {
         return;
     }
@@ -170,12 +171,12 @@ void Fade::StartFadeOut(float duration) {
     Begin(Status::FadeOut, VisualStyle::CrownIris, duration, { 0.5f, 0.5f }, 0.0f);
 }
 
-// 指定中心から画面を閉じるアイリス演出を開始します。
+// 王冠アイリスを開状態から閉じます。中心指定は開始引数として保持します。
 void Fade::StartIrisOut(float duration, const engine::Vector2& center) {
     Begin(Status::IrisOut, VisualStyle::CrownIris, duration, center, 0.0f);
 }
 
-// 指定中心へ向けて画面を開くアイリス演出を開始します。
+// 王冠アイリスを閉状態から開きます。中心指定は開始引数として保持します。
 void Fade::StartIrisIn(float duration, const engine::Vector2& center) {
     Begin(Status::IrisIn, VisualStyle::CrownIris, duration, center, 1.0f);
 }
@@ -195,6 +196,7 @@ void Fade::Begin(Status status, VisualStyle style, float duration, const engine:
     style_ = style;
     duration_ = (std::max)(duration, 0.001f);
     counter_ = 0.0f;
+    // 指定中心は正規化座標として保持します。現在の連番Spriteの描画位置は画面中央固定です。
     center_ = { Clamp01(center.x), Clamp01(center.y) };
     coverage_ = Clamp01(initialCoverage);
     ResetPostEffectFade();
@@ -209,6 +211,7 @@ void Fade::DrawFrameSequence(FrameSequence& sequence, float coverage) {
 
     // 画面の被覆率を連番画像の添字に対応させ、開閉に同じ画像列を使う。
     const float framePosition = Clamp01(coverage) * static_cast<float>(sequence.textureHandles.size() - 1);
+    // 被覆率に最も近い画像を選び、0は最初の画像、1は最後の画像に対応します。
     const size_t frameIndex = static_cast<size_t>(std::round(framePosition));
     const uint32_t textureHandle = sequence.textureHandles[(std::min)(frameIndex, sequence.textureHandles.size() - 1)];
 

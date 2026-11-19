@@ -32,10 +32,10 @@ public:
     // 関連：CameraEditor（この型を使う機能の本体）
     struct Settings {
         Mode currentMode = Mode::Game;
-        Camera::FollowMode gameFollowMode = Camera::FollowMode::Aimable;
+        engine::Camera::FollowMode gameFollowMode = engine::Camera::FollowMode::Aimable;
 
-        Camera::GameplayStyle gameplayStyle = Camera::GameplayStyle::Free;
-        Camera::ObstacleResponse obstacleResponse = Camera::ObstacleResponse::PreserveComposition;
+        engine::Camera::GameplayStyle gameplayStyle = engine::Camera::GameplayStyle::Free;
+        engine::Camera::ObstacleResponse obstacleResponse = engine::Camera::ObstacleResponse::PreserveComposition;
         float guidedYawLimit = 10.0f;
         float guidedPitchLimit = 5.0f;
         float guidedReturnResponse = 5.0f;
@@ -45,6 +45,7 @@ public:
         float guidedFramingResponse = 3.0f;
 
         // Gameモード用パラメータ。
+        engine::Camera::BossFramingSettings bossFraming; // 対象ボスが指定された戦闘中だけ使用する。
         float distance = 15.0f;
         float height = 5.0f;
         bool stabilizeJumpHeight = true;
@@ -99,7 +100,9 @@ public:
     void Initialize();
 
     /// 現在のカメラモードに応じて追従または自由移動を更新する。
-    void Update(engine::Object3D* player, bool isLockingOn);
+    // bossはこの更新でのみ参照する。省略時は通常構図へ戻し、攻撃ロックオンを変更しない。
+    void Update(engine::Object3D* player, bool isLockingOn, engine::Object3D* boss = nullptr);
+    const engine::Camera::BossFramingSettings& GetBossFramingSettings() const { return settings_.bossFraming; }
 
     /// モード、視点、演出 Override の編集 UI を描画する。
     void DrawImGui() override;
@@ -151,15 +154,15 @@ public:
     /// <summary>
     /// 保存済みの名前を指定して、カメラの一時上書き演出を再生する。
     /// </summary>
-    bool PlayOverrideCamera(Camera* camera, const std::string& cameraName);
+    bool PlayOverrideCamera(engine::Camera* camera, const std::string& cameraName);
 
     // Camera ObjectをGhostRecorderなどから実カメラとして再生する。
     /// Camera Object の保存済み視点を実カメラで再生する。
-    bool PlaySceneObjectCamera(Camera* camera, engine::Object3D* cameraObject);
+    bool PlaySceneObjectCamera(engine::Camera* camera, engine::Object3D* cameraObject);
 
     /// ブレンド時間と補間方式を指定して Camera Object を再生する。
     bool PlaySceneObjectCamera(
-        Camera* camera,
+        engine::Camera* camera,
         engine::Object3D* cameraObject,
         float blendInDuration,
         float blendOutDuration,
@@ -169,7 +172,7 @@ public:
     bool ValidateSceneObjectCamera(const engine::Object3D* cameraObject, std::string& issue) const;
 
     /// Camera Object の再生を止め、元のカメラへ戻す。
-    void StopSceneObjectCamera(Camera* camera, bool switchingToNextShot = false);
+    void StopSceneObjectCamera(engine::Camera* camera, bool switchingToNextShot = false);
 
     /// Inspector で選択中の Camera Object を設定する。所有権は移さない。
     void SetSelectedCameraObject(engine::Object3D* cameraObject);
@@ -203,6 +206,7 @@ public:
 
     void SetCameraSensitivity(int val) {
         settings_.cameraSensitivity = val;
+        // 感度は変更と同時に保存する。自由カメラの姿勢に使う保存予約とは別の経路。
         SaveSettings();
     }
 
@@ -243,20 +247,20 @@ public:
     void InvalidatePreviewForSceneChange();
 
     /// 現在設定を用いたプレビューカメラを指定アスペクト比で準備する。
-    Camera* PreparePreviewCamera(float aspectRatio);
+    engine::Camera* PreparePreviewCamera(float aspectRatio);
 
     /// 演出用 Camera Object のプレビューカメラを準備する。
-    Camera* PrepareCinematicPreviewCamera(float aspectRatio);
+    engine::Camera* PrepareCinematicPreviewCamera(float aspectRatio);
 
 private:
     /// WASD とマウス入力で自由カメラを移動する。
-    void UpdateFreeCamera(Camera* camera);
+    void UpdateFreeCamera(engine::Camera* camera);
 
     /// 保存した開始角を Orbit カメラへ適用する。
-    void ApplyOrbitStartAngle(Camera* camera, bool resetSmoothing);
+    void ApplyOrbitStartAngle(engine::Camera* camera, bool resetSmoothing);
 
     /// 現在視点から Orbit の開始角を取得する。
-    void CaptureOrbitStartFromCurrentCamera(Camera* camera);
+    void CaptureOrbitStartFromCurrentCamera(engine::Camera* camera);
 
     /// ワールド座標から Orbit 中心設定を更新する。
     void SetOrbitCenterFromWorld(const engine::Vector3& center);
@@ -285,21 +289,21 @@ private:
     engine::Object3D* FindSceneObjectByName(const std::string& name) const;
 
     /// 保存済み Override の参照先 Object を実行時参照へ解決する。
-    Camera::CameraOverrideParams MakeRuntimeOverrideParams(
-        const Camera::CameraOverrideParams& params,
+    engine::Camera::CameraOverrideParams MakeRuntimeOverrideParams(
+        const engine::Camera::CameraOverrideParams& params,
         engine::Object3D* fallbackEyeObject = nullptr) const;
 
     /// 演出用視点の位置と注視点をプレビュー向けに求める。
     bool ResolveCinematicPreviewPose(engine::Vector3& eye, engine::Vector3& target) const;
 
     /// Camera Object の設定から実行時 Override を構築する。
-    Camera::CameraOverrideParams MakeRuntimeOverrideParams(const engine::Object3D* cameraObject) const;
+    engine::Camera::CameraOverrideParams MakeRuntimeOverrideParams(const engine::Object3D* cameraObject) const;
 
     /// Override の参照先を含めて視点と注視点を解決する。
-    engine::Vector3 ResolveOverrideEye(const Camera::CameraOverrideParams& params) const;
+    engine::Vector3 ResolveOverrideEye(const engine::Camera::CameraOverrideParams& params) const;
 
     // ターゲットの種類に応じて追従対象・視点前方・固定点を選ぶ。
-    engine::Vector3 ResolveOverrideTarget(const Camera::CameraOverrideParams& params) const;
+    engine::Vector3 ResolveOverrideTarget(const engine::Camera::CameraOverrideParams& params) const;
 
     engine::Vector3 GetConfiguredCameraRight(const engine::Vector3& forward) const;
 
@@ -315,7 +319,7 @@ private:
     void ApplyCameraModelGizmo(engine::Object3D* gizmo, const engine::Vector3& eye, const engine::Vector3& forward, float sizeScale, const engine::Vector4& color);
 
     /// 視野角とクリップ距離を指定してプレビューカメラを構成する。
-    Camera* ConfigurePreviewCamera(
+    engine::Camera* ConfigurePreviewCamera(
         const engine::Vector3& eye,
         const engine::Vector3& target,
         float aspectRatio,
@@ -327,7 +331,7 @@ private:
     void DrawCameraPreviewPanel();
 
     /// 保存済み設定の位置と向きをプレビューカメラへ反映する。
-    void ApplyConfiguredCameraPreview(Camera* camera) const;
+    void ApplyConfiguredCameraPreview(engine::Camera* camera) const;
 
     /// 指定時刻からプレビューの更新周期が経過したか返す。
     bool IsPreviewUpdateDue(
@@ -361,7 +365,7 @@ private:
     std::string regionGizmoObjectId_;
     int orbitEditGizmoTarget_ = 1; // 周回ギズモの編集対象。
 
-    std::map<std::string, Camera::CameraOverrideParams> overrideParamsMap_;
+    std::map<std::string, engine::Camera::CameraOverrideParams> overrideParamsMap_;
 
     uint32_t editorStateSaveBlockers_ = 0;
     bool editorStateDirty_ = false;
@@ -381,7 +385,7 @@ private:
 
     engine::Object3D* targetPlayer_ = nullptr;
 
-    Camera previewCamera_;
+    engine::Camera previewCamera_;
     bool previewCameraInitialized_ = false;
 
     bool cameraPreviewPanelVisibleThisFrame_ = false;

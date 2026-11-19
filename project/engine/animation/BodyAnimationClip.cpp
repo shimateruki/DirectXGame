@@ -63,6 +63,7 @@ bool BodyAnimationClip::Load(const std::string& filePath) {
         duration_ = std::max(0.01f, root.value("duration", 1.0f));
         loopDefault_ = root.value("loop", true);
 
+        // キー時刻は秒です。XZのせん断成分だけを姿勢評価へ渡し、Y成分は0で保持します。
         const json bodyKeys = root.value("bodyKeys", json::array());
 
         for (const auto& item : bodyKeys) {
@@ -84,6 +85,7 @@ bool BodyAnimationClip::Load(const std::string& filePath) {
         });
 
         if (!keys_.empty()) {
+            // 宣言時間が短くても最後の姿勢キーまで再生できるように、終了秒を後ろへ延ばします。
             duration_ = std::max(duration_, keys_.back().time);
         }
     } catch (...) {
@@ -122,6 +124,7 @@ bool BodyAnimationClip::Evaluate(float timeSeconds, bool loop, Sample& sampleOut
         sampleOut.shearPivotY = key.shearPivotY;
     };
 
+    // 最初のキーより前は外挿せず、先頭の姿勢を保ちます。末尾より後も同様に最後の姿勢を使います。
     if (keys_.size() == 1 || sampleTime <= keys_.front().time) {
         copyKeyToSample(keys_.front());
         return true;
@@ -140,21 +143,30 @@ bool BodyAnimationClip::Evaluate(float timeSeconds, bool loop, Sample& sampleOut
             continue;
         }
 
-        const float segmentDuration = std::max(kTimeEpsilon, to.time - from.time);
-        const float rawRate = (sampleTime - from.time) / segmentDuration;
-
-        // 補間方法は区間の開始キーに保存された設定を使う。
-        const float rate = AnimationInterpolation::ApplyEasing(rawRate, ToEasing(from.easingToNext));
-        sampleOut.translate = AnimationInterpolation::Lerp(from.translate, to.translate, rate);
-        sampleOut.rotate = AnimationInterpolation::SlerpEuler(from.rotate, to.rotate, rate);
-        sampleOut.scale = AnimationInterpolation::Lerp(from.scale, to.scale, rate);
-        sampleOut.shear = AnimationInterpolation::Lerp(from.shear, to.shear, rate);
-        sampleOut.shearPivotY = engine::Math::Lerp(from.shearPivotY, to.shearPivotY, rate);
+        // 評価秒が入るキー区間を見つけてから、その区間内の補間に渡します。
+        sampleOut = InterpolatePose(from, to, sampleTime, kTimeEpsilon);
         return true;
     }
 
     copyKeyToSample(keys_.back());
     return true;
+}
+
+BodyAnimationClip::Sample BodyAnimationClip::InterpolatePose(
+    const Key& from, const Key& to, float time, float minimumSegmentDuration) {
+    // 同時刻のキーでもゼロ除算せず、開始キーが指定する補間曲線を使う。
+    const float segmentDuration = std::max(minimumSegmentDuration, to.time - from.time);
+    const float rawRate = (time - from.time) / segmentDuration;
+    const float rate = AnimationInterpolation::ApplyEasing(rawRate, ToEasing(from.easingToNext));
+
+    // 回転は球面補間し、残りの姿勢は同じ進行率で線形補間する。
+    Sample pose;
+    pose.translate = AnimationInterpolation::Lerp(from.translate, to.translate, rate);
+    pose.rotate = AnimationInterpolation::SlerpEuler(from.rotate, to.rotate, rate);
+    pose.scale = AnimationInterpolation::Lerp(from.scale, to.scale, rate);
+    pose.shear = AnimationInterpolation::Lerp(from.shear, to.shear, rate);
+    pose.shearPivotY = engine::Math::Lerp(from.shearPivotY, to.shearPivotY, rate);
+    return pose;
 }
 
 std::string BodyAnimationClip::ResolveAssetPath(const std::string& assetNameOrPath) {

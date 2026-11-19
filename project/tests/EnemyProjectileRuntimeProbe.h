@@ -181,7 +181,7 @@ inline void BombExplosionCases(BaseScene* scene, std::ostream& log) {
 inline void AfterDraw(SceneManager* manager,const std::string& path) {
     static std::ofstream log(path,std::ios::trunc);static ULONGLONG start=GetTickCount64();
     static int phase=0,frames=0;static bool done=false;static EnemyBomber* bomber=nullptr;static EnemyBomb* thrown=nullptr;
-    static std::unique_ptr<Camera> camera;static Camera* previous=nullptr;static engine::Vector3 base{},target{},release{};
+    static std::unique_ptr<engine::Camera> camera;static engine::Camera* previous=nullptr;static engine::Vector3 base{},target{},release{};
     static engine::Matrix4x4 initialWvp{},initialViewProjection{};
     if(done || !manager)return;
     auto finish=[&](const std::string& message){log<<message<<std::endl;done=true;CameraManager::GetInstance()->SetActiveCamera(previous);WinApp::CloseNow();};
@@ -211,22 +211,22 @@ inline void AfterDraw(SceneManager* manager,const std::string& path) {
             bomber->SetParameter(&engine::EntityParameter::hp, bomber->SetParameter(&engine::EntityParameter::maxHp, 200));bomber->SetVelocity({0,0,0});bomber->UpdateWorldMatrix(true);
             bomber->SetSpawnCallback([scene](std::unique_ptr<BaseEnemy> object){thrown=dynamic_cast<EnemyBomb*>(object.get());scene->AddObject(std::move(object));});
             scene->AddObject(std::move(created));
-            previous=CameraManager::GetInstance()->GetActiveCameraOverride();camera=std::make_unique<Camera>();camera->Initialize();camera->SetFovY(0.65f);
-            Camera::CameraOverrideParams view;view.duration=0;view.fixedEyePos=base+engine::Vector3{0,4,-13};view.fixedTargetPos=base+engine::Vector3{0,1,0};view.trackTargetX=view.trackTargetY=view.trackTargetZ=false;camera->StartOverride(view);camera->Update();CameraManager::GetInstance()->GetMainCamera()->StartOverride(view);CameraManager::GetInstance()->SetActiveCamera(camera.get());
+            previous=CameraManager::GetInstance()->GetActiveCameraOverride();camera=std::make_unique<engine::Camera>();camera->Initialize();camera->SetFovY(0.65f);
+            engine::Camera::CameraOverrideParams view;view.duration=0;view.fixedEyePos=base+engine::Vector3{0,4,-13};view.fixedTargetPos=base+engine::Vector3{0,1,0};view.trackTargetX=view.trackTargetY=view.trackTargetZ=false;camera->StartOverride(view);camera->Update();CameraManager::GetInstance()->GetMainCamera()->StartOverride(view);CameraManager::GetInstance()->SetActiveCamera(camera.get());
             Access::Hold(bomber);phase=2;frames=0;return;
         }
         if(phase==2) {
             auto* held=Access::Held(bomber);Require(held && held->GetIsVisible(),"held bomb disappeared");
             const auto expected=Access::Expected(bomber);
             Require(engine::Math::Length(held->GetWorldPosition()-expected)<0.002f,"held bomb did not follow final owner pose");
-            auto* resource=held->GetMeshRenderer()->GetWvpResource();void* address=nullptr;D3D12_RANGE range{0,sizeof(MeshRenderer::TransformationMatrix)};
-            Require(SUCCEEDED(resource->Map(0,&range,&address)),"held bomb render buffer map failed");MeshRenderer::TransformationMatrix gpu;std::memcpy(&gpu,address,sizeof(gpu));D3D12_RANGE noWrite{0,0};resource->Unmap(0,&noWrite);
+            auto* resource=held->GetMeshRenderer()->GetWvpResource();void* address=nullptr;D3D12_RANGE range{0,sizeof(engine::MeshRenderer::TransformationMatrix)};
+            Require(SUCCEEDED(resource->Map(0,&range,&address)),"held bomb render buffer map failed");engine::MeshRenderer::TransformationMatrix gpu;std::memcpy(&gpu,address,sizeof(gpu));D3D12_RANGE noWrite{0,0};resource->Unmap(0,&noWrite);
             Require(Same(gpu.world,held->GetWorldMatrix()),"held bomb world was not uploaded");
             const auto wvp=engine::Math::Multiply(held->GetWorldMatrix(),CameraManager::GetInstance()->GetActiveCamera()->GetViewProjectionMatrix());
             Require(Same(gpu.wvp,wvp,0.05f),"held bomb camera matrix was stale");
             if(++frames==8) {
                 initialWvp=gpu.wvp;initialViewProjection=CameraManager::GetInstance()->GetActiveCamera()->GetViewProjectionMatrix();GateEntryRuntimeProbe::Capture(path+".held-camera-a.png");
-                Camera::CameraOverrideParams view;view.duration=0;view.fixedEyePos=base+engine::Vector3{6,5,-11};view.fixedTargetPos=base+engine::Vector3{0,1,0};view.trackTargetX=view.trackTargetY=view.trackTargetZ=false;camera->StartOverride(view);camera->Update();CameraManager::GetInstance()->GetMainCamera()->StartOverride(view);
+                engine::Camera::CameraOverrideParams view;view.duration=0;view.fixedEyePos=base+engine::Vector3{6,5,-11};view.fixedTargetPos=base+engine::Vector3{0,1,0};view.trackTargetX=view.trackTargetY=view.trackTargetZ=false;camera->StartOverride(view);camera->Update();CameraManager::GetInstance()->GetMainCamera()->StartOverride(view);
                 bomber->SetTranslate(base+engine::Vector3{2,0,0});
             }
             if(frames==16) {

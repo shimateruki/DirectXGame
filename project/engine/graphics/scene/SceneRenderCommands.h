@@ -1,8 +1,8 @@
 #pragma once
 #include <cstdint>
 
-class DirectXCommon;
-class Camera;
+namespace engine { class DirectXCommon; }
+namespace engine { class Camera; }
 class GpuParticleManager;
 
 namespace engine {
@@ -14,7 +14,7 @@ class SpriteCommon;
 class SceneRenderCommands {
 public:
     /// <summary>GPU資源を生成せず、所有者より長く生存するDirectX基盤を借用する。</summary>
-    explicit SceneRenderCommands(DirectXCommon& dxCommon);
+    explicit SceneRenderCommands(engine::DirectXCommon& dxCommon);
     SceneRenderCommands(const SceneRenderCommands&) = delete;
     SceneRenderCommands& operator=(const SceneRenderCommands&) = delete;
 
@@ -33,10 +33,10 @@ public:
     /// <summary>最後にコピーした本編の画面色を参照するSRV番号を返す。</summary>
     uint32_t GetSceneColorSrvHandle() const;
     /// <summary>指定カメラとテクスチャ番号で粒子の描画命令だけを記録する。深度切替と背景コピーは行わない。</summary>
-    void RecordGpuParticles(GpuParticleManager& particles, const Camera& camera, uint32_t textureHandle);
+    void RecordGpuParticles(GpuParticleManager& particles, const engine::Camera& camera, uint32_t textureHandle);
 
 private:
     // 非所有参照。コマンドリストは保持せず、各命令の実行時に現在のものを取得する。
-    DirectXCommon& dxCommon_;
+    engine::DirectXCommon& dxCommon_;
 };
 } // namespace engine

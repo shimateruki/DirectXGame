@@ -5,6 +5,8 @@
 #include"ImGuiManager.h"
 #include"LightManager.h"
 #include "engine/system/scene/LoadingProfiler.h"
+
+namespace engine {
 void Framework::Initialize() {
 	// ウィンドウ、DirectX、入力、音声、ImGui、各種マネージャを起動順に初期化する。
     StartupProfileScope frameworkProfile("Framework::Initialize");
@@ -24,6 +26,7 @@ void Framework::Initialize() {
     audioPlayer_ = AudioPlayer::GetInstance();
     audioPlayer_->Initialize();
 
+    // 先に描画用の記述子を確保できるようにし、深度・影のビューとImGuiの初期化を続ける。
     SrvManager::GetInstance()->Initialize(dxCommon_);
     dxCommon_->CreateDepthSrv();
     dxCommon_->CreateShadowMap();
@@ -58,6 +61,7 @@ void Framework::Finalize() {
     // SceneとEditorの終了・GPU待機が完了してから、共有PSOをDeviceより先に破棄する。
     renderCommonResources_.reset();
     dxCommon_->Finalize();
+    // OS側のCOMを使う描画基盤を解放してから、初期化時のCOM登録を解除する。
     CoUninitialize();
 }
 
@@ -68,3 +72,5 @@ void Framework::Run() {
         Draw();
     }
 }
+
+} // namespace engine

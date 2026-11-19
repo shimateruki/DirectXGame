@@ -11,7 +11,7 @@ namespace engine {
 RenderCommonResources::RenderCommonResources() = default;
 RenderCommonResources::~RenderCommonResources() = default;
 
-void RenderCommonResources::Initialize(DirectXCommon* dxCommon) {
+void RenderCommonResources::Initialize(engine::DirectXCommon* dxCommon) {
     // Deviceより長く生存しない。再初期化で既存PSOを黙って差し替える使い方は拒否する。
     if (!dxCommon || dxCommon_) {
         throw std::logic_error("RenderCommonResources requires one valid DirectX initialization");
@@ -20,6 +20,7 @@ void RenderCommonResources::Initialize(DirectXCommon* dxCommon) {
     dxCommon_ = dxCommon;
 }
 
+// Spriteは全経路で必須。軽量・全体準備ではCPU粒子と、要求された範囲の3Dパイプラインの完了も待つ。
 bool RenderCommonResources::IsReady(RenderPreparation preparation) const {
     if (!spriteCommon_) return false;
     if (preparation == RenderPreparation::SpritesOnly) return true;
@@ -35,6 +36,7 @@ bool RenderCommonResources::PrepareStep(RenderPreparation preparation) {
     assert(dxCommon_);
     if (IsReady(preparation)) return true;
 
+    // どの準備範囲でもSpriteを先に用意し、SpritesOnlyならこの段階で完了とします。
     if (!spriteCommon_) {
         auto common = std::make_unique<SpriteCommon>();
         common->Initialize(dxCommon_);
@@ -64,6 +66,7 @@ bool RenderCommonResources::PrepareStep(RenderPreparation preparation) {
         return false;
     }
 
+    // 軽量・全体のどちらでも3D側の要求範囲を満たしてから、共有のCPU粒子パイプラインを用意します。
     if (!particleCommon_) {
         auto common = std::make_unique<ParticleCommon>();
         common->Initialize(dxCommon_);
@@ -78,6 +81,7 @@ float RenderCommonResources::GetPreparationProgress(RenderPreparation preparatio
     const float objectProgress = preparation == RenderPreparation::Minimal
         ? (minimalReady_ ? 1.0f : 0.0f)
         : (fullReady_ ? 1.0f : (fullPreparationStarted_ ? object3dCommon_->GetInitializationProgress() : 0.0f));
+    // Sprite、3D、CPU粒子の3枠を等分します。処理時間の割合ではなく準備段階の目安です。
     return std::clamp(((spriteCommon_ ? 1.0f : 0.0f) + objectProgress +
                        (particleCommon_ ? 1.0f : 0.0f)) / 3.0f, 0.0f, 1.0f);
 }

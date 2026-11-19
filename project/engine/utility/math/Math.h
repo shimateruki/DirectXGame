@@ -29,6 +29,7 @@ struct Vector3
 		z = other.z;
 		return *this;
 	}
+	// 成分ごとの比を返します。各成分の分母が0にならないことは呼び出し側で保証します。
 	Vector3 operator/(const Vector3& v) const {
 		return { x / v.x, y / v.y, z / v.z };
 	}
@@ -99,6 +100,7 @@ struct Matrix4x4
 // 関連：Math（この型を使う機能の本体）
 struct Ray {
 	Vector3 origin;
+	// レイ上の点は origin + diff × t で表します。diff が単位長なら t はワールド距離になります。
 	Vector3 diff;
 };
 
@@ -125,6 +127,7 @@ Vector3& operator+=(Vector3& v1, const Vector3& v2);
 
 /// <summary>法線と原点からの距離で表す平面。</summary>
 // 関連：Math（この型を使う機能の本体）
+// normal と点の内積に distance を加えた値で面の側を判定します。distance は符号を含む平面式の定数項です。
 struct Plane {
 	Vector3 normal;
 	float distance;

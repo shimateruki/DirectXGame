@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "0a7c377e22762b395e08163eee732886",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/fire/guide_title.png",
+  "version": 1
+}

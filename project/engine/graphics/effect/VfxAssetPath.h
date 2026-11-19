@@ -24,6 +24,7 @@ auto FindPreset(Map& presets, const std::string& key) {
 
 inline std::filesystem::path Resolve(const std::filesystem::path& root, const std::filesystem::path& requested) {
     namespace fs = std::filesystem;
+    // 旧形式の直下JSONだけを補完します。利用者がフォルダーを明示したパスはそのまま使います。
     const auto relative = requested.lexically_normal().lexically_relative(root.lexically_normal());
     if (relative.empty() || relative.has_parent_path() || relative.extension() != ".json") return requested;
     std::error_code error;
@@ -32,6 +33,7 @@ inline std::filesystem::path Resolve(const std::filesystem::path& root, const st
     fs::path found;
     for (fs::recursive_directory_iterator it(root, error), end; !error && it != end; it.increment(error)) {
         if (it->path().filename() != relative || !it->is_regular_file(error)) continue;
+        // 同名の候補が複数あるときは、誤った別素材を読み込まないよう元のパスを返します。
         if (!found.empty()) return requested;
         found = it->path();
     }

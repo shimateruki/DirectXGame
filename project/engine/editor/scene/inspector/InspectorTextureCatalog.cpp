@@ -173,6 +173,7 @@ void InspectorTextureCatalog::Rebuild() {
         AssignPreferredTexture(preset.normalPath, pathString);
       } else if (pathString.find("/ARM/") != std::string::npos) {
         AssignPreferredTexture(preset.ormPath, pathString);
+      // 既定素材だけは用途別フォルダーで分けられないため、名前を基に3枚のうちどの画像かを判断します。
       } else if (pathString.find("/Default/") != std::string::npos) {
         const std::string stem = ToLowerAscii(path.stem().string());
         if (stem.find("albedo") != std::string::npos ||
@@ -206,6 +207,7 @@ void InspectorTextureCatalog::Rebuild() {
     }
   }
 
+  // 再走査してもコンボの候補順がディレクトリの列挙順によって変わらないようにします。
   const auto sortPaths = [](std::vector<std::string> &paths) {
     std::sort(paths.begin(), paths.end());
   };

@@ -19,6 +19,7 @@ using json = nlohmann::json;
 namespace {
 // 自動更新される組み込み定義でも、ユーザーの表示名・用途・お気に入りを保ちます。
 void PreservePresetCatalogFields(const json& current, json& replacement) {
+    // プリセット一覧の表示順や分類を再生成で失わないよう、従来の preset 接頭辞を持つ項目を移します。
     for (auto it = current.begin(); it != current.end(); ++it) {
         if (it.key().rfind("preset", 0) == 0)
             replacement[it.key()] = it.value();
@@ -66,6 +67,7 @@ bool RegisterPresetOnce(const std::string& presetName, std::unique_ptr<engine::O
         return false;
     }
 
+    // 表示名と変形を確定した実体を、エディターから再生成できるJSON形式へ書き出します。
     object->SetName(displayName);
     object->UpdateLocalMatrix();
     object->UpdateWorldMatrix();
@@ -122,6 +124,7 @@ std::unordered_map<std::string, json> LoadStage1PresetSources() {
     std::unordered_map<std::string, json> sources;
     std::ifstream file("Resources/json/3Dobject/stage1_object.json", std::ios::binary);
 
+    // ステージ配置を開けない場合は空の参照表を返し、後続の個別登録を無理に行いません。
     if (!file.is_open()) {
         return sources;
     }
@@ -146,6 +149,7 @@ std::unordered_map<std::string, json> LoadStage1PresetSources() {
                 sources.emplace(name, object);
             }
         }
+    // 構造の不正で途中までしか読み込めなかった場合は、取得済みの配置も破棄します。
     } catch (...) {
         sources.clear();
     }
@@ -422,6 +426,7 @@ bool RegisterStage1LibraryPresets() {
 }
 
 std::unique_ptr<engine::Object3D> CreateSpriteCardPreset(engine::Object3DCommon* common) {
+    // 初期状態は白い板にし、配置後に任意の画像を張れる透過描画の設定を用意します。
     auto object = std::make_unique<engine::Object3D>();
     object->Initialize(common);
     object->SetClassName("Model");
@@ -439,7 +444,7 @@ std::unique_ptr<engine::Object3D> CreateSpriteCardPreset(engine::Object3DCommon*
     object->SetCollisionMask(0);
 
     // 2.5D 板は描画専用なので、既定の Collider と衝突カテゴリを持たせません。
-    ColliderConfig colliderConfig = object->GetColliderConfig();
+    engine::ColliderConfig colliderConfig = object->GetColliderConfig();
     colliderConfig.type = ColliderType::None;
     object->SetColliderConfig(colliderConfig);
 
@@ -448,6 +453,7 @@ std::unique_ptr<engine::Object3D> CreateSpriteCardPreset(engine::Object3DCommon*
 }
 
 void BuiltInCreatePresetRegistry::EnsureRegistered(engine::Object3DCommon* common) {
+    // モデルの初期化に必要な共通部が準備できるまでは登録を始めません。
     if (!common) {
         return;
     }
@@ -497,6 +503,7 @@ void BuiltInCreatePresetRegistry::EnsureRegistered(engine::Object3DCommon* commo
         if (!station) {
             continue;
         }
+        // 単体のコピー台には選択された能力だけを設定し、残りの枠を空にします。
         if (!station->GetParameters()) {
             station->ResetParameters();
         }

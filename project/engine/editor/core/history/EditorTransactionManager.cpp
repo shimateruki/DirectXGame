@@ -64,11 +64,13 @@ void EditorTransactionManager::CommitInteractive(
 
     EditorTransaction transaction = std::move(interactiveTransaction_->transaction);
     interactiveTransaction_.reset();
+    // ドラッグ開始時点の復元処理と終了時点の再適用を一組として登録する。
     transaction.redo = std::move(redo);
     Register(std::move(transaction));
 }
 
 void EditorTransactionManager::CancelInteractive(std::uint64_t itemId) {
+    // 一致する操作の履歴候補を捨てるだけ。編集中に変更済みの値はこの関数で巻き戻さない。
     if (interactiveTransaction_ && interactiveTransaction_->itemId == itemId) {
         interactiveTransaction_.reset();
     }
@@ -105,6 +107,7 @@ void EditorTransactionManager::EndGroup() {
         return;
     }
 
+    // 再適用と取り消しの両方から、同じ操作群の寿命を共有する。
     auto grouped = std::make_shared<std::vector<EditorTransaction>>(std::move(groupTransactions_));
     EditorTransaction transaction;
     transaction.label = groupLabel_;
@@ -118,6 +121,7 @@ void EditorTransactionManager::EndGroup() {
     };
 
     transaction.redo = [grouped]() {
+        // 再適用は元の実行順。後続の編集が先行する変更を参照できるようにする。
         for (EditorTransaction& entry : *grouped) {
             if (entry.redo) {
                 entry.redo();

@@ -93,6 +93,7 @@ class CrownGateWarp {
                 distance = next;
             }
         }
+        // 出口の重なりは敵も含めて確認する。接地を保つ回避では、出口の真下に立てる床も必要。
         PhysicsQueryFilter solid = terrain;
         solid.mask |= CollisionCategories::Get("enemy");
         for (; distance >= kMinTravel; distance -= 0.20f) {
@@ -194,6 +195,7 @@ public:
         const float distance = SafeDistance(player, body, direction_, wanted, needsFloor_);
         if (distance < kMinTravel)
             return false;
+        // 入口と出口の両方を作れた段階で回避を確定し、片方しかない場合は操作を止めない。
         auto entry = makeGate(PortalNormal(false));
         auto end = makeGate(PortalNormal(true));
         if (!entry || !end)
@@ -211,6 +213,7 @@ public:
         age_ = 0.0f;
         crossed_ = false;
         cooldown_ = settings.warpCooldown;
+        // 操作の許可を退避し、回避中の水平移動を止める。高さ方向の速度は維持する。
         restoreControl_ = player.IsControlActive();
         player.SetIsControlActive(false);
         player.SetVelocity({0,player.GetVelocity().y,0});
@@ -226,32 +229,38 @@ public:
     }
     // dtは秒。通過時に出口へ切り替え、終了・死亡・演出ロックでは一時状態を戻す。
     void Update(Player& player, float deltaTime) {
+        // 回避が終わった後も残光と再使用待ちは進め、移動本体は実行中にだけ更新する。
         effects_.Update(deltaTime);
         cooldown_ = (std::max)(0.0f, cooldown_ - deltaTime);
         if (!Active())
             return;
         age_ += deltaTime;
+        // 通過時刻で一度だけ目的地を再検証し、地形が変わっても塞がれた場所へ移動しない。
         if (!crossed_ && age_ >= kTransit) {
             const auto body = Measure(player);
             const auto from = player.GetWorldPosition();
             const float wanted = engine::Math::Dot(destination_ - from, direction_);
             const float distance = SafeDistance(player, body, direction_, wanted, needsFloor_);
+            // 必要な通過距離を確保できなければ、移動と通過演出を行わず終了する。
             if (distance < kMinTravel) {
                 End(player);
                 return;
             }
             destination_ = from + direction_ * distance;
             player.PlaySlimeAbilityMotion("player_ability_crown_warp_exit", false, 1.0f, 0.0f, 0.03f);
+            // 移動前の身体位置から通過範囲を判定してから、プレイヤーと描画の位置を出口へ移す。
             CrossArmor(player, body, direction_, distance);
             player.SetTranslate(destination_);
             player.UpdateLocalMatrix();
             player.UpdateWorldMatrix(true);
             player.TriggerSlimeImpulse({1.16f,0.82f,1.20f},0.13f);
             crossed_ = true;
+            // 出口の粒子とリングを、確定した通過距離だけ進めた身体の位置に置く。
             const Vec cue = body.center + direction_ * distance;
             CrownAbilityEffects::Emit("player/copy/crown/player_crown_portal_exit", cue, direction_, presentation_.particleScale);
             effects_.Ring(cue, PortalNormal(true), gateExtent_ * 1.10f);
         }
+        // 回避全体の時間が尽きたら操作を戻し、途中のポーズ更新を重ねない。
         if (age_ >= kDuration) {
             End(player);
             return;
@@ -260,11 +269,12 @@ public:
     }
     // 回避の残光を解放する。Playerの操作や通過位置はここでは変えない。
     void ClearEffects() { effects_.Clear(); }
-    void DrawEffects(ID3D12Resource* point, ID3D12Resource* spot, Camera* camera, int index) {
+    void DrawEffects(ID3D12Resource* point, ID3D12Resource* spot, engine::Camera* camera, int index) {
         effects_.Draw(point,spot,camera,index);
     }
-    void Draw(Camera* camera, uint32_t depth, uint32_t grab, int index) {
+    void Draw(engine::Camera* camera, uint32_t depth, uint32_t grab, int index) {
         if (!Active()) return;
+        // 見えているゲートだけ、深度と画面取得テクスチャを使う描画へ渡す。
         for (auto* gate : {entrance_.get(), exit_.get()}) {
             if (!gate->GetIsVisible()) continue;
             gate->UpdateWorldMatrix(true);

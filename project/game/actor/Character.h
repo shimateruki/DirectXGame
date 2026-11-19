@@ -71,10 +71,10 @@ class Character : public engine::Object3D {
     /// <summary>CharacterMotorの設定を現在のキャラクターパラメータへ同期する。</summary>
     void SyncCharacterMotorSettings();
 
-    /// <summary>演出が座標を直接制御するフレームでは重力とMotor移動を止める。</summary>
     /// <summary>速度・接地状態を所有したまま、一回分の重力と衝突移動を進める。</summary>
     void SimulateMotorStep(engine::Vector3& position, float gravity, float maxFallSpeed, float deltaTime);
 
+    /// <summary>座標を別の処理で決める間は、Update() 内の重力とMotor移動を止めます。</summary>
     void SetMotorSuspended(bool suspended) { motorSuspended_ = suspended; }
 
     /// <summary>リプレイ用JSONからCharacter固有の状態を戻す。</summary>

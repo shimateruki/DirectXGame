@@ -15,6 +15,8 @@
 
 namespace engine { class Object3D; }
 
+namespace engine {
+
 // 担当：モデルのCPUデータ、スケルトンと描画用GPU資源を保持する。
 // 関連：ModelManager（読込・キャッシュ）、ModelCommon（共有基盤）、MeshRenderer（描画）
 // 主な入口：Initialize / LoadCpuData / ApplyAnimation / PrepareComputeSkinning
@@ -101,6 +103,7 @@ public:
     struct Joint {
         QuaternionTransform transform;
         engine::Matrix4x4 localMatrix;
+        // 親の変換まで累積したモデル内の姿勢。ワールド配置はここに含めない。
         engine::Matrix4x4 skeletonSpaceMatrix;
         std::string name;
         std::vector<int32_t> children;
@@ -392,6 +395,7 @@ private:
     ModelData modelData_{};
 
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
+    // GPU定数バッファにマップした先頭マテリアル。このポインタ自体はバッファを所有しない。
     Material* materialData_ = nullptr;
 
     engine::Math math_;
@@ -405,9 +409,11 @@ private:
     uint32_t lastUpdateFrame_ = 0xFFFFFFFF; // 最後に更新したフレーム番号。
     bool computeSkinningAvailable_ = false;
     bool computeSkinningDirty_ = true;
+    // 現在姿勢の頂点をComputeで生成したか。描画で使う頂点バッファの切り替えに使う。
     bool computeSkinningOutputReady_ = false;
 
     engine::Vector3 localAabbMin_ = engine::Vector3::ZERO;
     engine::Vector3 localAabbMax_ = engine::Vector3::ZERO;
 };
 
+} // namespace engine

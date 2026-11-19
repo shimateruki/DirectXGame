@@ -22,7 +22,7 @@ inline void AfterDraw(SceneManager* manager,const std::string& path) {
     static int phase=0,frames=0;
     static size_t objectCount=0;
     static Player* originalPlayer=nullptr;
-    static Camera* originalCamera=nullptr;
+    static engine::Camera* originalCamera=nullptr;
     static engine::Vector3 initialEye{},initialPlayer{};
     static float bars=0;
     static int crowns=0;

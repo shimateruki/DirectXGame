@@ -56,6 +56,7 @@ bool NavGrid::Build(const NavGridBuildSettings& sourceSettings, const PhysicsQue
     if (settings_.boundsMin.z > settings_.boundsMax.z)
         std::swap(settings_.boundsMin.z, settings_.boundsMax.z);
 
+    // 探索範囲をセル幅で割って切り上げる。両端の格子点を含めるため個数に1を足す。
     const float spanX = (std::max)(settings_.cellSize, settings_.boundsMax.x - settings_.boundsMin.x);
     const float spanZ = (std::max)(settings_.cellSize, settings_.boundsMax.z - settings_.boundsMin.z);
     width_ = (std::clamp)(static_cast<int>(std::ceil(spanX / settings_.cellSize)) + 1, 1, settings_.maxCellsPerAxis);
@@ -90,6 +91,7 @@ bool NavGrid::Build(const NavGridBuildSettings& sourceSettings, const PhysicsQue
         obstacle.min.z -= settings_.agentRadius;
         obstacle.max.x += settings_.agentRadius;
         obstacle.max.z += settings_.agentRadius;
+        // 膨らませた障害物の最小側は切り下げ、最大側は切り上げて、端にかかるセルも塞ぐ。
         const int minX = (std::clamp)(
             static_cast<int>(std::floor((obstacle.min.x - settings_.boundsMin.x) / settings_.cellSize)),
             0, width_ - 1);
@@ -152,6 +154,7 @@ bool NavGrid::FindNearestWalkable(int sourceX, int sourceZ, int& outX, int& outZ
     for (int radius = 1; radius < maxRadius; ++radius) {
         for (int z = sourceZ - radius; z <= sourceZ + radius; ++z) {
             for (int x = sourceX - radius; x <= sourceX + radius; ++x) {
+                // 内側のセルは前の半径で確認済みなので、新しく広げた正方形の外周だけを調べる。
                 if (std::abs(x - sourceX) != radius && std::abs(z - sourceZ) != radius)
                     continue;
                 if (!IsBlocked(x, z)) {
@@ -187,6 +190,7 @@ bool NavGrid::FindPath(const engine::Vector3& start, const engine::Vector3& goal
     std::vector<std::uint8_t> closed(static_cast<std::size_t>(cellCount), 0);
     std::priority_queue<OpenNode, std::vector<OpenNode>, OpenNodeGreater> open;
 
+    // 障害物がないと仮定し、斜めに進める分を√2、残りの直進を1として残りコストを見積もる。
     const auto heuristic = [goalX, goalZ](int x, int z) {
         const int dx = std::abs(goalX - x);
         const int dz = std::abs(goalZ - z);
@@ -204,6 +208,7 @@ bool NavGrid::FindPath(const engine::Vector3& start, const engine::Vector3& goal
     const int directionCount = settings_.allowDiagonal ? 8 : 4;
 
     while (!open.empty()) {
+        // 同じセルが別経路で候補に入るため、既に確定済みの候補は取り出した時点で捨てる。
         const int index = open.top().index;
         open.pop();
         if (closed[static_cast<std::size_t>(index)] != 0)
@@ -228,6 +233,7 @@ bool NavGrid::FindPath(const engine::Vector3& start, const engine::Vector3& goal
                 continue;
 
             const int nextIndex = ToIndex(nextX, nextZ);
+            // 到達コストの単位はセル幅。斜めの移動は直交移動より√2倍の距離を使う。
             const float stepCost = dx != 0 && dz != 0 ? std::numbers::sqrt2_v<float> : 1.0f;
             const float nextCost = cost[static_cast<std::size_t>(index)] + stepCost;
             if (nextCost >= cost[static_cast<std::size_t>(nextIndex)])
@@ -238,8 +244,10 @@ bool NavGrid::FindPath(const engine::Vector3& start, const engine::Vector3& goal
         }
     }
 
+    // 同じセルから始まる場合は親を持たなくても到達済み。その他は親がなければ到達できていない。
     if (startIndex != goalIndex && parent[static_cast<std::size_t>(goalIndex)] < 0)
         return false;
+    // 目標から親セルを逆にたどるため、経路を反転してから進行方向順に並べる。
     for (int index = goalIndex; index >= 0; index = parent[static_cast<std::size_t>(index)]) {
         outPath.push_back(GetCellCenter(index % width_, index / width_));
         if (index == startIndex)

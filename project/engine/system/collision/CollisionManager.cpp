@@ -99,6 +99,7 @@ void CollisionManager::RemoveObject(engine::Object3D* object) {
         needsStaticGridRebuild_ = true;
     }
 
+    // 登録解除した参照が後の通知に残らないよう、前回分と今回分の両方から取り除く。
     const auto removeContacts = [object](auto& contacts) {
         for (auto it = contacts.begin(); it != contacts.end();) {
             if (it->first.first == object || it->first.second == object) {
@@ -171,6 +172,7 @@ int64_t CollisionManager::GetGridIdFromIndices(int x, int y, int z) {
     int64_t maskedY = cellY & mask;
     int64_t maskedZ = cellZ & mask;
 
+    // 各軸を21ビットずつ詰め、表現範囲内で軸同士が重ならないセルIDを作る。
     return (maskedZ << 42) | (maskedY << 21) | maskedX;
 }
 
@@ -192,6 +194,7 @@ void CollisionManager::BuildStaticGrid() {
         Vector3i minCell = GetGridIndices(aabb.min);
         Vector3i maxCell = GetGridIndices(aabb.max);
 
+        // 中心セルだけでなく、外接箱が占有する全セルに登録して境界の接触も拾う。
         // 静的グリッド (staticGrid_) に登録
         for (int z = minCell.z; z <= maxCell.z; ++z) {
             for (int y = minCell.y; y <= maxCell.y; ++y) {
@@ -301,6 +304,7 @@ void CollisionManager::Update() {
         }
     }
 
+    // 全セルの判定を集めてからイベントを通知し、通知後に今回分を次回比較用に保存する。
     DispatchContactEvents();
     previousContacts_ = currentContacts_;
 }
@@ -312,6 +316,7 @@ void CollisionManager::CheckCollisionPair(engine::Object3D* objA, engine::Object
         return;
     }
 
+    // どちらか片方の許可だけでは接触させず、両者のマスクと相手の属性を確認する。
     // 衝突フィルタリング
     if (!((objA->GetContactCollisionMask() & objB->GetCollisionAttribute()) &&
         (objB->GetContactCollisionMask() & objA->GetCollisionAttribute()))) {
@@ -319,8 +324,8 @@ void CollisionManager::CheckCollisionPair(engine::Object3D* objA, engine::Object
     }
 
     // 実際に形状が重なっている場合だけOnCollisionを呼び出す
-    Collider* colliderA = objA->GetCollider();
-    Collider* colliderB = objB->GetCollider();
+    engine::Collider* colliderA = objA->GetCollider();
+    engine::Collider* colliderB = objB->GetCollider();
 
     if (!colliderA || !colliderB) {
         return;
@@ -339,6 +344,7 @@ void CollisionManager::CheckCollisionPair(engine::Object3D* objA, engine::Object
     ContactState state;
     state.firstInfo = collisionInfo;
 
+    // ペアキーが判定時の順と逆になる場合も、法線をキーの先頭側へ向けて保存する。
     if (pair.first != objA) {
         state.firstInfo.normal = state.firstInfo.normal * -1.0f;
     }
@@ -382,6 +388,7 @@ void CollisionManager::DispatchContactEvents() {
         dispatch(pair.second, pair.first, secondInfo, phase, state.isTrigger);
     }
 
+    // 前回だけにある接触は終了。最後に得た接触情報を両者に向けて返す。
     for (const auto& [pair, state] : previousContacts_) {
         if (currentContacts_.count(pair))
             continue;
@@ -512,6 +519,7 @@ float IntersectRaySphere(const engine::Vector3& start, const engine::Vector3& di
         return std::numeric_limits<float>::max();
     }
 
+    // レイ上の点と球中心の距離二乗が半径二乗になる条件を二次式に展開する。
     float b = 2.0f * (m.x * direction.x + m.y * direction.y + m.z * direction.z);
     float c = (m.x * m.x + m.y * m.y + m.z * m.z) - radius * radius;
     float discriminant = b * b - 4.0f * a * c;
@@ -580,7 +588,7 @@ RaycastHit CollisionManager::Raycast(const engine::Vector3& start, const engine:
         }
 
             // =========================================================
-               // (2) 形状判定 (Aabb と Obb に対応)
+               // (2) AABB・OBB・球を対象にする
                // =========================================================
             ColliderType colType = object->GetColliderType();
             if (colType != ColliderType::Aabb &&
@@ -691,6 +699,7 @@ RaycastHit CollisionManager::RaycastInternal(
     // 有効な形状だけを調べ、最も手前に当たった物へ結果を更新する。
     RaycastHit closestHit;
     closestHit.distance = (std::max)(0.0f, maxDistance);
+    // 方向を単位ベクトルに揃え、交差パラメーターをワールド距離として扱う。
     const engine::Vector3 rayDirection = SafeNormalize(direction);
     if (engine::Math::Length(rayDirection) <= 0.000001f || maxDistance < 0.0f)
         return closestHit;
@@ -735,6 +744,7 @@ RaycastHit CollisionManager::RaycastInternal(
         const bool useModelVolume = object->GetCollider()->HasModelVolume();
         if (useModelVolume && !object->GetCollider()->RaycastModelVolume(
                 start, rayDirection, closestHit.distance, distance, surfaceNormal)) continue;
+        // 上面専用のモデル形状は、下向き成分が水平成分より大きいレイにだけ使う。
         const bool useModelSurface = object->GetCollider()->HasModelSurface() &&
             !useModelVolume &&
             rayDirection.y < 0.0f && -rayDirection.y >
@@ -819,8 +829,8 @@ std::vector<PhysicsOverlapHit> CollisionManager::OverlapSphereCandidates(
     Transform queryTransform;
     queryTransform.translate = center;
     queryTransform.UpdateMatrix();
-    Collider queryCollider(&queryTransform);
-    ColliderConfig queryConfig;
+    engine::Collider queryCollider(&queryTransform);
+    engine::ColliderConfig queryConfig;
     queryConfig.type = ColliderType::Sphere;
     queryConfig.size = { radius, radius, radius };
     queryCollider.SetConfig(queryConfig);
@@ -855,8 +865,8 @@ std::vector<PhysicsOverlapHit> CollisionManager::OverlapAabb(
     Transform queryTransform;
     queryTransform.translate = (bounds.min + bounds.max) * 0.5f;
     queryTransform.UpdateMatrix();
-    Collider queryCollider(&queryTransform);
-    ColliderConfig queryConfig;
+    engine::Collider queryCollider(&queryTransform);
+    engine::ColliderConfig queryConfig;
     queryConfig.type = ColliderType::Aabb;
     queryConfig.size = halfSize;
     queryCollider.SetConfig(queryConfig);
@@ -884,6 +894,7 @@ std::vector<PhysicsOverlapHit> CollisionManager::OverlapCapsule(
 
     const engine::Vector3 segment = pointB - pointA;
     const float length = engine::Math::Length(segment);
+    // 端から端までをおおむね半径単位で分割する。半径が小さいときは刻みを最低0.05ワールド単位にする。
     const int sampleCount = (std::max)(1, static_cast<int>(std::ceil(length / (std::max)(radius, 0.05f))));
 
     for (int sampleIndex = 0; sampleIndex <= sampleCount; ++sampleIndex) {
@@ -909,7 +920,7 @@ std::vector<PhysicsOverlapHit> CollisionManager::OverlapCapsule(
 RaycastHit CollisionManager::SphereCast(
     const engine::Vector3& start, float radius, const engine::Vector3& direction, float maxDistance,
     const PhysicsQueryFilter& filter) const {
-    // 半径の半分以下の間隔で球を進め、最初の重なりを移動体の接触として返す。
+    // 半径の半分を目安に球を進める。刻みは最低0.05ワールド単位で、最初の重なりを接触とする。
     RaycastHit hit;
     hit.distance = (std::max)(0.0f, maxDistance);
     const engine::Vector3 castDirection = SafeNormalize(direction);
@@ -928,7 +939,7 @@ RaycastHit CollisionManager::SphereCast(
         const uint32_t attribute = object->GetCollisionAttribute();
         if (attribute != 0 && (attribute & filter.mask) == 0) continue;
 
-        const Collider* collider = object->GetCollider();
+        const engine::Collider* collider = object->GetCollider();
         const ColliderType type = collider->GetType();
         // モデル面・凸包・高さ地形などは箱の範囲と接触範囲が一致するとは限らないため残します。
         if ((type == ColliderType::Aabb || type == ColliderType::Obb) &&
@@ -975,6 +986,7 @@ RaycastHit CollisionManager::SphereCast(
             float lower = stepLength * static_cast<float>(stepIndex - 1);
             float upper = distance;
 
+            // 非接触と接触の間を二分し、同じ物体と初めて重なる距離に近づける。指定時は反復を増やす。
             const int refinementCount = filter.refineSphereCastHit ? 8 : 5;
             for (int iteration = 0; iteration < refinementCount; ++iteration) {
                 const float middle = (lower + upper) * 0.5f;
@@ -996,6 +1008,7 @@ RaycastHit CollisionManager::SphereCast(
         hit.hitObject = contact.object;
         hit.distance = hitDistance;
         hit.normal = contact.collision.normal;
+        // 命中距離で得られるのは球の中心。接触法線と逆に半径分戻した点を接触点として返す。
         hit.hitPoint = start + castDirection * hitDistance - hit.normal * radius;
         return hit;
     }
@@ -1035,6 +1048,7 @@ RaycastHit CollisionManager::CapsuleCast(
         hit.hitObject = deepest->object;
         hit.distance = distance;
         hit.normal = deepest->collision.normal;
+        // カプセル軸の中点を半径分ずらした代表点を返す。重なりを検出した球の中心は保持しない。
         hit.hitPoint = (pointA + pointB) * 0.5f + offset - hit.normal * radius;
         return hit;
     }

@@ -167,10 +167,12 @@ inline engine::Vector3 MakeUpAxisAimRotation(const engine::Vector3& direction) {
 inline float DistanceSquaredToSegment(const engine::Vector3& point, const engine::Vector3& start, const engine::Vector3& end) {
     const engine::Vector3 segment = end - start;
     const float lengthSquared = engine::Math::Dot(segment, segment);
+    // 始点と終点がほぼ同じなら、距離を求める線分を一点として扱う。
     if (lengthSquared <= 0.000001f) {
         const engine::Vector3 difference = point - start;
         return engine::Math::Dot(difference, difference);
     }
+    // 投影点を両端の間に制限し、線分の延長上にいる対象を近いと判定しない。
     const float rate = std::clamp(engine::Math::Dot(point - start, segment) / lengthSquared, 0.0f, 1.0f);
     const engine::Vector3 nearest = start + segment * rate;
     const engine::Vector3 difference = point - nearest;
@@ -190,6 +192,7 @@ inline BulletVisualConfig MakePrismFireVisual() {
     visual.effectSoftness = 0.38f;
     visual.effectIntensity = 1.08f;
     visual.billboardScale = 0.74f;
+    // 飛行中の炎・火の粉と、着弾時の炎・火花をそれぞれ別素材に割り当てる。
     visual.trailPreset = "shared/fireball_trail_flame";
     visual.trailSecondaryPreset = "shared/fireball_trail_embers";
     visual.impactPreset = "shared/fireball_impact_flame";

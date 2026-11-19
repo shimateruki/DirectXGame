@@ -1,6 +1,240 @@
 {
     "objects": [
         {
+          "name": "StageSelect_Stage2BridgeCamera_Start",
+          "guid": "01cfff16-2906-497a-8f5b-bce8a3685c9e",
+          "type": "Camera",
+          "saveCategory": "Camera",
+          "position": [
+            7.59006,
+            13.5,
+            23.34702
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "camera": {
+            "version": 1,
+            "enabled": true,
+            "role": 0,
+            "eyeSource": 0,
+            "targetMode": 0,
+            "fixedTarget": [
+              35.19903,
+              2,
+              16.89554
+            ],
+            "fovY": 0.74,
+            "nearClip": 0.1,
+            "farClip": 1000,
+            "blendInDuration": 1.25,
+            "blendOutDuration": 1,
+            "easing": 4,
+            "eyeFollowMode": 0,
+            "targetFollowMode": 0,
+            "region": {
+              "enabled": true,
+              "center": [
+                47.691019999999995,
+                4,
+                22.89169
+              ],
+              "size": [
+                49.7825,
+                18,
+                31.175599999999996
+              ],
+              "priority": 20,
+              "activationDelay": 0.1,
+              "exitMargin": 1.6,
+              "routeEnabled": true,
+              "endCameraGuid": "f303d765-e3eb-4c28-a5c7-610bc6809903",
+              "pathStart": [
+                29.79977,
+                0,
+                14.30389
+              ],
+              "pathEnd": [
+                65.58227,
+                0,
+                31.47949
+              ],
+              "clearForegroundBarriers": false,
+              "color": [
+                0.3,
+                0.85,
+                1,
+                0.8
+              ]
+            }
+          }
+        },
+        {
+          "name": "StageSelect_Stage2BridgeCamera_End",
+          "guid": "f303d765-e3eb-4c28-a5c7-610bc6809903",
+          "type": "Camera",
+          "saveCategory": "Camera",
+          "position": [
+            52.984,
+            9,
+            25.43232
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "camera": {
+            "version": 1,
+            "enabled": true,
+            "role": 0,
+            "eyeSource": 0,
+            "targetMode": 0,
+            "fixedTarget": [
+              71.25149,
+              2,
+              34.20072
+            ],
+            "fovY": 0.72,
+            "nearClip": 0.1,
+            "farClip": 1000,
+            "blendInDuration": 1.25,
+            "blendOutDuration": 1,
+            "easing": 4,
+            "eyeFollowMode": 0,
+            "targetFollowMode": 0
+          }
+        },
+        {
+          "name": "StageSelect_Stage3BridgeCamera_Start",
+          "guid": "073ed7d7-ba60-47db-8ba5-928be0e180fd",
+          "type": "Camera",
+          "saveCategory": "Camera",
+          "position": [
+            19.49032,
+            13.5,
+            -14.55826
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "camera": {
+            "version": 1,
+            "enabled": true,
+            "role": 0,
+            "eyeSource": 0,
+            "targetMode": 0,
+            "fixedTarget": [
+              4.22924,
+              2,
+              -38.06312
+            ],
+            "fovY": 0.74,
+            "nearClip": 0.1,
+            "farClip": 1000,
+            "blendInDuration": 1.25,
+            "blendOutDuration": 1,
+            "easing": 4,
+            "eyeFollowMode": 0,
+            "targetFollowMode": 0,
+            "region": {
+              "enabled": true,
+              "center": [
+                5.730169999999999,
+                4,
+                -51.57156
+              ],
+              "size": [
+                18.29934,
+                18,
+                52.69405999999999
+              ],
+              "priority": 20,
+              "activationDelay": 0.1,
+              "exitMargin": 1.6,
+              "routeEnabled": true,
+              "endCameraGuid": "111babf4-38e9-41ec-a519-93ff8d09bea0",
+              "pathStart": [
+                3.5805,
+                0,
+                -32.22453
+              ],
+              "pathEnd": [
+                7.87984,
+                0,
+                -70.91859
+              ],
+              "clearForegroundBarriers": false,
+              "color": [
+                0.3,
+                0.85,
+                1,
+                0.8
+              ]
+            }
+          }
+        },
+        {
+          "name": "StageSelect_Stage3BridgeCamera_End",
+          "guid": "111babf4-38e9-41ec-a519-93ff8d09bea0",
+          "type": "Camera",
+          "saveCategory": "Camera",
+          "position": [
+            6.36614,
+            9,
+            -57.29522
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "camera": {
+            "version": 1,
+            "enabled": true,
+            "role": 0,
+            "eyeSource": 0,
+            "targetMode": 0,
+            "fixedTarget": [
+              8.56101,
+              2,
+              -77.0491
+            ],
+            "fovY": 0.72,
+            "nearClip": 0.1,
+            "farClip": 1000,
+            "blendInDuration": 1.25,
+            "blendOutDuration": 1,
+            "easing": 4,
+            "eyeFollowMode": 0,
+            "targetFollowMode": 0
+          }
+        },
+        {
             "name": "StageSelect_UnlockCamera_1",
             "guid": "e279611d-c139-4a5d-9d71-3460b95f88a1",
             "type": "Camera",

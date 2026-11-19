@@ -178,9 +178,6 @@ void GameEditorController::RegisterEditorTools() {
     add("mesh", "メッシュエフェクト", "演出", meshEffectEditor_.get());
     add("debris", "3D破片エフェクト", "演出", debrisEffectEditor_.get());
     add("trail", "トレイルエミッター", "演出", trailEmitterEditor_.get());
-    add("inventory", "配置物集計", "ステージ", debugEditor_->GetSceneInventoryWindow());
-    add("material", "マテリアル確認", "素材", debugEditor_->GetMaterialPreviewBoard());
-    add("effectPreview", "エフェクト確認ステージ", "演出", debugEditor_->GetEffectPreviewStage());
 
     add("animator", "Animator Controller", "演出", debugEditor_->GetAnimatorControllerEditor());
     add("text", "テキストPNG生成", "素材", debugEditor_->GetTextSpriteGenerator());
@@ -211,38 +208,39 @@ void GameEditorController::RegisterEditorTools() {
     }, [this, available]() { return available() && sceneManager_->GetCurrentScene(); });
 
     // 可視化フラグは各ツールが持つ実際の状態へのポインタを渡し、設定画面と表示を同期します。
-    settings.AddVisibility("collision", "当たり判定の補助線", debugEditor_->GetDrawCollidersPtr());
-    settings.AddVisibility("invisibleBounds", "透明な壁の補助線", debugEditor_->GetDrawInvisibleBoundsPtr());
-    settings.AddVisibility("sceneIcons", "シーン内の盾・カメラ等のアイコン", debugEditor_->GetDrawSceneIconsPtr());
-    settings.AddVisibility("helperModels", "透明壁・パーティクル配置用の仮モデル");
-    settings.AddVisibility("selectionBounds", "選択オブジェクトの枠・ラベル", debugEditor_->GetDrawSelectionBoundsPtr());
-    settings.AddVisibility("eventIds", "イベントID", debugEditor_->GetDrawEventIdsPtr());
-    settings.AddVisibility("light", "ライトの目印", LightEditor::GetInstance()->GetGizmoVisiblePtr());
+    using VisibilityGroup = EditorToolSettings::VisibilityGroup;
+    settings.AddVisibility(VisibilityGroup::CollisionEvents, "collision", "当たり判定の補助線", debugEditor_->GetDrawCollidersPtr());
+    settings.AddVisibility(VisibilityGroup::CollisionEvents, "invisibleBounds", "透明な壁の補助線", debugEditor_->GetDrawInvisibleBoundsPtr());
+    settings.AddVisibility(VisibilityGroup::SceneEditing, "sceneIcons", "シーン内の盾・カメラ等のアイコン", debugEditor_->GetDrawSceneIconsPtr());
+    settings.AddVisibility(VisibilityGroup::SceneEditing, "helperModels", "透明壁・パーティクル配置用の仮モデル");
+    settings.AddVisibility(VisibilityGroup::SceneEditing, "selectionBounds", "選択オブジェクトの枠・ラベル", debugEditor_->GetDrawSelectionBoundsPtr());
+    settings.AddVisibility(VisibilityGroup::CollisionEvents, "eventIds", "イベントID", debugEditor_->GetDrawEventIdsPtr());
+    settings.AddVisibility(VisibilityGroup::SceneEditing, "light", "ライトの目印", LightEditor::GetInstance()->GetGizmoVisiblePtr());
     auto* camera = CameraEditor::GetInstance();
-    settings.AddVisibility("cameraPreview", "カメラ設定内の映像プレビュー", camera->GetCameraPreviewVisiblePtr());
-    settings.AddVisibility("sceneCameraPreview", "選択カメラのプレビューウィンドウ");
-    settings.AddVisibility("objectOrientation", "選択オブジェクトの向き・軸ラベル");
-    settings.AddVisibility("transformGizmo", "移動・回転・拡縮の操作ギズモ");
-    settings.AddVisibility("placementPreview", "配置・ブラシのプレビューと補助線");
-    settings.AddVisibility("spriteGuides", "Sprite編集の選択枠・操作ハンドル");
-    settings.AddVisibility("meshEffectGuides", "メッシュエフェクトの補助表示");
-    settings.AddVisibility("diagnosticWindows", "デバッグログ・性能・イベント計測ウィンドウ");
-    settings.AddVisibility("cameraGuide", "カメラの視野ガイド", camera->GetCameraGuideVisiblePtr());
-    settings.AddVisibility("cameraBody", "カメラ本体の目印", camera->GetCameraBodyVisiblePtr());
-    settings.AddVisibility("orbitGuide", "カメラ旋回ガイド", camera->GetOrbitGuideVisiblePtr());
-    settings.AddVisibility("orbitGizmo", "カメラ中心ギズモ", camera->GetOrbitGizmoVisiblePtr());
-    settings.AddVisibility("ghostPath", "ゴースト軌跡の表示（全体）", &ghostPathVisible_);
-    settings.AddVisibility("ghostModels", "ゴースト残像モデル（全体）", &ghostModelVisible_);
-    settings.AddVisibility("directorTrack", "ムービーの選択トラック軌跡", ghostDirector_->GetTrackPreviewPtr());
-    settings.AddVisibility("directorPose", "ムービーの姿勢ガイド", ghostDirector_->GetOrientationPreviewPtr());
-    settings.AddVisibility("direction", "右上の方向ギズモ", &sceneDirectionVisible_);
+    settings.AddVisibility(VisibilityGroup::Camera, "cameraPreview", "カメラ設定内の映像プレビュー", camera->GetCameraPreviewVisiblePtr());
+    settings.AddVisibility(VisibilityGroup::Camera, "sceneCameraPreview", "選択カメラの映像");
+    settings.AddVisibility(VisibilityGroup::SceneEditing, "objectOrientation", "選択オブジェクトの向き・軸ラベル");
+    settings.AddVisibility(VisibilityGroup::SceneEditing, "transformGizmo", "移動・回転・拡縮の操作ギズモ");
+    settings.AddVisibility(VisibilityGroup::SceneEditing, "placementPreview", "配置・ブラシのプレビューと補助線");
+    settings.AddVisibility(VisibilityGroup::SceneEditing, "spriteGuides", "Sprite編集の選択枠・操作ハンドル");
+    settings.AddVisibility(VisibilityGroup::AnimationEffects, "meshEffectGuides", "メッシュエフェクトの補助表示");
+    settings.AddVisibility(VisibilityGroup::Diagnostics, "diagnosticWindows", "デバッグログ・性能・イベント計測ウィンドウ");
+    settings.AddVisibility(VisibilityGroup::Camera, "cameraGuide", "視野ガイド", camera->GetCameraGuideVisiblePtr());
+    settings.AddVisibility(VisibilityGroup::Camera, "cameraBody", "カメラ本体", camera->GetCameraBodyVisiblePtr());
+    settings.AddVisibility(VisibilityGroup::Camera, "orbitGuide", "カメラ旋回ガイド", camera->GetOrbitGuideVisiblePtr());
+    settings.AddVisibility(VisibilityGroup::Camera, "orbitGizmo", "カメラ中心ギズモ", camera->GetOrbitGizmoVisiblePtr());
+    settings.AddVisibility(VisibilityGroup::AnimationEffects, "ghostPath", "ゴースト軌跡の表示（全体）", &ghostPathVisible_);
+    settings.AddVisibility(VisibilityGroup::AnimationEffects, "ghostModels", "ゴースト残像モデル（全体）", &ghostModelVisible_);
+    settings.AddVisibility(VisibilityGroup::AnimationEffects, "directorTrack", "ムービーの選択トラック軌跡", ghostDirector_->GetTrackPreviewPtr());
+    settings.AddVisibility(VisibilityGroup::AnimationEffects, "directorPose", "ムービーの姿勢ガイド", ghostDirector_->GetOrientationPreviewPtr());
+    settings.AddVisibility(VisibilityGroup::SceneEditing, "direction", "右上の方向ギズモ", &sceneDirectionVisible_);
     auto* animation = debugEditor_->GetAnimationClipEditor();
-    settings.AddVisibility("bones", "アニメーションのボーン", animation->GetBoneOverlayPtr());
-    settings.AddVisibility("boneNames", "ボーン名", animation->GetBoneNamesPtr());
-    settings.AddVisibility("boneAxes", "ボーンの選択軸", animation->GetBoneAxesPtr());
+    settings.AddVisibility(VisibilityGroup::AnimationEffects, "bones", "アニメーションのボーン", animation->GetBoneOverlayPtr());
+    settings.AddVisibility(VisibilityGroup::AnimationEffects, "boneNames", "ボーン名", animation->GetBoneNamesPtr());
+    settings.AddVisibility(VisibilityGroup::AnimationEffects, "boneAxes", "ボーンの選択軸", animation->GetBoneAxesPtr());
     auto* stage = debugEditor_->GetEffectPreviewStage();
-    settings.AddVisibility("previewGrid", "エフェクト確認ステージのグリッド", stage->GetGridVisiblePtr());
-    settings.AddVisibility("previewAxes", "エフェクト確認ステージの座標軸", stage->GetAxesVisiblePtr());
+    settings.AddVisibility(VisibilityGroup::AnimationEffects, "previewGrid", "エフェクト確認ステージのグリッド", stage->GetGridVisiblePtr());
+    settings.AddVisibility(VisibilityGroup::AnimationEffects, "previewAxes", "エフェクト確認ステージの座標軸", stage->GetAxesVisiblePtr());
 
     // 登録後に保存済みの設定を読み、対象フラグへ反映します。
     settings.Load();

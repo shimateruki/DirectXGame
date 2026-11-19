@@ -78,6 +78,6 @@ class GimmickGameplayVolume : public BaseGimmick {
 
     // シーンが所有するプレイヤーへの非所有参照。退出検出後はクリアします。
     Player* occupant_ = nullptr;
-    LightManager::EnvironmentProfileState previousEnvironment_{};
+    engine::LightManager::EnvironmentProfileState previousEnvironment_{};
     bool hasPreviousEnvironment_ = false; // 退場時に戻す環境設定を退避してあるか。
 };

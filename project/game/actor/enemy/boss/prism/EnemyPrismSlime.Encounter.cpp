@@ -5,6 +5,7 @@ using namespace EnemyPrismSlimeImplementation;
 
 // 元の更新順序と判定を維持して、担当処理をまとめています。
 bool EnemyPrismSlime::UpdateEncounterState(float deltaTime) {
+    // 配置が遭遇イベント制御を指定していなければ、通常の敵更新に処理を返します。
     if (!IsEncounterControlled()) {
         encounterState_ = EncounterState::Normal;
         encounterInitializedForPlay_ = false;
@@ -23,6 +24,7 @@ bool EnemyPrismSlime::UpdateEncounterState(float deltaTime) {
         InitializeEncounterState();
     }
 
+    // 起動待ちでは速度と攻撃表示を止めます。登場自体の更新は Appearing の間だけ実行します。
     if (encounterState_ == EncounterState::Dormant) {
         SetVelocity({0.0f, 0.0f, 0.0f});
         ClearPrismAttackVisuals();
@@ -34,6 +36,7 @@ bool EnemyPrismSlime::UpdateEncounterState(float deltaTime) {
         return false;
     }
 
+    // 配置位置の上から小さい姿で現れ、接地を維持しながら本来の大きさと色へ近づけます。
     encounterTimer_ += (std::max)(0.0f, deltaTime);
     idleTimer_ += (std::max)(0.0f, deltaTime);
     const float duration = GetEncounterAppearanceDuration();
@@ -68,6 +71,7 @@ bool EnemyPrismSlime::UpdateEncounterState(float deltaTime) {
     SetEmissive(1.35f + (1.0f - std::abs(progress * 2.0f - 1.0f)) * 2.7f);
     SyncCollisionRadius();
 
+    // 登場が終わった時点で、戦闘用の衝突設定を戻す処理へ進みます。
     if (progress >= 1.0f) {
         FinishEncounterAppearance();
     }
@@ -118,6 +122,7 @@ void EnemyPrismSlime::InitializeEncounterState() {
 
     const bool startActive = GetParameters().has_value() && GetParameters()->startActive;
 
+    // 初回更新より先に起動イベントが届いていれば、配置時の開始フラグが無効でも登場します。
     if (startActive || encounterRequestedActive_) {
         BeginEncounterAppearance();
     } else {
@@ -148,6 +153,7 @@ void EnemyPrismSlime::ResetEncounterStateForEditor() {
     SetVelocity({0.0f, 0.0f, 0.0f});
     SetCollisionAttribute(0);
     SetCollisionMask(0);
+    // 編集へ戻った後は待機姿勢を保持し、前回の攻撃表示を残しません。
     SetIsVisible(false);
     ClearPrismAttackVisuals();
     HideAttackTelegraph();

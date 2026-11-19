@@ -17,7 +17,7 @@ void Require(bool condition,const char* message) {
         throw std::runtime_error(message);
 }
 
-std::vector<ModelSurfaceTriangle> ReadObj(const std::string& model) {
+std::vector<engine::ModelSurfaceTriangle> ReadObj(const std::string& model) {
     // 実際にStage2で使用するOBJを三角形へ展開し、描画初期化なしで判定本体を検証する。
     const auto asset=std::filesystem::path(model);
     const auto file=asset.extension()==".gltf"
@@ -26,7 +26,7 @@ std::vector<ModelSurfaceTriangle> ReadObj(const std::string& model) {
     std::ifstream stream(file);
     Require(bool(stream),"OBJ missing");
     std::vector<engine::Vector3> vertices;
-    std::vector<ModelSurfaceTriangle> triangles;
+    std::vector<engine::ModelSurfaceTriangle> triangles;
     std::string line;
 
     while(std::getline(stream,line)){
@@ -53,8 +53,8 @@ std::vector<ModelSurfaceTriangle> ReadObj(const std::string& model) {
 int main(){
     try{
         Transform groundTransform;
-        Collider ground(&groundTransform);
-        ColliderConfig config;
+        engine::Collider ground(&groundTransform);
+        engine::ColliderConfig config;
         config.type=ColliderType::Obb;
         config.useModelVolume=true;
         ground.SetConfig(config);
@@ -67,8 +67,8 @@ int main(){
         Require(ground.RaycastModelVolume({30,-2,0},{-1,0,0},30,distance,normal)&&distance>13&&distance<14.5f&&normal.x>.8f,"side ray");
         Require(!ground.RaycastModelVolume({30,2,0},{-1,0,0},60,distance,normal),"empty air ray");
         Transform actorTransform;
-        Collider actor(&actorTransform);
-        ColliderConfig actorConfig;
+        engine::Collider actor(&actorTransform);
+        engine::ColliderConfig actorConfig;
         actorConfig.type=ColliderType::Aabb;
         actorConfig.size={.5f,.5f,.5f};
         actor.SetConfig(actorConfig);
@@ -130,7 +130,7 @@ int main(){
         setSceneTransform(sinkParent,sinkParentData);
         sinkChild.parent=&sinkParent;
         setSceneTransform(sinkChild,sinkChildData);
-        Collider slopedChild(&sinkChild);
+        engine::Collider slopedChild(&sinkChild);
         slopedChild.SetConfig(config);
         slopedChild.SetModelSurface(ReadObj(sinkChildData.at("modelName")));
         Require(slopedChild.HasModelVolume(),"sloped child hull missing");
@@ -167,7 +167,7 @@ int main(){
         }
 
         // 実配置の動く床対地形も計測する。小さい箱対地形だけでは高負荷を見逃す。
-        struct Entry { Transform transform; std::unique_ptr<Collider> collider; nlohmann::json data; };
+        struct Entry { Transform transform; std::unique_ptr<engine::Collider> collider; nlohmann::json data; };
         std::vector<std::unique_ptr<Entry>> entries;
 
         for (const auto& obj : scene["objects"]) {
@@ -180,7 +180,7 @@ int main(){
             e->transform.scale=vector(obj["scale"]);
             e->transform.rotate=vector(obj["rotation"]);
             e->transform.isQuaternionMaster=false;
-            e->collider=std::make_unique<Collider>(&e->transform);
+            e->collider=std::make_unique<engine::Collider>(&e->transform);
             e->collider->SetConfig(config);
             e->collider->SetModelSurface(ReadObj(obj["modelName"]));
             entries.push_back(std::move(e));
@@ -240,7 +240,7 @@ int main(){
 
         // 凸包同士の精密判定自体は維持し、地形以外にも使えることを確認する。
         Transform solidTransform;
-        Collider solid(&solidTransform);
+        engine::Collider solid(&solidTransform);
         solid.SetConfig(config);
         solid.SetModelSurface(ReadObj("Stages/magma_fortress_foundation"));
         ground.SetConfig(config);
@@ -263,8 +263,8 @@ int main(){
             if(obj.value("parentName","")!="Stage2_GatehouseGate")
                 continue;
             Transform partTransform;
-            Collider part(&partTransform);
-            ColliderConfig partConfig;
+            engine::Collider part(&partTransform);
+            engine::ColliderConfig partConfig;
             partConfig.type=ColliderType::Obb;
             const auto& col=obj.at("collider");
             partConfig.center={col["center"][0],col["center"][1],col["center"][2]};

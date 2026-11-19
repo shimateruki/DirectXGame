@@ -32,6 +32,7 @@ inline void RegisterGameAnimatorEditors() {
                 runtime->GetInt("LocomotionMode"), runtime->GetTransitionWeight());
         }
 
+        // 編集中の状態が能力用の本体クリップを持つ場合だけ、保存してから見た目を試せる入口を出します。
         if (selectedState) {
             const AnimatorStateDefinition& selected = *selectedState;
 

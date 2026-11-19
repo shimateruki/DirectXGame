@@ -61,12 +61,14 @@ void GimmickBossGate::Update(float deltaTime) {
         return;
     }
 
+    // 演出から制御されている間は門の位置を動かさず、演出の種類に応じて接触判定だけ切り替えます。
     if (cinematicOverride_) {
         if (introTimelineControl_) {
             // 見た目の移動はTimelineが担当し、接触判定だけ閉鎖位置への到達で決めます。
             const float remaining = GetTranslate().y - authoredPosition_.y;
             SetCollisionEnabled(targetClosure_ > 0.5f && remaining <= GetTravelDistance() * 0.18f);
         } else {
+            // 登場用タイムライン以外の外部演出で動かす間は、門を通行の障害にしません。
             SetCollisionEnabled(false);
         }
         BaseGimmick::Update(deltaTime);
@@ -75,6 +77,7 @@ void GimmickBossGate::Update(float deltaTime) {
 
     CaptureAuthoredState();
 
+    // 初回は配置設定と発生済みのイベントを反映し、指定された始点へ即座に配置します。
     if (!initializedForPlay_) {
         initializedForPlay_ = true;
         targetClosure_ = activationRequested_ || (GetParameters().has_value() && GetParameters()->startActive) ? 1.0f : 0.0f;
@@ -82,6 +85,7 @@ void GimmickBossGate::Update(float deltaTime) {
         ApplyRuntimeState();
     }
 
+    // 閉鎖率を時間に応じて目標へ近づけ、通常時の姿勢と当たり判定へ反映します。
     const float duration = GetTransitionDuration();
     const float step = duration > 0.0001f ? std::max(0.0f, deltaTime) / duration : 1.0f;
 
@@ -112,6 +116,7 @@ void GimmickBossGate::OnSwitchEvent(bool active) {
     activationRequested_ = active;
     targetClosure_ = active ? 1.0f : 0.0f;
 
+    // 閉じる要求ではまず門を表示し、開き切った状態からの開始だけ効果を出します。開ける要求では先に壁判定を解除します。
     if (active) {
         SetIsVisible(true);
 
@@ -141,6 +146,7 @@ engine::Vector3 GimmickBossGate::GetClosedPosition() {
 }
 
 void GimmickBossGate::SetIntroTimelineControl(bool enabled) {
+    // 演出に位置を譲る前に、元の閉鎖位置を退避します。
     CaptureAuthoredState();
     introTimelineControl_ = enabled;
     cinematicOverride_ = enabled;
@@ -174,12 +180,14 @@ void GimmickBossGate::ResetForEditor() {
     cinematicOverride_ = false;
     introTimelineControl_ = false;
 
+    // 直前まで通常再生していた場合は、退避位置を戻してから編集側の基準を確定します。
     if (initializedForPlay_) {
         SetTranslate(authoredPosition_);
         SetScale(authoredScale_);
     }
 
     CaptureAuthoredState(true);
+    // 次の開始に閉鎖要求を持ち越さず、編集時は門を表示して壁の判定を外します。
     initializedForPlay_ = false;
     activationRequested_ = false;
     closure_ = 0.0f;

@@ -35222,117 +35222,6 @@
         {
             "animation": {
                 "animName": "",
-                "animatorController": "",
-                "isAnimLoop": true
-            },
-            "autoTextureTiling": false,
-            "blendMode": 1,
-            "castShadow": false,
-            "collider": {
-                "type": 3,
-                "center": [
-                    0,
-                    0,
-                    0
-                ],
-                "rotation": [
-                    0,
-                    0,
-                    0
-                ],
-                "size": [
-                    4.15,
-                    7.0,
-                    0.7
-                ]
-            },
-            "collisionAttribute": 4,
-            "collisionMask": 4294967295,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableLighting": false,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 0.15000000596046448,
-            "eventID": 0,
-            "gimmickType": "",
-            "gpuParticleName": "",
-            "guid": "9da05184-ea0b-532d-bd45-d59722e23c45",
-            "isStatic": true,
-            "itemType": "",
-            "layer": "Default",
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "meshDrawIndex": -1,
-            "meshEffect1": "",
-            "meshEffect2": "",
-            "metallic": 0.0,
-            "myEventID": -1,
-            "name": "StageSelect_Stage3_TemporaryBlocker",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentGuid": "415c3d7b-8e9d-5e48-9a95-2dd5d86ef346",
-            "parentName": "[Group] Stage 3 Bridge",
-            "particleName": "",
-            "position": [
-                3.3224887689776104,
-                4.6,
-                -29.90239892079849
-            ],
-            "quaternion": [
-                0.0,
-                0.9984697699546814,
-                0.0,
-                0.055300384759902954
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                3.030935525894165,
-                0.0
-            ],
-            "roughness": 0.7200000286102295,
-            "saveCategory": "Object",
-            "scale": [
-                1,
-                1,
-                1
-            ],
-            "tag": "",
-            "targetID": -1,
-            "texturePath": "",
-            "textureTiling": [
-                1.0,
-                1.0
-            ],
-            "type": "InvisibleBox"
-        },
-        {
-            "animation": {
-                "animName": "",
                 "isAnimLoop": true
             },
             "autoTextureTiling": false,
@@ -35530,6 +35419,113 @@
                 10.502744,
                 1.1,
                 5.041317
+            ],
+            "rotation": [
+                -0.7330382858376184,
+                -2.0943951023931957,
+                0
+            ],
+            "castShadow": false,
+            "color": [
+                1,
+                1,
+                1,
+                1
+            ]
+        },
+        {
+            "animation": {
+                "animName": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 0,
+            "collider": {
+                "center": [
+                    0,
+                    0,
+                    0
+                ],
+                "rotation": [
+                    0,
+                    0,
+                    0
+                ],
+                "size": [
+                    1,
+                    1,
+                    0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "emissive": 1,
+            "enableEnvMap": false,
+            "enableLighting": false,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1,
+            "eventType": 0,
+            "gimmickType": "",
+            "isLocked": false,
+            "isVisible": true,
+            "itemType": "",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1
+                ],
+                "density": 0.5,
+                "edgeFade": 0,
+                "noiseScale": 0,
+                "noiseSpeed": 0,
+                "scatteringG": 0,
+                "scatteringIntensity": 0
+            },
+            "materialType": 0,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0,
+            "modelName": "Stages/select_route_glyph_three",
+            "myEventID": -1,
+            "name": "StageSelect_RouteMarker_3",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "quaternion": [
+                -0.1791839747726501,
+                -0.8085043658224876,
+                -0.31035574820837003,
+                0.46679021324860076
+            ],
+            "recorder": {
+                "recordPathName": "stage_select/stage_select_route_number_pulse",
+                "isRecordLoop": true,
+                "isRecordRelative": true
+            },
+            "roughness": 0.5,
+            "saveCategory": "Object",
+            "scale": [
+                2.616431,
+                2.616431,
+                2.616431
+            ],
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1,
+                1
+            ],
+            "type": "Model",
+            "guid": "9d581ed7-0c83-5f0e-8d15-169937f81172",
+            "parentName": "[Group] Central Decoration",
+            "parentGuid": "8a2c9abd-c258-555b-9c94-dcdea168a866",
+            "position": [
+                1.59,
+                1.1,
+                -14.31
             ],
             "rotation": [
                 -0.7330382858376184,

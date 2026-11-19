@@ -19,6 +19,7 @@ inline bool Apply(engine::Object3D& object, const EditorPropertyDescriptor& prop
                   nlohmann::json& source, const nlohmann::json& value) {
     const auto before = object.ExportToJson();
     if (!EditorPropertyRegistry::GetInstance()->SetValue(&object, property.path, value)) return false;
+    // 実際の保存値を前後で比べ、Setter が連動して変えた項目も保存差分に含める。
     const auto changes = nlohmann::json::diff(before, object.ExportToJson());
     for (const auto& change : changes) {
         const nlohmann::json::json_pointer path(change.at("path").get<std::string>());
@@ -29,6 +30,7 @@ inline bool Apply(engine::Object3D& object, const EditorPropertyDescriptor& prop
                 source[path].update(incoming, true);
             else
                 source[path] = incoming;
+        // 削除差分は親が保存データに残っているときだけ適用し、辞書のキーと配列の添字を区別します。
         } else if (source.contains(path.parent_pointer())) {
             auto& parent = source[path.parent_pointer()];
             if (parent.is_object()) parent.erase(path.back());

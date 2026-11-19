@@ -6,7 +6,7 @@ SrvManager* SrvManager::GetInstance() {
     return &instance;
 }
 
-void SrvManager::Initialize(DirectXCommon* dxCommon) {
+void SrvManager::Initialize(engine::DirectXCommon* dxCommon) {
     assert(dxCommon);
     device_ = dxCommon->GetDevice();
 
@@ -62,6 +62,7 @@ void SrvManager::CreateSrvForResource(uint32_t index, ID3D12Resource* pResource,
     std::lock_guard<std::mutex> lock(mutex_);
     D3D12_CPU_DESCRIPTOR_HANDLE cpuHandle = srvDescriptorHeap_->GetCPUDescriptorHandleForHeapStart();
     cpuHandle.ptr += (static_cast<unsigned long long>(descriptorSize_) * index);
+    // ここは参照先を書き換えるだけです。既存の枠を再利用する場合、GPUが旧ビューを使い終わったかは呼び出し側で管理します。
     device_->CreateShaderResourceView(pResource, &srvDesc, cpuHandle);
 }
 

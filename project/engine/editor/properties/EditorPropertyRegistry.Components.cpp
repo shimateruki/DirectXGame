@@ -43,6 +43,7 @@ void EditorPropertyRegistry::RegisterBuiltInComponents() {
             }
 
             object.SetColliderConfig(config);
+            // 追加直後から床として使えるよう、ground 属性と全対象を通すマスクを設定する。
             object.SetCollisionAttribute(CollisionCategories::Get("ground"));
             object.SetCollisionMask(0xFFFFFFFFu);
             object.SetStatic(true);
@@ -51,6 +52,7 @@ void EditorPropertyRegistry::RegisterBuiltInComponents() {
         },
         [](engine::Object3D& object) {
             engine::Object3D::ColliderConfig config = object.GetColliderConfig();
+            // 既存の寸法を保持したまま形状を無効にし、属性とマスクも消して旧形式から当たり判定が復帰する条件を残さない。
             config.type = ColliderType::None;
             object.SetColliderConfig(config);
             object.SetCollisionAttribute(0);

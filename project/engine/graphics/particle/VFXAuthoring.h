@@ -75,6 +75,7 @@ public:
         for (VfxFloatCurveKey& key : keys) {
             key.time = std::clamp(key.time, 0.0f, 1.0f);
         }
+        // 同じ再生割合のキーは入力順を保ち、正規化だけで編集時の並びが入れ替わらないようにします。
         std::stable_sort(keys.begin(), keys.end(), VfxCurveKeyTimeLess);
     }
 
@@ -108,6 +109,7 @@ public:
             return curve;
         curve.keys.reserve(count);
         for (std::size_t index = 0; index < count; ++index) {
+            // 0と1の両端を含むため、サンプル番号を点の数ではなく点間の区間数で割ります。
             const float time = count > 1 ? static_cast<float>(index) / static_cast<float>(count - 1) : 0.0f;
             curve.keys.push_back({ time, values[index], VfxCurveEasing::Linear });
         }
@@ -144,6 +146,7 @@ public:
         for (VfxColorGradientKey& key : keys) {
             key.time = std::clamp(key.time, 0.0f, 1.0f);
         }
+        // 同じ再生割合の色キーは入力順を保ち、正規化だけで編集時の並びが入れ替わらないようにします。
         std::stable_sort(keys.begin(), keys.end(), VfxGradientKeyTimeLess);
     }
 
@@ -230,6 +233,7 @@ struct VfxBakedColorGradient {
         const float scaled = std::clamp(time, 0.0f, 1.0f) * static_cast<float>(samples.size() - 1);
         const std::size_t left = static_cast<std::size_t>(scaled);
         const std::size_t right = (std::min)(left + 1, samples.size() - 1);
+        // 小数部分を補間率に使い、等間隔のサンプルから寿命の途中に当たる色を復元します。
         const float ratio = scaled - static_cast<float>(left);
         return {
             std::lerp(samples[left].x, samples[right].x, ratio),
@@ -276,6 +280,7 @@ struct VfxLodSettings {
     /// <summary>距離・発生倍率・粒子上限を有効な範囲へ正規化する。</summary>
     void Sanitize() {
         nearDistance = (std::max)(nearDistance, 0.0f);
+        // 近距離と遠距離の差を正に保ち、その間で補間率を計算できるようにします。
         farDistance = (std::max)(farDistance, nearDistance + 0.01f);
         farEmissionScale = std::clamp(farEmissionScale, 0.0f, 1.0f);
         maxAliveParticles = (std::max)(maxAliveParticles, 0);
@@ -288,6 +293,7 @@ struct VfxLodSettings {
         if (distance >= farDistance)
             return std::clamp(farEmissionScale, 0.0f, 1.0f);
         const float range = (std::max)(farDistance - nearDistance, 0.01f);
+        // 近距離では通常数、遠距離では指定の倍率となるよう、距離帯の中だけを線形補間します。
         const float ratio = (distance - nearDistance) / range;
         return std::lerp(1.0f, std::clamp(farEmissionScale, 0.0f, 1.0f), ratio);
     }

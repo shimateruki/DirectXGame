@@ -7,6 +7,7 @@
 
 bool JsonFile::UpdateObject(const std::filesystem::path& path, const nlohmann::json& values,
     std::initializer_list<const char*> removedKeys) {
+    // キー単位の更新はオブジェクト同士に限ります。条件を満たさない場合はファイルを開く前に終了します。
     if (!values.is_object()) {
         return false;
     }
@@ -18,6 +19,7 @@ bool JsonFile::UpdateObject(const std::filesystem::path& path, const nlohmann::j
             try {
                 input >> root;
             } catch (const nlohmann::json::parse_error&) {
+                // 構文を読めない既存内容は空のオブジェクトとして組み立て直します。
                 root = nlohmann::json::object();
             }
             if (input.bad()) {
@@ -36,6 +38,7 @@ bool JsonFile::UpdateObject(const std::filesystem::path& path, const nlohmann::j
     if (!root.is_object()) {
         root = nlohmann::json::object();
     }
+    // 指定キーだけを更新して他のキーを保持します。削除指定を後に処理するため、両方にあるキーは削除されます。
     root.update(values);
     for (const char* key : removedKeys) {
         root.erase(key);
@@ -61,6 +64,7 @@ bool JsonFile::UpdateObject(const std::filesystem::path& path, const nlohmann::j
         return false;
     }
     output << text;
+    // 書き込み後のフラッシュとクローズも済ませてからストリーム状態を返します。
     output.flush();
     output.close();
     return output.good();

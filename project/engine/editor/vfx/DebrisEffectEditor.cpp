@@ -108,6 +108,7 @@ void DebrisEffectEditor::Update(float deltaTime) {
     const bool isThisEditorSelected = EditorManager::GetInstance()->GetSelectedObject() == this;
     const bool usePreviewStage = previewStage && previewStage->IsEnabled() && isThisEditorSelected;
 
+    // 専用プレビューを離れるときは再生倍率を通常の1倍へ戻す。
     if (!usePreviewStage) {
         manager->SetTimeScale(1.0f);
         return;
@@ -121,6 +122,7 @@ void DebrisEffectEditor::Update(float deltaTime) {
         previewTime_ = 0.0f;
         loopTimer_ = 0.0f;
 
+        // シーク時だけ1倍にして、タイムラインの秒数と物理に渡す経過時間を揃える。
         const float targetTime = std::clamp(seekTime, 0.0f, previewDuration);
         const float previousScale = manager->GetTimeScale();
         manager->SetTimeScale(1.0f);
@@ -156,6 +158,7 @@ void DebrisEffectEditor::Update(float deltaTime) {
         restartPreviewAt(previewStage->GetSeekTargetTime());
     }
 
+    // 再生倍率をマネージャーとタイムライン表示の両方に反映する。
     manager->SetTimeScale(previewStage->GetPlaybackSpeed());
     const float scaledDelta = deltaTime * manager->GetTimeScale();
 
@@ -307,6 +310,7 @@ void DebrisEffectEditor::DrawImGui() {
         }
     }
 
+    // 保存後の登録名には拡張子を除いた相対パスを使い、階層の異なる同名素材を区別する。
     files_.Draw("3D破片JSONファイル", std::filesystem::path(kDebrisPresetDirectory).parent_path(),
         [this](const std::filesystem::path& path) { return Load(path); },
         [this](const std::filesystem::path& path, const std::string& name) { return Save(path, name); },
@@ -332,12 +336,14 @@ void DebrisEffectEditor::RefreshLists() {
 
 bool DebrisEffectEditor::Save(const std::filesystem::path& path, const std::string& name) {
     SyncConfigFromModelBuffers();
+    // 入力欄のモデル名を反映した上で別名保存用のコピーを作る。編集を続ける config_ の名前は保存先名へ変えない。
     auto saved = config_;
     saved.name = name;
     return DebrisEffectManager::GetInstance()->SaveConfig(path, saved);
 }
 
 bool DebrisEffectEditor::Load(const std::filesystem::path& path) {
+    // 読込先を一時設定にし、失敗時は現在の設定もモデル入力欄も保持する。
     DebrisEffectConfig loaded;
     if (!DebrisEffectManager::GetInstance()->LoadConfig(path, loaded)) return false;
     config_ = std::move(loaded);
@@ -364,7 +370,7 @@ engine::Vector3 DebrisEffectEditor::GetPreviewPosition() const {
         return previewStage->GetPreviewPosition();
     }
 
-    const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    const engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
     if (!camera) {
         return { 0.0f, 2.0f, 0.0f };
@@ -411,6 +417,7 @@ void DebrisEffectEditor::SyncConfigFromModelBuffers() {
         }
     }
 
+    // 全欄が空でも発生を試せるよう、保存データと最初の入力欄の両方に既定モデルを補う。
     if (config_.modelNames.empty()) {
         config_.modelNames.push_back("Primitives/cube");
         CopyToBuffer(modelBuffer0_, "Primitives/cube");

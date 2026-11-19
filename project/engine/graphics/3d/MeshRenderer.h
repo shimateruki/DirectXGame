@@ -10,7 +10,9 @@
 #include <wrl.h>
 
 namespace engine { class Object3D; }
-class Camera;
+namespace engine { class Camera; }
+
+namespace engine {
 
 // 担当：モデルの材質・見た目変形を管理し、通常・影・特殊材質を描画する。
 // 関連：Object3D（所有）、Model（メッシュ）、Object3DCommon（共通描画状態）、Camera
@@ -22,6 +24,7 @@ public:
     struct TransformationMatrix {
         engine::Matrix4x4 wvp;
         engine::Matrix4x4 world;
+        // 非一様スケールでも面に垂直な向きを保つため、法線にはワールド行列の逆転置を使う。
         engine::Matrix4x4 worldInverseTranspose;
     };
 
@@ -198,7 +201,7 @@ public:
     // 所有Objectと寿命を共有する非所有参照。ゲームの材質値には保存しない。
     void SetVisibilityOwner(engine::Object3D* owner) { visibilityOwner_ = owner; }
     // 指定カメラの視界確保設定を描画用定数へ反映する。
-    void UpdateCameraVisibility(Camera* camera);
+    void UpdateCameraVisibility(engine::Camera* camera);
     // 実画面の深度を使う追加描画。材質やプレビューの定数には書き込まない。
     void DrawVisibilitySilhouette(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
 
@@ -215,10 +218,10 @@ public:
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
     // 演出用カメラPreview専用。通常描画のWVP/Camera定数を汚さず、別バッファで描画します。
-    void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex = 0);
+    void DrawForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex = 0);
 
     // 特殊マテリアルも通常描画用WVPを上書きせず、Camera Preview専用定数で描画します。
-    void DrawSpecialMaterialForCamera(int materialType, Camera* camera, uint32_t depthSrvHandle, uint32_t colorSrvHandle, int previewBufferIndex = 0);
+    void DrawSpecialMaterialForCamera(int materialType, engine::Camera* camera, uint32_t depthSrvHandle, uint32_t colorSrvHandle, int previewBufferIndex = 0);
 
     /// <summary>現在の材質番号に対応する特殊描画を、通常カメラの定数で実行する。</summary>
     void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
@@ -386,7 +389,7 @@ public:
     ID3D12Resource* GetWvpResource() const { return wvpResource_.Get(); }
 
     // 専用シェーダーのプレビュー描画にも、通常の3D描画と同じ独立WVPを渡す。
-    bool PreparePreviewCameraData(Camera* camera, int previewBufferIndex, ID3D12Resource*& wvpResource,
+    bool PreparePreviewCameraData(engine::Camera* camera, int previewBufferIndex, ID3D12Resource*& wvpResource,
                                   ID3D12Resource*& cameraResource);
 
     ID3D12Resource* GetCameraResource() const { return cameraResource_.Get(); }
@@ -445,32 +448,14 @@ public:
     /// <summary>レーザーマテリアルで描画する。</summary>
     void DrawLaser(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
 
-    /// <summary>スライムゲルの特殊マテリアルで描画する。</summary>
-    void DrawSlimeGel(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
-
     /// <summary>衝撃波の特殊マテリアルで描画する。</summary>
     void DrawShockwave(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
-
-    /// <summary>液体接触の特殊マテリアルで描画する。</summary>
-    void DrawLiquidContact(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
-
-    /// <summary>ダメージ亀裂の特殊マテリアルで描画する。</summary>
-    void DrawDamageCrack(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
-
-    /// <summary>上昇気流の特殊マテリアルで描画する。</summary>
-    void DrawUpdraft(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
 
     /// <summary>スタン拘束の特殊マテリアルで描画する。</summary>
     void DrawStunBind(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
 
     /// <summary>王冠解放の特殊マテリアルで描画する。</summary>
     void DrawCrownUnlock(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
-
-    /// <summary>毒胞子の特殊マテリアルで描画する。</summary>
-    void DrawPoisonSpore(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
-
-    /// <summary>雲の特殊マテリアルで描画する。</summary>
-    void DrawCloud(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
 
     /// <summary>ゲートポータルの特殊マテリアルで描画する。</summary>
     void DrawGatePortal(uint32_t depthSrvHandle, uint32_t colorSrvHandle);
@@ -485,6 +470,7 @@ private:
     float visibilityAmount_ = 0.0f;
     Microsoft::WRL::ComPtr<ID3D12Resource> silhouetteResource_;
     WaterParamForGpu* silhouetteData_ = nullptr;
+    // 遮蔽状態を更新済みのフレーム番号。同じ状態の再取得でフェードを進めない。
     uint64_t visibilitySerial_ = 0;
 
     // 描画に必要な行列、マテリアル、カメラのGPUバッファがそろっているか確認する。
@@ -588,6 +574,7 @@ private:
     // マテリアル定数バッファと編集値の色。
     Microsoft::WRL::ComPtr<ID3D12Resource> materialResource_;
     MaterialData* materialData_ = nullptr;
+    // 編集時の入力色。作業色空間に変換した値はGPU用の materialData_ に保持する。
     engine::Vector4 materialColor_ = engine::Colors::White;
 
     // 法線・ORM・基本画像のパスとTextureManagerのハンドルを対で保持する。
@@ -624,3 +611,5 @@ private:
     bool isUiPreview_ = false;
     ID3D12Resource* previewDirectionalLightResource_ = nullptr;
 };
+
+} // namespace engine

@@ -147,6 +147,7 @@ std::unique_ptr<engine::Object3D> GimmickLiquidLevel::Clone() const {
 void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
     auto* manager = SceneManager::GetInstance();
 
+    // プレイを終えたら開始高さと脱出の進行を戻し、編集時に上昇を継続しません。
     if (!manager || !manager->IsPlaying()) {
         if (initializedForPlay_)
             SetTranslate(basePosition_);
@@ -173,6 +174,7 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
             break;
     }
 
+    // 連番で参照したマーカーを箱の範囲として使い、プレイヤーの位置で開始と終了を判定します。
     auto* start = scene->FindObjectByEventId(GetTargetId());
     auto* finish = scene->FindObjectByEventId(GetTargetId() + 1);
     auto* checkpoint = scene->FindObjectByEventId(GetTargetId() + 2);
@@ -211,6 +213,7 @@ void GimmickLiquidLevel::UpdateEscape(float deltaTime) {
         }
     }
 
+    // 開始演出の待ち時間を引いてから一定速度で上げ、配置で指定された高さを超えないようにします。
     if (escapeStarted_ && !escapeFinished_) {
         escapeTime_ += (std::max)(0.0f, deltaTime);
         const float elapsed = (std::max)(0.0f, escapeTime_ - GetParameters()->shakeDuration);
@@ -228,6 +231,7 @@ void GimmickLiquidLevel::ResetEscapeObjects(bool active) {
     auto* scene = SceneManager::GetInstance()->GetCurrentScene();
     if (!scene)
         return;
+    // 液面に直接リンクした可動床・噴出口・砲台・受信物だけに開始時の状態を適用します。
     for (auto& obj : scene->GetObjects()) {
         if (!obj || obj.get() == this || obj->GetTargetId() != GetEventId())
             continue;

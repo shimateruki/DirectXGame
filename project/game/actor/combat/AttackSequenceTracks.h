@@ -82,6 +82,7 @@ struct AttackSequenceTrack {
             return fail("親Objectの参照番号が不正です。");
         if (motion != "keyframed" && motion != "aim_launch" && motion != "homing")
             return fail("未対応の動作部品です。");
+        // 弾道を持つ表示を親にして、当たり判定だけが別の軌道を持たないようにします。
         if (motion != "keyframed" && type != "mesh_vfx")
             return fail("発射・追尾は表示Objectへ設定してください。判定は親へ追従させます。");
         for (float value : {launchDelay, moveSpeed, turnDegreesPerSecond, homingDuration, targetHeight})
@@ -94,6 +95,7 @@ struct AttackSequenceTrack {
         if (condition != "always" && condition != "grounded" && condition != "airborne" && condition != "target_in_range" &&
             condition != "contact" && condition != "no_contact" && condition != "track_completed")
             return fail("未対応のトラック条件です。");
+        // アニメーションのサンプリングに使う速度と秒数が正常値か確認します。
         if (!std::isfinite(playbackSpeed) || playbackSpeed <= 0 || playbackSpeed > 10 ||
             !std::isfinite(clipOffset) || clipOffset < 0 || clipOffset > 300 ||
             !std::isfinite(blendIn) || blendIn < 0 || blendIn > 30 ||
@@ -105,6 +107,7 @@ struct AttackSequenceTrack {
             return fail("判定半径またはダメージ倍率が不正です。");
         if (enabled && (type == "mesh_vfx" || type == "body_animation") && preset.empty())
             return fail("表示物またはアニメーションのアセットが未指定です。");
+        // キーの本数・時刻・各軸を検証してから、表示と衝突の両方で同じ補間を使います。
         if (keys.empty() || keys.size() > 128)
             return fail("キーは1～128個です。");
         float previous = -1;

@@ -52,12 +52,15 @@ public:
     /// 専用変数を公開します。日本語の表示名を変えてもidが同じなら保存互換を保ちます。
     template<class Value>
     void Expose(const char* label, const char* id, Value Owner::* member,
-                float minimum = 0, float maximum = 0, Condition visible = nullptr) {
+                float minimum = 0, float maximum = 0, Condition visible = nullptr,
+                const Options& options = {}) {
         if (!enabled_) return;
         auto property = Describe<Value>(label, id, minimum, maximum, visible);
+        ApplyOptions(property, options);
         property.flags = property.flags | EditorPropertyFlags::ClassStorage;
         property.serializedPath = "components." + componentId_ + "." + id;
         property.defaultValue = defaults_.*member;
+        // 台帳にはメンバーの位置だけを保持する。取得・適用の対象は、そのとき選択または読み込みされた Object。
         property.getter = [member](const Object3D& object) -> nlohmann::json {
             return static_cast<const Owner&>(object).*member;
         };
@@ -86,6 +89,7 @@ public:
         property.setter = [member](Object3D& object, const nlohmann::json& json) {
             Value value{};
             if (!Assign(value, json)) return false;
+            // 入力の検証が通ってから既定パラメーターを作り、無効な値で状態が変わらないようにする。
             if (!object.GetParameters()) object.ResetParameters();
             object.SetParameter(member, std::move(value));
             return true;

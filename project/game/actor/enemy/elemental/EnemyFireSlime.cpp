@@ -138,6 +138,7 @@ void EnemyFireSlime::Update(float deltaTime) {
         return;
     }
 
+    // 物理移動と姿勢を更新する前に、復元用のスケールと攻撃の残り時間を揃える。
     EnsureBaseScale();
     UpdateWildTimers(deltaTime);
 
@@ -146,6 +147,7 @@ void EnemyFireSlime::Update(float deltaTime) {
     velocity.z = 0.0f;
 
     UpdateWildBehavior(deltaTime, velocity);
+    // 行動で決めた速度から跳ねと姿勢を反映し、共通の物理更新後に頭上の炎を追従させる。
     ApplyGroundMovementAndAnimation(deltaTime, velocity);
     BaseEnemy::Update(deltaTime);
     UpdateHeadFlame(deltaTime);
@@ -167,6 +169,7 @@ bool EnemyFireSlime::UpdateInactiveState(float deltaTime) {
         return true;
     }
 
+    // 運搬中は炎を再利用できるよう保持し、表示と攻撃予告だけを止める。
     if (IsCarried()) {
         HideAttackTelegraph();
         if (headFlameVisual_)
@@ -176,6 +179,7 @@ bool EnemyFireSlime::UpdateInactiveState(float deltaTime) {
         return true;
     }
 
+    // 撃破演出では炎を削除し、通常AIへ戻らずBaseEnemyの演出更新を続ける。
     if (ShouldHandleDefeatEffect()) {
         HideAttackTelegraph();
         RequestRemoveHeadFlameVisual();
@@ -220,7 +224,7 @@ void EnemyFireSlime::UpdateWildTimers(float deltaTime) {
 void EnemyFireSlime::UpdateWildBehavior(float deltaTime, engine::Vector3& velocity) {
     if (!GetTarget() && fireballSequence_.ControlsActor()) {
         // 対象を失っても時計を止めず、条件評価と終了・後片付けまで進めます。
-        UpdateFireballWindup(deltaTime, velocity, {0, 0, 1}, 0);
+        UpdateFireballAttack(deltaTime, velocity, {0, 0, 1}, 0);
         return;
     }
 
@@ -250,7 +254,7 @@ void EnemyFireSlime::UpdateCombatBehavior(float deltaTime, engine::Vector3& velo
     }
 
     if (fireballWindupTimer_ > 0.0f || fireballSequence_.IsRunning()) {
-        UpdateFireballWindup(deltaTime, velocity, direction, distance);
+        UpdateFireballAttack(deltaTime, velocity, direction, distance);
     } else if (breathTimer_ > 0.0f) {
         UpdateBreath(deltaTime, direction, distance);
     } else if (sequenceAttack && attackCooldown_ <= 0.0f) {
@@ -381,6 +385,7 @@ void EnemyFireSlime::UpdateBreath(float deltaTime, const engine::Vector3& direct
         HideAttackTelegraph();
     }
 
+    // 炎の表示は命中判定の前後を通して更新する。予告の強調は判定時刻より先に一度だけ出す。
     UpdateBreathFlameVisuals(direction, deltaTime);
 
     if (!breathWarningTriggered_ && breathTimer_ <= damageTriggerTime + attack.warningLeadTime) {
@@ -388,12 +393,14 @@ void EnemyFireSlime::UpdateBreath(float deltaTime, const engine::Vector3& direct
         breathWarningTriggered_ = true;
     }
 
+    // ブレスの判定は一度だけ発行する。発行後も炎は終了時刻まで表示する。
     if (!breathDamageDone_ && breathTimer_ <= damageTriggerTime) {
         DispatchBreathDamage(direction, distance);
         breathDamageDone_ = true;
         HideAttackTelegraph();
     }
 
+    // 炎の流れと火の粉は、命中判定と独立した発生間隔で追加する。
     if (breathParticleTimer_ <= 0.0f) {
         engine::Vector3 origin = GetTranslate();
         origin.y += 0.72f;
@@ -401,6 +408,7 @@ void EnemyFireSlime::UpdateBreath(float deltaTime, const engine::Vector3& direct
         breathParticleTimer_ += 0.065f;
     }
 
+    // 持続時間が終わったら予告と炎を隠し、次の行動に備えて本体色を戻す。
     if (breathTimer_ <= 0.0f) {
         HideAttackTelegraph();
         SetColor(GetDefaultColor());
@@ -433,10 +441,12 @@ void EnemyFireSlime::StartFireballWindup(const engine::Vector3& direction, float
     }
 }
 
-void EnemyFireSlime::UpdateFireballWindup(float deltaTime, engine::Vector3& velocity, const engine::Vector3& direction,
+void EnemyFireSlime::UpdateFireballAttack(float deltaTime, engine::Vector3& velocity, const engine::Vector3& direction,
                                           float distance) {
+    // 火球の更新は、シーケンスが本体を制御する場合、発射だけ任せる場合、従来処理の三通り。
     const EnemyAttackDefinition& attack = selectedFireball_;
 
+    // 本体制御付きでは姿勢や動きをシーケンスが進めるため、火球側の照準・予兆経路へは入らない。
     if (attack.sequence.enabled && attack.sequence.actorControl.enabled) {
         fireballSequence_.Update(deltaTime, MakeSequenceContext(direction, distance));
         if (attack.sequence.actorControl.stopMovement)
@@ -449,9 +459,11 @@ void EnemyFireSlime::UpdateFireballWindup(float deltaTime, engine::Vector3& velo
     velocity.x = 0.0f;
     velocity.z = 0.0f;
 
+    // 発射だけ任せる設定では、照準と予兆をこの関数で管理し、発射時刻は共通時計を使う。
     if (attack.sequence.enabled) {
         const float elapsed = fireballSequence_.GetElapsed();
 
+        // 警告で固定されるまでは、向きと予測距離を対象の現在位置へ合わせる。
         if (!fireballAimLocked_) {
             pendingFireballDirection_ = direction;
             pendingFireballDistance_ = distance;
@@ -462,6 +474,7 @@ void EnemyFireSlime::UpdateFireballWindup(float deltaTime, engine::Vector3& velo
             ShowAttackTelegraphLine(GetWorldPosition(), pendingFireballDirection_,
                 std::clamp(pendingFireballDistance_, attack.minRange, attack.maxRange), attack.radius * 2,
                 elapsed / (std::max)(0.001f, attack.windupDuration), {1, 0.34f, 0.06f, 0.8f});
+            // 次の時計更新で警告時刻を跨ぐフレームに通知し、同時に向きと距離を固定する。
             if (!fireballWarningTriggered_ && elapsed + deltaTime >= attack.windupDuration - attack.warningLeadTime) {
                 TriggerAttackTelegraphCue({1, 0.32f, 0.04f, 1});
                 fireballWarningTriggered_ = fireballAimLocked_ = true;
@@ -472,6 +485,7 @@ void EnemyFireSlime::UpdateFireballWindup(float deltaTime, engine::Vector3& velo
         // 既存の溜め姿勢も共通時計へ追従させ、残り時間を二重に積算しません。
         fireballWindupTimer_ = (std::max)(0.0f, attack.windupDuration - fireballSequence_.GetElapsed());
 
+        // シーケンスの終了後に硬直・再使用待ちを始め、予兆と溜め色を片付ける。
         if (!fireballSequence_.IsRunning()) {
             fireballWindupTimer_ = 0;
             attackCooldown_ = attack.cooldown;
@@ -483,12 +497,14 @@ void EnemyFireSlime::UpdateFireballWindup(float deltaTime, engine::Vector3& velo
         return;
     }
 
+    // 従来設定でも予告する直前まで対象を追う。発射には確定した値を使う。
     if (!fireballAimLocked_) {
         pendingFireballDirection_ = direction;
         pendingFireballDistance_ = distance;
         UpdateFacing(direction);
     }
 
+    // シーケンスがない場合だけ、火球自身の予兆タイマーを減らす。
     fireballWindupTimer_ = (std::max)(0.0f, fireballWindupTimer_ - deltaTime);
     const float windupDuration = (std::max)(0.01f, attack.windupDuration);
     const float progress = attack.GetPhaseProgressFromRemaining(AttackAbilityPhase::Windup, fireballWindupTimer_);
@@ -506,6 +522,7 @@ void EnemyFireSlime::UpdateFireballWindup(float deltaTime, engine::Vector3& velo
         return;
     }
 
+    // 溜めが終わったら確定済みの向きと距離で発射し、通常の色と次の攻撃待ちへ戻す。
     FireFireball(pendingFireballDirection_, pendingFireballDistance_);
     HideAttackTelegraph();
     attackCooldown_ = attack.cooldown;
@@ -529,6 +546,7 @@ void EnemyFireSlime::DispatchBreathDamage(const engine::Vector3& direction, floa
         return;
     }
 
+    // 平面上の扇に入っていても、炎の高さと相手の当たり箱が重ならなければ除外する。
     const float bodyHeight = (std::max)(0.7f, std::abs(GetScale().y));
     const float visualCenterY = GetTranslate().y + 0.68f * bodyHeight;
     const float visualHalfHeight = 0.75f * (std::max)(0.7f, std::abs(GetScale().x));
@@ -538,6 +556,7 @@ void EnemyFireSlime::DispatchBreathDamage(const engine::Vector3& direction, floa
         return;
     }
 
+    // 炎の放出口から相手の中心まで遮蔽物を調べ、壁越しの命中を防ぐ。
     const engine::Vector3 rayStart = GetWorldPosition() + engine::Vector3{0.0f, 0.72f * bodyHeight, 0.0f};
     const engine::Vector3 targetCenter = (targetBounds.min + targetBounds.max) * 0.5f;
     const engine::Vector3 rayDelta = targetCenter - rayStart;
@@ -554,6 +573,7 @@ void EnemyFireSlime::DispatchBreathDamage(const engine::Vector3& direction, floa
         }
     }
 
+    // 全条件を通った相手に、炎ダメージと攻撃定義の燃焼・無敵時間を通知する。
     DamageEvent damageEvent;
     damageEvent.target = GetTarget();
     damageEvent.attacker = this;
@@ -574,6 +594,7 @@ void EnemyFireSlime::FireFireball(const engine::Vector3& direction, float distan
     if (!GetTarget())
         return;
 
+    // 確定した方向へ発射元を出し、そこから対象の現在座標を狙う。
     engine::Vector3 spawnPos = GetTranslate() + direction * 0.65f;
     spawnPos.y += 1.05f;
 
@@ -586,12 +607,14 @@ void EnemyFireSlime::FireFireball(const engine::Vector3& direction, float distan
 
     aim = engine::Math::Normalize(aim);
 
+    // 予測距離で弾速を変え、攻撃定義の最小・最大速度に収める。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kFireballAttackId);
     const float speed = std::clamp(distance * 1.65f, attack.minSpeed, attack.maxSpeed);
     BulletManager::GetInstance()->Fire(spawnPos, aim * speed, CollisionCategories::Get("enemy_attack"), CollisionCategories::Get("player") | CollisionCategories::Get("ground"), "Primitives/sphere",
                                        0.5f, attack.lifetime, MakeFireVisual(1.2f), attack.damage,
                                        MakeStatusEffect(attack), DamageType::Fire);
 
+    // 弾の軌跡や着弾とは別に、発射元へ攻撃開始の粒子を出す。
     EmitFirePreset(attack.activeVfx.empty() ? kCastPreset : attack.activeVfx.c_str(), spawnPos);
 }
 
@@ -678,6 +701,7 @@ void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
         return;
     }
 
+    // 水平速度を平滑化して、炎の根元を進行方向の反対へ少し引く。
     const engine::Vector3 scale = GetScale();
     const float bodyScale = (std::max)({0.7f, std::abs(scale.x), std::abs(scale.y), std::abs(scale.z)});
     engine::Vector3 velocity = GetVelocity();
@@ -698,6 +722,7 @@ void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
     const engine::Vector3 localRight = {std::cos(yaw), 0.0f, -std::sin(yaw)};
     const float flowX = (std::clamp)(-engine::Math::Dot(smoothedFlameVelocity_, localRight) * 0.12f, -1.0f, 1.0f);
 
+    // 待機中は周期的に揺らし、移動時は速度に応じて炎を広げる。
     const float pulse = std::sin(idleTimer_ * 8.0f) * 0.06f;
     const float speedRate = (std::clamp)(moveSpeed * 0.055f, 0.0f, 1.0f);
     const float width = kHeadFlameBaseScale * (0.94f + pulse + speedRate * 0.06f) * bodyScale;
@@ -709,6 +734,7 @@ void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
     headFlameVisual_->SetScale({width, height, width});
     headFlameVisual_->SetColor({1.0f, 0.24f + std::sin(idleTimer_ * 5.3f) * 0.035f, 0.04f, 0.80f});
 
+    // 本体の右方向に対する移動量を炎の流れへ渡し、移動時の揺れも強める。
     if (auto* renderer = headFlameVisual_->GetMeshRenderer()) {
         if (auto* water = renderer->GetWaterParamData()) {
             water->flowSpeedX = flowX;
@@ -723,6 +749,7 @@ void EnemyFireSlime::UpdateHeadFlameVisual(float deltaTime) {
     headFlameVisual_->UpdateLocalMatrix();
     headFlameVisual_->UpdateWorldMatrix();
 
+    // メッシュとは別の周期で炎と火の粉を発生させる。先に表示状態を適用してから出す。
     headFlameParticleTimer_ -= deltaTime;
     headEmberParticleTimer_ -= deltaTime;
 
@@ -782,6 +809,7 @@ void EnemyFireSlime::EnsureBreathFlameVisuals() {
         return;
     }
 
+    // 既存の炎は再利用し、欠けている枠があるときだけシーンから描画基盤を取得する。
     bool needsCreate = false;
 
     for (int i = 0; i < kBreathFlameVisualCount; ++i) {
@@ -826,6 +854,7 @@ void EnemyFireSlime::EnsureBreathFlameVisuals() {
         flame->SetColor({1.0f, 0.31f, 0.05f, 0.0f});
         flame->SetEmissive(1.8f);
 
+        // 炎ごとに異なるUVオフセットを使い、隣の炎と揺れが揃わないようにする。
         if (auto* renderer = flame->GetMeshRenderer()) {
             if (auto* water = renderer->GetWaterParamData()) {
                 water->effectType = kBreathFlameEffectType;
@@ -870,6 +899,7 @@ void EnemyFireSlime::UpdateBreathFlameVisuals(const engine::Vector3& direction, 
             continue;
         }
 
+        // 射線上での順番に応じて前後位置を決め、左右へ異なる位相で揺らす。
         const float step = (static_cast<float>(i) + 0.5f) / static_cast<float>(kBreathFlameVisualCount);
         const float distance = 0.50f + step * (attack.maxRange * 0.84f);
         const float wobble = std::sin(idleTimer_ * (6.2f + step * 1.4f) + step * 8.3f) * (0.025f + step * 0.07f);
@@ -878,6 +908,7 @@ void EnemyFireSlime::UpdateBreathFlameVisuals(const engine::Vector3& direction, 
 
         const float yaw = std::atan2(direction.x, direction.z);
 
+        // 遠い炎ほど横幅を広げ、共通のフェード値から各炎の透明度を計算する。
         const float pulse = std::sin(idleTimer_ * (8.2f + step * 2.3f) + step * 5.7f) * 0.035f;
         const float width = (0.64f + step * 0.78f + pulse) * bodyScale;
         const float height = (0.34f + step * 0.23f - pulse * 0.18f) * bodyScale;
@@ -987,6 +1018,7 @@ void EnemyFireSlime::EmitDirectedFirePreset(const char* presetName, const engine
 
 void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
     if (auto* controller = GetAnimatorControllerAsset()) {
+        // 攻撃中に使うクリップを優先し、通常時は水平速度で待機と移動を選ぶ。
         std::string stateName = "Idle";
 
         if (fireballSequence_.IsRunning() || fireballWindupTimer_ > 0.0f) {
@@ -1051,6 +1083,7 @@ void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
             targetRotation.x = -recoil * 0.16f;
         }
     } else if (breathTimer_ > 0.0f) {
+        // ブレスは吸い込みから吐き出しへ進み、本体の奥行きと前傾を変える。
         const float activeDuration = (std::max)(0.01f, GetAttackDefinition(kBreathAttackId).activeDuration);
         const float t = std::clamp(1.0f - (breathTimer_ / activeDuration), 0.0f, 1.0f);
         const float inhale = std::sin(std::clamp(t / 0.24f, 0.0f, 1.0f) * std::numbers::pi_v<float>);
@@ -1061,6 +1094,7 @@ void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
         targetScale.z = baseScale_.z * (1.0f - inhale * 0.12f + exhale * 0.30f - pulse * 0.55f);
         targetRotation.x = inhale * 0.09f - exhale * 0.07f;
     } else if (fireballWindupTimer_ > 0.0f) {
+        // 従来の火球では残りの予備時間から縮みと震えを計算する。
         const float windupDuration = (std::max)(0.01f, selectedFireball_.windupDuration);
         const float charge = std::clamp(1.0f - fireballWindupTimer_ / windupDuration, 0.0f, 1.0f);
         const float tremble = std::sin(idleTimer_ * 31.0f) * 0.025f * charge;
@@ -1070,6 +1104,7 @@ void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
         targetRotation.x = charge * 0.12f;
         targetRotation.z = tremble * 1.6f;
     } else if (attackTimer_ > 0.0f) {
+        // 火球の発射後は硬直時間に合わせ、後ろへ反る反動を減衰させる。
         const float recoveryDuration = (std::max)(0.01f, selectedFireball_.id.empty()
             ? GetAttackDefinition(kFireballAttackId).recoveryDuration : selectedFireball_.recoveryDuration);
         const float remaining = std::clamp(attackTimer_ / recoveryDuration, 0.0f, 1.0f);
@@ -1079,6 +1114,7 @@ void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
         targetScale.z = baseScale_.z * (1.0f + recoil * 0.20f);
         targetRotation.x = -recoil * 0.16f;
     } else {
+        // 攻撃中以外は接地と移動速度を使って待機・移動の弾みを計算する。
         SlimeBounceAnimator::Params params;
         params.speedForFullBounce = 1.85f;
         params.idleAmplitude = 0.075f;
@@ -1090,6 +1126,7 @@ void EnemyFireSlime::ApplySlimeAnimation(float deltaTime) {
         targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, IsGrounded(), params);
     }
 
+    // 選んだ姿勢へ被弾の反応を重ね、急に姿勢が変わらないよう補間する。
     ApplyDamageReactionPose(targetScale, targetRotation);
     const float poseRate = (std::min)(1.0f, deltaTime * 13.0f);
     engine::Vector3 scale = engine::Math::Lerp(GetScale(), targetScale, poseRate);

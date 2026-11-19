@@ -55,6 +55,7 @@ bool PresetEditor::RemoveManagedEnemyFields(json& data) {
 }
 
 PresetEditor::PropertyEditorContext* PresetEditor::GetPropertyEditor(const std::string& type, bool commonObject) {
+    // 同じ型の一時 Object を使い回す。接触イベント用の汎用 Object とギミックの実体はキャッシュを分ける。
     const std::string cacheKey = (commonObject ? "Object/" : "Gimmick/") + type;
     const auto found = propertyEditors_.find(cacheKey);
     if (found != propertyEditors_.end()) return &found->second;
@@ -69,6 +70,7 @@ PresetEditor::PropertyEditorContext* PresetEditor::GetPropertyEditor(const std::
     }
     if (!object) return nullptr;
     PropertyEditorContext context;
+    // 初期状態を保存し、別プリセットへ切り替えたときに前回の値を引き継がないようにする。
     context.defaults = object->ExportToJson();
     context.object = std::move(object);
     return &propertyEditors_.emplace(cacheKey, std::move(context)).first->second;
@@ -132,15 +134,18 @@ bool PresetEditor::DrawRegisteredSettings(json& data, PropertyEditorContext& con
     bool changed = false;
     if (!component->description.empty()) ImGui::TextWrapped("%s", component->description.c_str());
     for (const auto* property : registry->GetPropertiesForComponent(componentType)) {
+        // 対象の型では利用できないプロパティや、現在の値では隠す項目を入力欄から除く。
         if (!registry->IsApplicable(&object, property->path) ||
             (property->visible && !property->visible(object))) continue;
         ImGui::PushID(property->path.c_str());
         ImGui::TextUnformatted(property->displayName.c_str());
         auto value = property->displayValue ? property->displayValue(object) : registry->GetValue(&object, property->path);
+        // 現在の Object に応じた上限は入力欄のコピーへ入れ、登録済みの共通定義を変更しない。
         auto effective = *property;
         if (property->maximum) effective.ui.maxValue = property->maximum(object);
         const bool disabled = HasEditorPropertyFlag(property->flags, EditorPropertyFlags::ReadOnly) ||
             (property->enabled && !property->enabled(object));
+        // 読み取り専用の項目は値とヘルプを表示し、入力だけを止める。
         ImGui::BeginDisabled(disabled);
         EditorPropertyDrawOptions drawOptions;
         drawOptions.compact = true;
@@ -219,6 +224,7 @@ void PresetEditor::ApplyHiddenCategoryFields(json& data, Category category) {
 
 void PresetEditor::ApplyTypeDefaults(json& data, Category category, const std::string& type) {
     if (category == Category::Enemy) {
+        // 大型の敵だけは生成時の当たり判定の寸法を通常より広く取る。
         if (type == "GiantSlime") {
             SetColliderDefaults(data, 1, { 2.2f, 2.2f, 2.2f });
         }
@@ -231,6 +237,7 @@ void PresetEditor::ApplyTypeDefaults(json& data, Category category, const std::s
             const auto& defaults = context->defaults;
             for (const char* key : {"param", "modelName", "scale", "color", "materialType", "blendMode", "emissive",
                  "metallic", "roughness", "collider", "collisionAttribute", "collisionMask", "collisionAttributeIds", "collisionMaskIds"})
+                // 見た目と当たり判定の初期項目だけ型の初期値から採用し、プリセット名や配置情報を維持する。
                 if (defaults.contains(key)) data[key] = defaults[key];
             data["gimmickType"] = type;
             EnsureParam(data)["gimmickType"] = type;

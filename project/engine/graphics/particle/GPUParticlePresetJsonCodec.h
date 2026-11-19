@@ -60,6 +60,7 @@ inline void Read(const Json& json, GpuParticleConfig& config) {
         config.lod.farDistance = found->value("farDistance", 45.0f);
         config.lod.farEmissionScale = found->value("farEmissionScale", 0.25f);
         config.lod.maxAliveParticles = found->value("maxAliveParticles", 0);
+        // 近距離と遠距離の順序や発生倍率を有効範囲へ揃え、ランタイムの距離計算に渡します。
         config.lod.Sanitize();
     }
 

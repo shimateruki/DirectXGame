@@ -20,7 +20,7 @@
 namespace GoalPresentationRuntimeProbe { struct Access; }
 
 // 前方宣言
-class DirectXCommon;
+namespace engine { class DirectXCommon; }
 namespace engine { class InputManager; }
 class SceneManager;
 class LevelLoader;
@@ -249,7 +249,7 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
 
   private:
     // Game/Frameworkが所有する描画・入力基盤を借用する。
-    DirectXCommon* dxCommon_ = nullptr;
+    engine::DirectXCommon* dxCommon_ = nullptr;
     engine::InputManager* inputManager_ = nullptr;
 
     // ステージ配置、ロックオン、Object一覧の管理器をシーンが所有する。
@@ -360,12 +360,12 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
         bool defeat = false;
         bool active = false;
         Player* originalPlayer = nullptr;
-        std::unique_ptr<Camera> camera;
-        Camera* previousCameraOverride = nullptr;
+        std::unique_ptr<engine::Camera> camera;
+        engine::Camera* previousCameraOverride = nullptr;
         std::vector<engine::Object3D*> hiddenObjects;
         std::vector<engine::Object3D*> objects;
         engine::Vector3 eye{}, target{}, rotation{};
-        Camera::FollowMode followMode = Camera::FollowMode::Aimable;
+        engine::Camera::FollowMode followMode = engine::Camera::FollowMode::Aimable;
         engine::Object3D* follow = nullptr;
         float fov = 0.45f;
     } crownMoviePreview_;
@@ -389,7 +389,7 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
 
         engine::Object3D* follow = nullptr;
         engine::Object3D* lockOn = nullptr;
-        Camera::FollowMode followMode = Camera::FollowMode::Aimable;
+        engine::Camera::FollowMode followMode = engine::Camera::FollowMode::Aimable;
     } sealBarrageMovie_;
 
     /// <summary>結晶破壊の猶予切れ後に再生する全域攻撃ムービーを進める。</summary>
@@ -443,6 +443,14 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
 
     // GPU粒子が参照する画像と、HUDに表示するロックオンマーカー。
     uint32_t gpuParticleTexHandle_ = 0;
+    // 疾走線は中央から外へ伸ばす二枚を交互に表示し、継ぎ目を隠す。
+    std::array<std::unique_ptr<engine::Sprite>, 2> dashSpeedLineSprites_;
+    float dashSpeedLinePhase_ = 0.0f; // 0〜1の流れ位置。
+    float dashSpeedLineAlpha_ = 0.0f; // 現在の合計不透明度。
+    float dashSpeedLineMaxAlpha_ = 0.72f; // 最高速での合計不透明度。
+    float dashSpeedLineScale_ = 1.0f; // 画面サイズに対する倍率。
+    void UpdateDashSpeedLines(float deltaTime);
+
     std::unique_ptr<engine::Sprite> lockOnSprite_;
     bool isDrawLockOn_ = false;
 
@@ -635,9 +643,9 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
 
     // 既存の王冠Objectとカメラは借用し、演出専用カメラとUIだけ所有する。
     engine::Object3D* goalCrownObject_ = nullptr;
-    Camera* goalCameraRestoreOverride_ = nullptr;
-    Camera* goalLockedPrimaryCamera_ = nullptr;
-    Camera* goalLockedSecondaryCamera_ = nullptr;
+    engine::Camera* goalCameraRestoreOverride_ = nullptr;
+    engine::Camera* goalLockedPrimaryCamera_ = nullptr;
+    engine::Camera* goalLockedSecondaryCamera_ = nullptr;
 
     // ゴール専用のプレイヤー姿勢、タイムライン、再生状態。
     GoalClearPlayerAnimator goalClearPlayerAnimator_;
@@ -645,7 +653,7 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
     CinematicPlayer goalCinematicPlayer_;
     bool goalCinematicTimelineLoaded_ = false;
     GoalPresentationTuning goalPresentationTuning_;
-    std::unique_ptr<Camera> goalPresentationCamera_;
+    std::unique_ptr<engine::Camera> goalPresentationCamera_;
     std::unique_ptr<engine::Sprite> goalOverlayFlash_;
     std::unique_ptr<engine::Sprite> goalOverlayReturnText_;
     std::array<std::unique_ptr<engine::Sprite>, 10> goalOverlayStageClearLetters_;
@@ -773,7 +781,7 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
     HudSpriteState lifeLostXIcon_;
     std::array<HudSpriteState, 2> lifeLostDigits_;
     HudSpriteState lifeLostBackdrop_;
-    std::unique_ptr<Camera> lifeLostCamera_;
+    std::unique_ptr<engine::Camera> lifeLostCamera_;
     std::unique_ptr<engine::Object3D> lifeLostSlimeObject_;
     std::unique_ptr<engine::Object3D> lifeLostStunObject_;
 
@@ -1009,7 +1017,7 @@ class GamePlayScene : public BaseScene, public IStageProgressScene, public IScen
     /// <param name="camera">ワールド座標を投影するカメラ。</param>
     /// <param name="target">現在のロックオン対象。</param>
     /// <param name="deltaTime">マーカー更新に使う経過秒数。</param>
-    void UpdateLockOnSprite(Camera* camera, engine::Object3D* target, float deltaTime);
+    void UpdateLockOnSprite(engine::Camera* camera, engine::Object3D* target, float deltaTime);
 
     /// <summary>ステージ内のゲームシステムと演出管理器を更新する。</summary>
     void UpdateSceneSystems(float deltaTime);

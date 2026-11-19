@@ -36,6 +36,7 @@ float FindInsertionTime(const std::vector<TKey>& keys) {
         return keys.empty() ? 0.0f : 1.0f;
     }
 
+    // 時刻は寿命に対する 0～1 の割合。既存の時刻順を前提に、隣り合うキー間が最も広い区間の中央を選ぶ。
     float insertionTime = 0.5f;
     float largestGap = -1.0f;
     for (std::size_t index = 1; index < keys.size(); ++index) {
@@ -166,6 +167,7 @@ inline bool DrawFloatCurve(
         // 最も広い空白区間へ追加し、Normalizeで時間順を再確定する。
         const VfxFloatCurve before = curve;
         const float time = FindInsertionTime(curve.keys);
+        // 追加時の値はその時刻における既存カーブの値を使う。既定値を置く場合より変化を抑えやすい。
         curve.keys.push_back({ time, curve.Evaluate(time, 1.0f), VfxCurveEasing::Linear });
         curve.Normalize();
         apply(curve);
@@ -254,6 +256,7 @@ inline bool DrawColorGradient(
     if (allowKeyCountChange && static_cast<int>(gradient.keys.size()) < maximumKeys && ImGui::Button("色キーを追加")) {
         const VfxColorGradient before = gradient;
         const float time = FindInsertionTime(gradient.keys);
+        // 新しい色の初期値に既存グラデーションの補間色を使い、追加した点の色を引き継ぐ。
         gradient.keys.push_back({ time, gradient.Evaluate(time), VfxCurveEasing::Linear });
         gradient.Normalize();
         apply(gradient);
@@ -319,6 +322,7 @@ inline bool DrawLodSettings(
     before = settings;
     if (ImGui::DragInt("同時生存上限 (0 = System上限)", &settings.maxAliveParticles, 8.0f, 0, maximumParticleLimit)) {
         settings.Sanitize();
+        // 0 は System 自身の上限を使う指定として残す。明示した正の値だけツールが許す範囲へ補正する。
         if (settings.maxAliveParticles > 0) {
             settings.maxAliveParticles = std::clamp(
                 settings.maxAliveParticles, (std::max)(minimumParticleLimit, 1), maximumParticleLimit);

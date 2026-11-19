@@ -22,7 +22,7 @@ void GimmickTrampoline::Initialize(engine::Object3DCommon* common, const std::st
 
     // 傘全体を床と側面に使い、モデルの曲面から着地高さを求める。
     // 柄と根元はシーン側の子コライダーに分け、反発対象にはしない。
-    ColliderConfig config = GetColliderConfig();
+    engine::ColliderConfig config = GetColliderConfig();
     config.type = ColliderType::Obb;
     config.center = {0.0f, 1.20f, 0.0f};
     config.size = {1.40f, 0.40f, 1.40f};
@@ -52,17 +52,21 @@ void GimmickTrampoline::Update(float deltaTime) {
             GetCollider()->SetScaleOverride(authoredScale_);
     }
 
+    // 長いフレームでも表示用ばねの更新幅を最大0.05秒に抑え、急な伸縮を避けます。
     const float frameDeltaTime = (std::clamp)(deltaTime, 0.0f, 0.05f);
     bounceCooldown_ = (std::max)(0.0f, bounceCooldown_ - frameDeltaTime);
     wobbleTime_ = (std::max)(0.0f, wobbleTime_ - frameDeltaTime);
+    // 縮みを基準形へ戻すばねの力と、振動を抑える速度抵抗を合成し、速度を更新してから縮み量へ反映します。
     squashVelocity_ += (-kSquashStiffness * squash_ - kSquashDamping * squashVelocity_) * frameDeltaTime;
     squash_ += squashVelocity_ * frameDeltaTime;
 
+    // 縮みとその速度が十分に小さくなったら、描画が微振動し続けないよう静止させます。
     if (std::abs(squash_) < 0.001f && std::abs(squashVelocity_) < 0.01f) {
         squash_ = 0.0f;
         squashVelocity_ = 0.0f;
     }
 
+    // 縦に縮んだ分は横に広げ、着地直後の横揺れは配置角度へ加えます。
     const float spread = 1.0f - squash_ * 0.28f;
     SetScale({authoredScale_.x * spread, authoredScale_.y * (1.0f + squash_), authoredScale_.z * spread});
     const float wobble = std::sin((0.42f - wobbleTime_) * 38.0f) * wobbleTime_ * 0.13f;
@@ -83,11 +87,12 @@ bool GimmickTrampoline::OnCollision(engine::Object3D* other) {
 }
 
 bool GimmickTrampoline::TryBounce(Player* player, const engine::Vector3& playerGroundNormal) {
+    // 連続反発の待ち時間中や上昇中は、足場との接触が残っていても跳ね直しません。
     if (!player || bounceCooldown_ > 0.0f || playerGroundNormal.y <= 0.5f ||
         player->GetVelocity().y > 0.0f) return false;
 
     // 傘の下から側面へ押し込まれた接触は、法線が上寄りでも着地と見なさない。
-    const Collider* capCollider = GetCollider();
+    const engine::Collider* capCollider = GetCollider();
     if (!capCollider)
         return false;
     const Aabb playerBounds = player->GetAabb();

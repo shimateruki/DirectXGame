@@ -143,6 +143,7 @@ std::vector<PresetManager::PrefabVariantOverride> PresetManager::GetPrefabVarian
     for (auto it = propertyOverrides[info.sourceObjectId].begin();
         it != propertyOverrides[info.sourceObjectId].end(); ++it) {
         const EditorPropertyDescriptor* property = registry->Find(it.key());
+        // 存在状態も上書きされているコンポーネントは、内部値を個別の上書き一覧へ重複表示しない。
         const json& componentOverrides = assetIt->second["componentOverrides"];
         if (property && componentOverrides.is_object() &&
             componentOverrides.contains(info.sourceObjectId) &&
@@ -312,6 +313,7 @@ bool PresetManager::ApplyPrefabProperty(
         const json baseValue = baseNode ? ReadSourceProperty(*baseNode, propertyPath) : json();
         json& objectOverrides = assetIt->second["propertyOverrides"][info.sourceObjectId];
 
+        // 基底値と同じなら明示上書きを消し、基底を後から編集したときに追従できるようにする。
         if (!baseValue.is_null() && JsonValuesEqual(baseValue, newSourceValue)) {
             objectOverrides.erase(propertyPath);
 
@@ -427,6 +429,7 @@ bool PresetManager::ApplyPrefabComponent(
     const std::string baseAssetId = assetIt->second.value("baseAssetId", "");
 
     if (baseAssetId.empty()) {
+        // 通常Prefabでは、追加した部品の上書き対象値を保存し、取り外した場合は部品の存在情報を更新する。
         if (!WriteComponentStateFromObject(*sourceNode, object, *component, instancePresent)) {
             return false;
         }
@@ -695,6 +698,7 @@ bool PresetManager::RevertPrefabVariantComponent(
         const bool newPresence = registry->IsComponentPresent(*newNode, componentTypeId);
         const bool currentPresence = registry->IsComponentPresent(candidate, componentTypeId);
 
+        // 以前の継承状態に従っていた配置だけを更新し、各配置で独自に付け外しした部品は保持する。
         if (newPresence != oldIt->second && currentPresence == oldIt->second) {
             ApplySerializedComponentState(candidate, *newNode, *component);
         }
@@ -790,6 +794,7 @@ int PresetManager::ApplyAllPrefabOverrides(engine::Object3D* object, const std::
         }
     }
 
+    // 個別適用の履歴抑止を解除してから、階層全体の変更前後を一件の Undo として登録する。
     suppressPrefabAssetTransaction_ = false;
     assetIt = prefabs_.find(prefabName);
 
@@ -800,6 +805,7 @@ int PresetManager::ApplyAllPrefabOverrides(engine::Object3D* object, const std::
     return applied;
 }
 
+// 共有アセットへの変更は発生せず、現在の配置グループのコンポーネントとプロパティを継承元へ戻す。
 int PresetManager::RevertAllPrefabOverrides(engine::Object3D* object, const std::vector<engine::Object3D*>& sceneObjects) {
     // 同じ instanceId の階層を回り、構造差分と Property 差分を元へ戻す。
     if (!object || !object->IsPrefabInstance()) {

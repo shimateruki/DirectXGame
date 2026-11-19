@@ -43,10 +43,10 @@ public:
     /// <summary>画面を閉じるフェードを開始する。</summary>
     void StartFadeOut(float duration);
 
-    /// <summary>指定中心へ閉じるアイリス演出を開始する。</summary>
+    /// <summary>閉じるアイリス演出を開始する。指定中心は保持するが、画像は画面中央に描く。</summary>
     void StartIrisOut(float duration, const engine::Vector2& center = { 0.5f, 0.5f });
 
-    /// <summary>指定中心から開くアイリス演出を開始する。</summary>
+    /// <summary>開くアイリス演出を開始する。指定中心は保持するが、画像は画面中央に描く。</summary>
     void StartIrisIn(float duration, const engine::Vector2& center = { 0.5f, 0.5f });
 
     /// <summary>演出が完了したかを返す。</summary>
@@ -113,6 +113,7 @@ private:
     float duration_ = 1.0f;
     float counter_ = 0.0f;
     float coverage_ = 0.0f;
+    // 指定中心は画面幅・高さに対する0～1の座標です。現在の連番画像の配置には使いません。
     engine::Vector2 center_ = { 0.5f, 0.5f };
 
     std::unique_ptr<engine::SpriteCommon> spriteCommon_;

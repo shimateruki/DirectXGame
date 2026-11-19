@@ -48,7 +48,8 @@ struct GpuParticleConfig {
     int spriteSheetLoop = 0;
     int spriteSheetRandomStart = 0;
 
-    int alignToVelocity = 0; // 進行方向へ向きをそろえる指定（0/1）。
+    // 方向固定と従来のランダム回転付きモードは別の整数で、旧プリセットの0/1も引き続き受け付けます。
+    int alignToVelocity = 0; // 0: 自由回転、1: 速度方向に粒子回転を合成、2: 速度方向へ固定。
     float velocityStretch = 0.0f; // 速度に応じた伸長の強さ。
 
     int particleType = 0;       // 0: Billboard, 1: Trail

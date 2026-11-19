@@ -18,7 +18,7 @@ void BaseItem::Initialize(engine::Object3DCommon* common, const std::string& mod
     SetStatic(false);
 
     // プレイヤーとの接触だけを拾うトリガーにし、地形の物理衝突には参加させません。
-    ColliderConfig config;
+    engine::ColliderConfig config;
     config.type = ColliderType::Sphere;
     config.size = {1.0f, 1.0f, 1.0f};
     SetColliderConfig(config);

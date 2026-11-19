@@ -46,6 +46,7 @@ namespace CameraEditorImplementation {
         }
 
         engine::Vector3 center = (start + end) * 0.5f;
+        // 編集用プリミティブの長手方向はローカル +Z。水平角と上下角を使い、始点から終点へ向ける。
         float yaw = std::atan2(diff.x, diff.z);
         float horizontalLength = std::sqrt(diff.x * diff.x + diff.z * diff.z);
         float pitch = std::atan2(-diff.y, horizontalLength);
@@ -64,6 +65,7 @@ namespace CameraEditorImplementation {
         return { x, y, z };
     }
 
+    // 編集カメラは正の Pitch で視線が下を向くため、Y 成分に負の sin を使う。
     engine::Vector3 CalculateEditorForward(const engine::Vector3& rotation) {
         float x = std::sin(rotation.y) * std::cos(rotation.x);
         float y = -std::sin(rotation.x);
@@ -95,6 +97,7 @@ namespace CameraEditorImplementation {
 
     engine::Vector3 MakeRotationFromForward(const engine::Vector3& forward) {
         engine::Vector3 normalized = NormalizeSafe(forward, { 0.0f, 0.0f, 1.0f });
+        // 編集カメラの Pitch 符号へ戻す。丸め誤差で asin の定義域を越えないよう Y 成分を制限する。
         float pitch = std::asin(std::clamp(-normalized.y, -1.0f, 1.0f));
         float yaw = std::atan2(normalized.x, normalized.z);
         return { pitch, yaw, 0.0f };
@@ -105,6 +108,7 @@ namespace CameraEditorImplementation {
             return { 0.0f, 0.0f, 1.0f };
         }
 
+        // ローカルの +Z を回転・拡縮だけでワールド方向へ変換し、距離計算に使える単位方向へ直す。
         engine::Vector3 forward = engine::Math::TransformNormal({ 0.0f, 0.0f, 1.0f }, object->GetWorldMatrix());
         return NormalizeSafe(forward, { 0.0f, 0.0f, 1.0f });
     }

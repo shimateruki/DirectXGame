@@ -13,7 +13,7 @@ class AssetReferenceExplorer;
 class DebugEditor;
 class EditorQuickSearch;
 class DebrisEffectEditor;
-class DirectXCommon;
+namespace engine { class DirectXCommon; }
 class EngineManualWindow;
 class GhostDirector;
 class GhostRecorder;
@@ -61,7 +61,7 @@ public:
 	~GameEditorController();
 
 	/// <summary>各Editorツールを生成し、シーン管理とDirectX基盤へ接続する。</summary>
-void Initialize(SceneManager* sceneManager, DirectXCommon* dxCommon);
+void Initialize(SceneManager* sceneManager, engine::DirectXCommon* dxCommon);
 
 	/// <summary>Editorツールを終了して接続を外す。</summary>
 	void Finalize();

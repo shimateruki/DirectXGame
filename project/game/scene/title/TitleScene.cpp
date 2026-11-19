@@ -255,7 +255,7 @@ void TitleScene::Initialize() {
     }
 
     // 背景配置を作った後、タイトル固有の光とカメラ設定を適用します。
-    LightManager::GetInstance()->LoadState(kTitleLightPath);
+    engine::LightManager::GetInstance()->LoadState(kTitleLightPath);
     CameraEditor::GetInstance()->Initialize();
     CameraEditor::GetInstance()->LoadFile(ResolveSceneCameraPath("title_camera.json"));
     CameraEditor::GetInstance()->SetMode(CameraEditor::Mode::Game);
@@ -326,12 +326,14 @@ void TitleScene::Initialize() {
 }
 
 void TitleScene::Finalize() {
-    // Sprite の所有コンテナを破棄する前に、そこを指す演出用の参照を無効化する。
+    // シーン内の物体や弾が消える前に、衝突管理への登録を解除します。
     CollisionManager::GetInstance()->ClearObjects();
     BulletManager::GetInstance()->Finalize();
 
+    // 衝突の登録を外した後、3D配置と追加生成したタイトルUIの所有物を解放します。
     objectManager_.reset();
     titleUiSprites_.clear();
+    // 破棄したUIを指す参照を一括で初期化し、再入場時に新しいレイアウトから結び直します。
     controllerNoticeSprites_.fill(nullptr);
     controllerNoticeActive_ = false;
     saveSlotCards_.fill(nullptr);
@@ -390,6 +392,7 @@ void TitleScene::Finalize() {
     mainMenuArrowSprite_ = nullptr;
     mainMenuCursorSprite_ = nullptr;
     mainMenuPromptSprite_ = nullptr;
+    // 背景のモデルとカメラの基準点、ロゴ演出の経過を次のタイトルへ持ち越しません。
     titleHeroSlime_ = nullptr;
     titleCameraAnchor_.reset();
     titleHeroBaseCaptured_ = false;
@@ -410,6 +413,7 @@ void TitleScene::Finalize() {
 
 void TitleScene::Update(float deltaTime) {
     // 設定・メインメニュー・セーブ選択の入力を分けつつ、背景の演出は継続する。
+    // フェードやコントローラー案内中はロゴの時間を進めず、表示開始から演出を見せます。
     const float sceneDeltaTime = IsFadePlayingForSceneIntro() ? 0.0f : deltaTime;
     const bool waitingForNotice = UpdateControllerNotice(sceneDeltaTime);
     const float introDeltaTime = waitingForNotice ? 0.0f : sceneDeltaTime;
@@ -418,9 +422,11 @@ void TitleScene::Update(float deltaTime) {
 
     const bool isSettingsOpen = settingsOverlay_ && settingsOverlay_->IsActive();
 
+    // 設定画面へ入力を渡す間、背後のメニューの選択は進めません。
     if (isSettingsOpen) {
         settingsOverlay_->Update(deltaTime);
     } else if (titleMode_ == TitleMode::MainMenu) {
+        // ロゴが出そろうまでは背景・描画用の状態だけ更新し、決定入力を受け付けません。
         if (!titleIntroComplete_) {
             UpdateSaveSlotUi(deltaTime);
             LightEditor::GetInstance()->Update();
@@ -494,6 +500,7 @@ void TitleScene::Update(float deltaTime) {
 }
 
 void TitleScene::InitializeControllerNotice() {
+    // 一度案内を閉じていた場合は、タイトルに戻っても表示し直しません。
     controllerNoticeTime_ = 0.0f;
     controllerNoticeActive_ = !controllerNoticeCompleted;
 
@@ -536,11 +543,13 @@ bool TitleScene::UpdateControllerNotice(float deltaTime) {
         if ((kSkipButtons & button) && inputManager_->IsGamepadButtonTriggered(button))
             skip = true;
     }
+    // フェードインが終わった後だけスキップを受け、案内を即座に消さずフェードアウトへ進めます。
     if (deltaTime > 0.0f && controllerNoticeTime_ >= kControllerNoticeFadeIn &&
         controllerNoticeTime_ < kControllerNoticeHoldEnd && skip) {
         controllerNoticeTime_ = kControllerNoticeHoldEnd;
     }
 
+    // 文字とアイコンを先に消し、暗幕はその後で薄くして背景へ切り替えます。
     const float textAlpha = Easing::SmoothStep01(std::clamp(controllerNoticeTime_ / kControllerNoticeFadeIn, 0.0f, 1.0f)) *
         (1.0f - Easing::SmoothStep01(std::clamp((controllerNoticeTime_ - kControllerNoticeHoldEnd) /
                                              (kControllerNoticeTextOutEnd - kControllerNoticeHoldEnd), 0.0f, 1.0f)));
@@ -604,6 +613,7 @@ void TitleScene::InitializeMainMenuUi() {
         settingTextSprite_->SetColor({0.62f, 0.74f, 0.82f, 0.0f});
     }
 
+    // 配置名で部品を取得し、レイアウトで部品が省略されていれば既存の残りだけを初期化します。
     mainMenuStartFrameSprite_ = GetSpriteByName("mainMenuStartFrame");
     mainMenuSettingFrameSprite_ = GetSpriteByName("mainMenuSettingFrame");
     mainMenuArrowSprite_ = GetSpriteByName("mainMenuArrow");
@@ -640,6 +650,7 @@ void TitleScene::InitializeMainMenuUi() {
         mainMenuPromptSprite_->SetColor({1.0f, 1.0f, 1.0f, 0.0f});
     }
 
+    // 矢印とカーソルは開始枠に対する差を記録し、選択中の枠へ同じ間隔で移せるようにします。
     const engine::Vector2 startFramePosition =
         mainMenuStartFrameSprite_ ? mainMenuStartFrameSprite_->GetPosition() : kMenuStartFramePosition;
     if (mainMenuArrowSprite_) {
@@ -662,6 +673,7 @@ void TitleScene::UpdateTitleLogoIntro(float deltaTime) {
     const bool settingsOpen = settingsOverlay_ && settingsOverlay_->IsActive();
     const bool showLogo = titleMode_ == TitleMode::MainMenu && !settingsOpen;
 
+    // 設定やセーブ選択に移った間はロゴの部品を隠し、登場の時計を止めます。
     if (!showLogo) {
         for (auto& glyph : titleLogoGlyphs_) {
             if (glyph.sprite) {
@@ -674,6 +686,7 @@ void TitleScene::UpdateTitleLogoIntro(float deltaTime) {
 
     titleIntroTime_ += deltaTime;
 
+    // メニュー入力を解放する時刻は各文字の表示完了と分け、全体の登場時間で判断します。
     if (!titleIntroComplete_) {
         if (titleIntroTime_ >= kTitleIntroMenuDelay) {
             titleIntroComplete_ = true;
@@ -692,12 +705,15 @@ void TitleScene::UpdateTitleLogoIntro(float deltaTime) {
             continue;
         }
 
+        // 文字ごとの表示開始から、配置位置へ戻る動きと跳ね返り・透明度を計算します。
         const float appearT = std::clamp(localTime / kTitleIntroGlyphDuration, 0.0f, 1.0f);
         const float smooth = Easing::SmoothStep01(appearT);
+        // 補間の途中だけ正になる半波で文字を縦に伸ばし、最後は位置と倍率を配置値へ戻す。
         const float bounce = std::sin(appearT * kTitleIntroPi) * (1.0f - appearT * 0.35f);
         const float scaleX = 0.68f + 0.32f * smooth + bounce * 0.10f;
         const float scaleY = 0.55f + 0.45f * smooth + bounce * 0.22f;
         const float yOffset = (1.0f - smooth) * 22.0f - bounce * 10.0f;
+        // 形の動きとは独立して、各文字の表示開始から0.18秒で不透明にする。
         const float alpha = std::clamp(localTime / 0.18f, 0.0f, 1.0f);
 
         sprite->SetVisible(true);
@@ -724,6 +740,7 @@ void TitleScene::UpdateTitleHeroAnimation(float deltaTime) {
         return;
     }
 
+    // 経過を一周期の秒数へ折り返し、毎フレーム元の配置姿勢から計算します。
     titleHeroSequenceTime_ = std::fmod(titleHeroSequenceTime_ + std::max(0.0f, deltaTime), kTitleHeroSequenceDuration);
     const float time = titleHeroSequenceTime_;
 
@@ -733,6 +750,7 @@ void TitleScene::UpdateTitleHeroAnimation(float deltaTime) {
     float squash = 0.0f;
     float airborneStretch = 0.0f;
 
+    // 巡回を始めるまでは同じ場所で小さく跳ね、視線と体の揺れだけを加えます。
     if (time < kTitleHeroPatrolStart) {
         const float idleCycle = std::fmod(time, 2.85f);
 
@@ -747,9 +765,11 @@ void TitleScene::UpdateTitleHeroAnimation(float deltaTime) {
         rotation.y += std::sin(time * 0.85f) * 0.15f;
         rotation.z += std::sin(time * 2.9f) * 0.035f;
     } else if (time < kTitleHeroPatrolEnd) {
+        // 巡回中は経路全体の進行率から今の区間を選び、区間の向きへ体を回しながら弾みます。
         const float patrolT =
             std::clamp((time - kTitleHeroPatrolStart) / (kTitleHeroPatrolEnd - kTitleHeroPatrolStart), 0.0f, 1.0f);
         constexpr size_t kSegmentCount = kTitleHeroPatrolOffsets.size() - 1;
+        // 経路全体の割合に区間数を掛け、整数部で区間、端数でその区間内の位置を決める。
         const float segmentProgress = patrolT * static_cast<float>(kSegmentCount);
         const size_t segmentIndex = std::min(static_cast<size_t>(segmentProgress), kSegmentCount - 1);
         const float localT = segmentProgress - static_cast<float>(segmentIndex);
@@ -760,6 +780,7 @@ void TitleScene::UpdateTitleHeroAnimation(float deltaTime) {
         position.x += routeOffset.x;
         position.z += routeOffset.z;
 
+        // 一つの区間で正弦の絶対値を使って二度跳ねる。高さが低いときだけ6乗で押しつぶしを強調する。
         const float hopPhase = localT * kTitleIntroPi * 2.0f;
         const float hop = std::abs(std::sin(hopPhase));
         position.y += hop * 0.58f;
@@ -768,9 +789,11 @@ void TitleScene::UpdateTitleHeroAnimation(float deltaTime) {
 
         const float directionX = toOffset.x - fromOffset.x;
         const float directionZ = toOffset.z - fromOffset.z;
+        // XZ平面の進行方向へ向けるため、Zを正面にした角度をラジアンで算出する。
         rotation.y += std::atan2(directionX, directionZ);
         rotation.z += std::sin(hopPhase) * 0.072f;
     } else {
+        // 巡回を終えた後は配置位置で小さな跳ねを入れ、次の周期へつなぎます。
         const float settleTime = time - kTitleHeroPatrolEnd;
         const float settleT = std::clamp(settleTime / 1.05f, 0.0f, 1.0f);
         const float settleJump = std::sin(settleT * kTitleIntroPi) * (1.0f - settleT * 0.32f);
@@ -781,6 +804,7 @@ void TitleScene::UpdateTitleHeroAnimation(float deltaTime) {
         rotation.z += std::sin(settleTime * 2.3f) * 0.026f;
     }
 
+    // 接地時は横へつぶし、空中では縦へ伸ばしてから姿勢と位置を一括で反映します。
     scale.x *= 1.0f + squash - airborneStretch * 0.30f;
     scale.y *= 1.0f - squash * 0.82f + airborneStretch;
     scale.z *= 1.0f + squash - airborneStretch * 0.30f;
@@ -798,6 +822,7 @@ void TitleScene::UpdateMainMenu() {
     engine::InputManager* input = engine::InputManager::GetInstance();
     const auto menu = MenuControls::Read(MenuControls::Screen::Title, *input);
 
+    // 上下の選択は端で折り返し、開始と設定の間を循環させます。
     if (menu.up) {
         currentMenuIndex_--;
         if (currentMenuIndex_ < 0)
@@ -839,6 +864,7 @@ void TitleScene::UpdateMainMenu() {
                                      settingTextBaseSize_.y * (selected ? selectedScale : 0.98f)});
     }
 
+    // 選択状態に対応する枠画像を使い、文字と同じフェード時間で表示します。
     const bool startSelected = currentMenuIndex_ == (int)MenuIndex::GameStart;
     const uint32_t selectedFrame = engine::Sprite::LoadTexture("ui/title/title_menu_button_blue.png");
     const uint32_t normalFrame = engine::Sprite::LoadTexture("ui/title/title_menu_button_beige.png");
@@ -855,6 +881,7 @@ void TitleScene::UpdateMainMenu() {
         mainMenuSettingFrameSprite_->Update();
     }
 
+    // カーソルと矢印は保存した相対位置を保ったまま、選択中の枠へ移します。
     const engine::Vector2 selectedFramePosition = startSelected ? startFramePosition : settingFramePosition;
 
     if (mainMenuCursorSprite_) {
@@ -905,6 +932,7 @@ void TitleScene::UpdateMainMenu() {
         mainMenuPromptSprite_->Update();
     }
 
+    // 開始は枠選択を開く段階まで進め、設定はタイトル上にオーバーレイを開きます。
     if (menu.confirm) {
         if (currentMenuIndex_ == (int)MenuIndex::GameStart) {
             titleMode_ = TitleMode::SaveSelect;
@@ -948,6 +976,7 @@ void TitleScene::UpdateSaveSelect(float deltaTime) {
     const bool moveUp = menu.up, moveDown = menu.down;
     const bool moveLeft = menu.left, moveRight = menu.right;
 
+    // 削除確認の入力は確認画面だけで使い、選択中のセーブ枠は動かさない。
     if (saveSelectMode_ == SaveSelectMode::DeleteConfirm) {
         if (moveLeft || moveRight) {
             deleteConfirmIndex_ = 1 - deleteConfirmIndex_;
@@ -973,6 +1002,7 @@ void TitleScene::UpdateSaveSelect(float deltaTime) {
         return;
     }
 
+    // 縦の移動は端まで行ったら反対端へ戻し、全枠を循環して選べるようにする。
     if (moveUp) {
         saveSelectFocusIndex_--;
 
@@ -989,6 +1019,7 @@ void TitleScene::UpdateSaveSelect(float deltaTime) {
         }
     }
 
+    // セーブ枠にフォーカスがあるときだけ、横移動と現在選択している枠を同期する。
     if (saveSelectFocusIndex_ < GameDataManager::kSaveSlotCount) {
         if (moveLeft) {
             saveSelectFocusIndex_--;
@@ -1009,6 +1040,7 @@ void TitleScene::UpdateSaveSelect(float deltaTime) {
         currentSaveSlotIndex_ = std::clamp(saveSelectFocusIndex_, 0, GameDataManager::kSaveSlotCount - 1);
     }
 
+    // 通常の一覧から戻る場合だけタイトルへ切り替え、次に開いたときも選択していた枠を初期位置にします。
     if (menu.cancel) {
         titleMode_ = TitleMode::MainMenu;
         saveSelectMode_ = SaveSelectMode::Browse;
@@ -1018,6 +1050,7 @@ void TitleScene::UpdateSaveSelect(float deltaTime) {
         return;
     }
 
+    // 既存データがある枠にだけ削除確認を出し、空き枠での削除入力は無視する。
     const GameDataManager::SaveSlotSummary summary =
         GameDataManager::GetInstance()->GetSlotSummary(currentSaveSlotIndex_);
     const bool requestDelete =
@@ -1030,6 +1063,7 @@ void TitleScene::UpdateSaveSelect(float deltaTime) {
         return;
     }
 
+    // 枠を決定したら直接シーンを切り替えず、起動演出の開始時刻と遷移フラグを初期化する。
     if (saveSelectFocusIndex_ < GameDataManager::kSaveSlotCount &&
         (menu.confirm)) {
         saveSelectMode_ = SaveSelectMode::Launching;
@@ -1041,7 +1075,7 @@ void TitleScene::UpdateSaveSelect(float deltaTime) {
 
 void TitleScene::InitializeSaveSlotUi() {
     // セーブ枠の部品を配置 JSON の名前から結び、未配置分だけ補う。
-    // Scene を再初期化すると以前の Sprite は破棄され得るため、借用ポインタを先に全て外す。
+    // シーンの再初期化では補完した部品を作り直すため、古い所有物と借用参照をリセットします。
     titleUiSprites_.clear();
     saveSlotCards_.fill(nullptr);
 
@@ -1116,6 +1150,7 @@ void TitleScene::InitializeSaveSlotUi() {
             target->SetTextureName(texture);
         }
 
+        // 自動生成された文字素材は画像全体を表示し、レイアウトの文字倍率は保持します。
         if (texture.find("generated/text/") != std::string::npos) {
             SetFullSaveUiTexture(target, target->GetTextureHandle(), true);
         }
@@ -1217,6 +1252,7 @@ void TitleScene::InitializeSaveSlotUi() {
         }
     }
 
+    // 通常一覧の部品とは別に、削除確認を開いた時だけ使う暗幕上の選択肢を結びます。
     bindSprite(saveDeleteButtonBack_, "saveDeleteButtonBack", kSaveDeleteButton, {screenW * 0.25f, screenH * 0.82f},
                {430.0f, 86.0f}, {1.0f, 1.0f, 1.0f, 0.88f});
     bindSprite(saveDeleteButtonText_, "saveDeleteButtonText", kTextDeleteFile, {screenW * 0.25f, screenH * 0.82f},
@@ -1243,6 +1279,7 @@ void TitleScene::SetNumberSprites(std::array<engine::Sprite*, 2>& digits, int va
         if (!sprite)
             continue;
 
+        // 一桁では右の数字だけ表示し、十の位に先頭ゼロを描きません。
         const bool digitVisible = visible && (digitCount == 2 || i == 1);
         sprite->SetVisible(digitVisible);
 
@@ -1260,7 +1297,7 @@ void TitleScene::SetNumberSprites(std::array<engine::Sprite*, 2>& digits, int va
 
 engine::Sprite* TitleScene::CreateUiSprite(const std::string& texturePath, const engine::Vector2& position, const engine::Vector2& size,
                                    const engine::Vector4& color) {
-    // 実行時に補う UI も配置済み Sprite と同じ所有コンテナへ登録する。
+    // 配置に不足していたUIを、非表示の状態で準備します。
     auto sprite = std::make_unique<engine::Sprite>();
     sprite->Initialize(GetSpriteCommon(), texturePath);
     sprite->SetPosition(position);
@@ -1270,6 +1307,7 @@ engine::Sprite* TitleScene::CreateUiSprite(const std::string& texturePath, const
     sprite->SetVisible(false);
     sprite->Update();
 
+    // 追加した部品はタイトル専用リストが所有し、戻り値は配置を操作するための借用参照です。
     engine::Sprite* raw = sprite.get();
     titleUiSprites_.push_back(std::move(sprite));
     return raw;
@@ -1281,9 +1319,11 @@ void TitleScene::UpdateSaveSlotUi(float deltaTime) {
     const bool inSaveSelect = titleMode_ == TitleMode::SaveSelect;
     const bool deleteConfirm = inSaveSelect && saveSelectMode_ == SaveSelectMode::DeleteConfirm;
     const bool launching = inSaveSelect && saveSelectMode_ == SaveSelectMode::Launching;
+    // 選択カードの持ち上げと周囲の減光は0.32秒で進め、カードの拡大と発光は0.48秒の半波で元へ戻す。
     const float launchFocus = Easing::SmoothStep01(std::clamp(saveLaunchTime_ / 0.32f, 0.0f, 1.0f));
     const float launchBounce = launching ? std::sin(kTitleIntroPi * std::clamp(saveLaunchTime_ / 0.48f, 0.0f, 1.0f)) : 0.0f;
     saveSelectOpenTime_ = inSaveSelect ? saveSelectOpenTime_ + std::max(deltaTime, 0.0f) : 0.0f;
+    // 画面が開いてからタイトル、詳細パネル、操作案内の順にフェードを開始する。
     const float titleReveal = Easing::SmoothStep01(std::clamp(saveSelectOpenTime_ / 0.25f, 0.0f, 1.0f));
     const float panelReveal = Easing::SmoothStep01(std::clamp((saveSelectOpenTime_ - 0.12f) / 0.28f, 0.0f, 1.0f));
     const float hintReveal = Easing::SmoothStep01(std::clamp((saveSelectOpenTime_ - 0.22f) / 0.25f, 0.0f, 1.0f));
@@ -1441,7 +1481,7 @@ void TitleScene::UpdateSaveSlotUi(float deltaTime) {
 
         SetSaveUiAppearance(saveSlotPlayTimeLabels_[i], showDetails, detailTextColor);
 
-        // 既存の5枚の数字Spriteを時:分として使い、長時間プレイでも値を止めない。
+        // 秒を分に落として時:分に変換します。二桁では表示できない時間は99:59で止めます。
         const int totalMinutes = std::clamp(summary.playTimeSeconds / 60, 0, 99 * 60 + 59);
         const int hours = totalMinutes / 60;
         const int minutes = totalMinutes % 60;
@@ -1458,6 +1498,7 @@ void TitleScene::UpdateSaveSlotUi(float deltaTime) {
             if (!visible)
                 continue;
 
+            // 中央の一枚だけ区切り文字にし、残り四枚を時と分の数字に割り当てます。
             if (part == 2) {
                 sprite->SetTextureHandle(engine::Sprite::LoadTexture("number/colon.png"));
             } else {
@@ -1501,12 +1542,21 @@ void TitleScene::UpdateSaveSlotUi(float deltaTime) {
 
 // 空スロットは初期データで開始します。チュートリアルの完了記録がない場合は選択画面を飛ばします。
 void TitleScene::StartSelectedSaveSlot() {
+    auto* sceneManager = SceneManager::GetInstance();
+    if (sceneManager->IsTransitioning()) {
+        return; // 遷移中の再入力で、先に確定したスロットを変更しない。
+    }
+
     // 確定した枠を有効化し、チュートリアルのクリア記録で開始シーンを決める。
     GameDataManager* saveData = GameDataManager::GetInstance();
     const GameDataManager::SaveSlotSummary summary = saveData->GetSlotSummary(currentSaveSlotIndex_);
 
     saveData->SetActiveSlot(currentSaveSlotIndex_);
+    if (saveData->GetActiveSlot() != currentSaveSlotIndex_) {
+        return; // 前のスロットの保存に失敗し、枠が切り替わらなかった場合は開始しない。
+    }
 
+    // 空の枠だけ新規データで始め、既存の枠は読み込んだ進行を使います。
     if (!summary.exists) {
         saveData->ResetAll();
     }
@@ -1514,7 +1564,7 @@ void TitleScene::StartSelectedSaveSlot() {
     const bool tutorialCleared = saveData->IsStageCleared(-1);
     DebugConsole::GetInstance()->AddLog(tutorialCleared ? "[Title] Start from stage select."
                                                         : "[Title] Start tutorial.");
-    SceneManager::GetInstance()->ChangeScene(tutorialCleared ? "SELECT" : "TUTORIAL");
+    sceneManager->ChangeScene(tutorialCleared ? "SELECT" : "TUTORIAL");
 }
 
 void TitleScene::DeleteSelectedSaveSlot() {
@@ -1543,18 +1593,18 @@ void TitleScene::DrawSaveSlotUi() {
 void TitleScene::Draw() {
     // 視点がプレイヤーの内側にある場合は本体を描かず、各パスの順序を維持する。
     bool isFirstPerson = false;
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 #ifndef _DEBUG
-    if (camera->GetFollowTarget() && camera->GetFollowMode() == Camera::FollowMode::FirstPerson) {
+    if (camera->GetFollowTarget() && camera->GetFollowMode() == engine::Camera::FollowMode::FirstPerson) {
         isFirstPerson = true;
     }
 #endif
 
-    ID3D12Resource* pointLightRes = LightManager::GetInstance()->GetPointLightResource();
-    ID3D12Resource* spotLightRes = LightManager::GetInstance()->GetSpotLightResource();
+    ID3D12Resource* pointLightRes = engine::LightManager::GetInstance()->GetPointLightResource();
+    ID3D12Resource* spotLightRes = engine::LightManager::GetInstance()->GetSpotLightResource();
 
-    if (skybox_ && camera && LightManager::GetInstance()->IsSkyboxEnabled()) {
-        skybox_->SetTextureHandle(LightManager::GetInstance()->GetSkyboxTextureHandle());
+    if (skybox_ && camera && engine::LightManager::GetInstance()->IsSkyboxEnabled()) {
+        skybox_->SetTextureHandle(engine::LightManager::GetInstance()->GetSkyboxTextureHandle());
         skybox_->Draw(camera->GetConstantBuffer());
     }
 
@@ -1586,6 +1636,7 @@ void TitleScene::Draw() {
 void TitleScene::DrawUi() {
     BeginSpriteDrawing();
 
+    // 初回案内を表示している間は専用のUIまで描き、タイトルメニューと設定画面は重ねません。
     if (controllerNoticeActive_) {
         for (auto* sprite : controllerNoticeSprites_) {
             if (sprite) {

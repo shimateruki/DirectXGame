@@ -52,14 +52,16 @@ engine::Vector3 CrownLook(const engine::Vector3& eye, const engine::Vector3& tar
 // 王冠決着の専用進行です。通常戦闘を止めた後、演出用状態を更新し、終了時にワールドを復元します。
 
 bool GamePlayScene::StartSealBarrageMovie(EnemyFalseKingSlime* boss, const engine::Vector3& strike) {
+    // 操作や視点を別の演出が所有している場合は、封印失敗の固定視点を重ねません。
     if (!SceneManager::GetInstance()->IsPlaying() || !boss || !player_ || player_->IsDead() ||
         player_->IsCinematicLocked() || crownFinale_.active || sealBarrageMovie_.active ||
         isGoal_)
         return false;
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!camera)
         return false;
 
+    // 被弾後も同じ画角と追従先へ戻せるよう、操作を止める前に状態を保存します。
     auto& movie = sealBarrageMovie_;
     movie.active = true;
     movie.time = 0.0f;
@@ -81,7 +83,7 @@ bool GamePlayScene::StartSealBarrageMovie(EnemyFalseKingSlime* boss, const engin
     camera->SetInputEnabled(false);
     camera->SetFollowTarget(nullptr);
     camera->SetLockOnTarget(nullptr);
-    camera->SetFollowMode(Camera::FollowMode::FixedPoint);
+    camera->SetFollowMode(engine::Camera::FollowMode::FixedPoint);
     return true;
 }
 
@@ -90,8 +92,9 @@ void GamePlayScene::UpdateSealBarrageMovie(float deltaTime) {
     auto& movie = sealBarrageMovie_;
     if (!movie.active)
         return;
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
+    // 必要な対象を失った場合や続く継承演出が始まった場合は、固定視点を解除します。
     if (!camera || !player_ || crownFinale_.active) {
         FinishSealBarrageMovie();
         return;
@@ -107,6 +110,7 @@ void GamePlayScene::UpdateSealBarrageMovie(float deltaTime) {
 
     player_->SetIsControlActive(false);
     player_->SetVelocity({});
+    // 槍雨のカメラ姿勢を時刻で評価し、終端直前の0.42秒で元の構図へ寄せます。
     auto pose = EvaluateCrownBarrageCamera(movie.time, movie.boss, movie.strike, CrownFinaleTuning::Get());
     const float finish = Easing::SmoothStep01((movie.time - duration + 0.42f) / 0.42f);
     pose.eye = CrownLerp(pose.eye, movie.eye, finish);
@@ -114,13 +118,14 @@ void GamePlayScene::UpdateSealBarrageMovie(float deltaTime) {
     pose.fov += (movie.fov - pose.fov) * finish;
     camera->SetInputEnabled(false);
     camera->SetFollowTarget(nullptr);
-    camera->SetFollowMode(Camera::FollowMode::FixedPoint);
+    camera->SetFollowMode(engine::Camera::FollowMode::FixedPoint);
     camera->SetEye(pose.eye);
     camera->SetTarget(pose.target);
     camera->SetRotation(CrownLook(pose.eye, pose.target));
     camera->ConfigFixedPoint(pose.eye, CrownLook(pose.eye, pose.target));
     camera->SetFovY(pose.fov);
     camera->Update();
+    // 中盤だけ黒帯を広げ、元の設定高を基準に導入と終端で補間します。
     if (auto* params = PostEffect::GetInstance()->GetParams())
         params->cinemaBarHeight = movie.bars + 0.065f *
             Easing::SmoothStep01(movie.time / 0.22f) * (1.0f - Easing::SmoothStep01((movie.time - duration + 0.40f) / 0.40f));
@@ -134,12 +139,14 @@ void GamePlayScene::FinishSealBarrageMovie() {
     movie.active = false;
     if (auto* params = PostEffect::GetInstance()->GetParams())
         params->cinemaBarHeight = movie.bars;
+    // 撃破されたプレイヤーへ操作を返さず、生存時にだけ保存した制御状態を戻します。
     if (player_ && !player_->IsDead()) {
         player_->SetVelocity({});
         player_->SetIsControlActive(movie.hadControl);
     }
 
-    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+    // 演出中の固定視点を解除し、以前の画角・追従先・姿勢をまとめて戻します。
+    if (engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         camera->SetFovY(movie.fov);
         camera->SetFollowTarget(movie.follow);
         camera->SetFollowMode(movie.followMode);
@@ -152,6 +159,7 @@ void GamePlayScene::FinishSealBarrageMovie() {
 }
 
 CrownFinaleTuning GamePlayScene::GetCrownFinaleTiming() const {
+    // ゲーム用の調整値を基準とし、有効なタイムラインのマーカー秒だけを全尺に対する割合に直します。
     auto tuning = CrownFinaleTuning::Get();
     const auto* sequence = crownFinalePlayer_.GetSequence();
     if (!sequence || sequence->duration <= 0) return tuning;
@@ -162,6 +170,7 @@ CrownFinaleTuning GamePlayScene::GetCrownFinaleTiming() const {
 }
 
 void GamePlayScene::RequestCrownFinale(EnemyFalseKingSlime* boss) {
+    // 同じボスからの要求を積み増さず、更新末尾の安全な開始処理に預けます。
     if (!pendingCrownFinaleBoss_ && !crownFinale_.prepared)
         pendingCrownFinaleBoss_ = boss;
 }
@@ -190,7 +199,7 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
     if (crownFinale_.active || crownFinale_.prepared || !boss || !player_ || player_->IsDead() ||
         player_->IsCinematicLocked() || isGoal_)
         return false;
-    Camera* camera = crownMoviePreview_.active ? crownMoviePreview_.camera.get() : CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = crownMoviePreview_.active ? crownMoviePreview_.camera.get() : CameraManager::GetInstance()->GetMainCamera();
     if (!camera)
         return false;
 
@@ -202,6 +211,7 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
         hasArena |= object->GetName() == "Stage3_HighCrown_ArenaVisual";
     }
 
+    // 必要な場と演出素材を確認し、床や役者を変える前に不足を検出します。
     if (!hasFloor || !hasArena)
         return false;
     if (!crownFinalePlayer_.Load(kCrownFinalePath, SceneManager::GetInstance()))
@@ -227,6 +237,7 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
         }
         previous = time;
     }
+    // ここから先は中断時に元へ戻せるよう、操作・姿勢・材質・画角を保存してからロックします。
     s.active = s.prepared = true;
     s.duration = tuning.movieDuration;
     s.offset = {tuning.destinationX, 0.0f, 0.0f};
@@ -275,6 +286,7 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
                 gate->SetCinematicOverride(true);
         }
 
+        // 床崩壊に使う分割モデルを、元の闘技場のワールド座標へ並べて非表示で用意します。
         if (arena) {
             for (int i = 0; i < 64; ++i) {
                 const int x = i / 8, z = i % 8;
@@ -303,6 +315,7 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
             }
         }
 
+        // 飛行先に移動した後も床に立てるよう、必要な闘技場部品を移動先へ複製します。
         if (floor || arena || foundation) {
             auto copy = object->Clone();
             if (!copy)
@@ -334,6 +347,7 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
     for (auto& copy : previewArenaCopies)
         AddObjectImmediate(std::move(copy));
 
+    // 最後の封印とボス胸元を基準に、欠片の出発点と接地位置を先に計算します。
     s.lastSealPosition = boss->GetLastBrokenCrownSealPosition();
     const auto bossCollider = boss->GetColliderConfig();
     boss->SetModel("Characters/false_king_slime/false_king_slime_without_emblem.obj");
@@ -377,6 +391,7 @@ bool GamePlayScene::StartCrownFinale(EnemyFalseKingSlime* boss) {
         if (binding.targetName == "transform_eye") return state.start + direction * 5.5f + engine::Vector3{1.6f,2.1f,0};
         return std::nullopt;
     });
+    // 再生用オブジェクトの初期化に失敗したら、すでに準備した配置と操作状態を復元します。
     if (!crownFinalePlayer_.Prepare()) {
         ResetCrownFinaleWorld();
         return false;
@@ -408,8 +423,10 @@ void GamePlayScene::UpdateCrownFinale(float frameDeltaTime, std::optional<float>
     auto& s = crownFinale_;
     if (!s.active)
         return;
-    Camera* camera = crownMoviePreview_.active ? crownMoviePreview_.camera.get() : CameraManager::GetInstance()->GetMainCamera();
+    // 編集確認では専用カメラを使う。通常プレイはシーンのメインカメラで続行する。
+    engine::Camera* camera = crownMoviePreview_.active ? crownMoviePreview_.camera.get() : CameraManager::GetInstance()->GetMainCamera();
 
+    // 必要な対象を失った場合は、再生を進める前にカメラやシーンの状態を戻す。
     if (!camera || !player_ || !s.boss || player_->IsDead()) {
         ResetCrownFinaleWorld();
         return;
@@ -420,12 +437,14 @@ void GamePlayScene::UpdateCrownFinale(float frameDeltaTime, std::optional<float>
         prepared = PrepareCrownFinaleFrame(seekSeconds ? current : previous, current, frameDeltaTime);
         return prepared;
     };
+    // 時刻指定はそのフレームの姿勢を確認する経路で、通常再生では経過時間の分だけ進める。
     if (seekSeconds)
         crownFinalePlayer_.SetTime(*seekSeconds, false, prepare);
     else
         crownFinalePlayer_.Step(frameDeltaTime, prepare);
     if (!prepared) return;
 
+    // 再生器の時刻から進行率を求め、王冠の破片を本体に合わせる区間と終了時刻の判定に使う。
     const float t = std::clamp(s.time.Elapsed() / s.duration, 0.0f, 1.0f);
     const float breakTime = GetCrownFinaleTiming().movieFragmentBreakTime;
     if (!crownFinalePlayer_.IsPlaying() && !crownFinalePlayer_.IsPreviewing()) {
@@ -445,6 +464,7 @@ void GamePlayScene::UpdateCrownFinale(float frameDeltaTime, std::optional<float>
             object->UpdateWorldMatrix(true);
     if (engine::Object3D* marker=player_->GetHookMarker())
         marker->UpdateWorldMatrix(true);
+    // 本編だけ終了を確定する。プレビューは最後のフレームを確認できるように残す。
     if (t>=1 && !crownMoviePreview_.active)
         FinishCrownFinale(true);
 }
@@ -452,6 +472,7 @@ void GamePlayScene::UpdateCrownFinale(float frameDeltaTime, std::optional<float>
 bool GamePlayScene::PrepareCrownFinaleFrame(float previousTime, float timeSeconds, float frameDeltaTime) {
     auto& s = crownFinale_;
     const auto tuning = GetCrownFinaleTiming();
+    // 節目の設定は全尺に対する0〜1の比率。Directorへ姿勢を問い合わせるときは秒を渡す。
     const float t = std::clamp(timeSeconds / s.duration, 0.0f, 1.0f);
     const float rageTime = tuning.movieRageTime, pullTime = tuning.movieFragmentPullTime;
     const float absorbTime = tuning.movieFragmentAbsorbTime, bodyTime = tuning.movieBodyTime;
@@ -460,6 +481,7 @@ bool GamePlayScene::PrepareCrownFinaleFrame(float previousTime, float timeSecond
     const float bodyEnd = crownTime - 0.012f, crownEnd = wingsTime - 0.012f;
     const engine::Vector3 destination = s.offset + engine::Vector3{0.0f, 0.82f, 12.0f};
     const float flightYaw = std::atan2(destination.x - s.start.x, destination.z - s.start.z);
+    // 前回と今回の秒数の間に節目が入ったかを調べ、フレームが飛んでも一度だけ起こす。
     auto crossed = [&](float when) { return previousTime < when * s.duration && timeSeconds >= when * s.duration; };
 
     // 本体の震え・膨張・下降は、Directorの区間設定から同じ時刻で評価する。
@@ -482,6 +504,7 @@ bool GamePlayScene::PrepareCrownFinaleFrame(float previousTime, float timeSecond
     // プレイヤーの向きを先に欠片へ寄せ、引き寄せ区間でだけ操作用のフック表示を使います。
     engine::Vector3 playerPosition=s.start;
     const float notice=Easing::SmoothStep01((t-rageTime-.03f)/(pullTime-rageTime-.03f));
+    // sinとcosから角度差を±πへ折り返し、欠片を向くまでの最短回転を求める。
     const float turnDelta=std::atan2(std::sin(pullYaw-s.playerYaw),std::cos(pullYaw-s.playerYaw));
     if (t<pullTime)
         player_->SetMoveYaw(s.playerYaw+turnDelta*notice);
@@ -495,6 +518,7 @@ bool GamePlayScene::PrepareCrownFinaleFrame(float previousTime, float timeSecond
             const engine::Vector3 tip=CrownLerp(mouth,*fragmentPosition,shot),diff=tip-mouth;
             marker->SetIsVisible(true);
             marker->SetColor({.10f,.82f,1,1});
+            // 中心原点のマーカーを口と先端の中点に置き、Z方向の長さをその距離に合わせる。
             marker->SetTranslate(mouth+diff*.5f);
             marker->SetRotation({std::atan2(-diff.y,std::sqrt(diff.x*diff.x+diff.z*diff.z)),std::atan2(diff.x,diff.z),0});
             marker->SetScale({.10f,.10f,std::max(.01f,engine::Math::Length(diff))});
@@ -530,6 +554,7 @@ bool GamePlayScene::PrepareCrownFinaleFrame(float previousTime, float timeSecond
         engine::Object3D::PortalClipSettings clipSettings;
         clipSettings.enabled = progress < .999f;
         clipSettings.progress = 0;
+        // 開始位置を基準に切断面を1.75ワールド単位上げ、元の体を下から順に隠す。
         clipSettings.center = s.start + engine::Vector3{0,-.1f+1.75f*progress+.52f,0};
         clipSettings.normal = {0,-1,0};
         clipSettings.edgeWidth = .035f;
@@ -594,9 +619,11 @@ bool GamePlayScene::PrepareCrownFinaleFrame(float previousTime, float timeSecond
     for (auto& pose:s.fractureChunks) {
         const engine::Vector3 delta=pose.position-s.start;
         const float distance=std::sqrt(delta.x*delta.x+delta.z*delta.z);
+        // 外周ほど遅延率が0に近づく。プレイヤーの足元の床だけは発進時刻の後まで支える。
         const float delay=1-std::clamp(distance/48.0f,0.0f,1.0f);
         const bool supportsPlayer=std::abs(delta.x)<=5.1f && std::abs(delta.z)<=5.1f;
         const float begin=supportsPlayer?escapeTime+.004f:rageTime+.02f+delay*(escapeTime-rageTime-.01f);
+        // 崩壊の開始からの実秒数で落下させる。-4.9は初速0の重力落下における加速度の半分。
         const float age=std::max(0.0f,(t-begin)*s.duration);
         pose.object->SetIsVisible(t>=rageTime && age<4.0f);
         pose.object->SetTranslate(pose.position+engine::Vector3{std::sin(age*2+pose.position.x)*age*.6f,-4.9f*age*age,0});
@@ -636,6 +663,7 @@ bool GamePlayScene::PrepareCrownFinaleFrame(float previousTime, float timeSecond
         pose.object->SetTranslate(pose.position+engine::Vector3{0,-4.9f*age*age,0});
         pose.object->SetRotation(pose.rotation+engine::Vector3{age*.07f,0,age*.055f});
 
+        // 床や壁が動き出したフレームで衝突を外し、落ちる描画だけが残るようにする。
         if (age>0) {
             pose.object->SetCollisionAttribute(0);
             pose.object->SetCollisionMask(0);
@@ -651,6 +679,7 @@ void GamePlayScene::FinishCrownFinale(bool completed) {
     auto& s = crownFinale_;
     if (!s.active)
         return;
+    // トラックの変更を元に戻してから、完走・中断それぞれの位置と操作状態を上書きする。
     crownFinalePlayer_.Stop(true);
     s.active = false;
     if (auto* params = PostEffect::GetInstance()->GetParams())
@@ -669,6 +698,7 @@ void GamePlayScene::FinishCrownFinale(bool completed) {
         player_->SetGrounded(true);
         player_->UpdateWorldMatrix(true);
 
+        // 完走後は2.5秒の無敵を付け、Directorが着地を処理済みなら着地の粒子を再生済みとして扱う。
         if (completed) {
             player_->StartEvasionInvincibility(2.5f);
             if (!s.landed)
@@ -676,6 +706,7 @@ void GamePlayScene::FinishCrownFinale(bool completed) {
         }
     }
 
+    // 完走時にだけボスと勝利報酬を最終闘技場へ移し、戦闘を再開できるようにします。
     if (completed && s.boss) {
         s.boss->BeginFinalArena(s.offset + engine::Vector3{0.0f, 0.71f, -12.0f});
 
@@ -705,6 +736,7 @@ void GamePlayScene::FinishCrownFinale(bool completed) {
         player_->EndCinematicPullVisual();
         player_->ClearPortalClip();
 
+        // 中断時は付与された王冠能力を解除してから、吸収前の見た目で元の体へ戻す。
         if (!completed) {
             player_->ClearCrownPower();
             player_->SetModel(s.playerModel);
@@ -713,11 +745,12 @@ void GamePlayScene::FinishCrownFinale(bool completed) {
         }
     }
 
-    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+    // 演出用画角と固定視点から、着地後の通常追従へ戻します。
+    if (engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         camera->SetFovY(s.fov);
         camera->SetFollowTarget(player_);
         camera->SetLockOnTarget(nullptr);
-        camera->SetFollowMode(Camera::FollowMode::Aimable);
+        camera->SetFollowMode(engine::Camera::FollowMode::Aimable);
         camera->SetRotation({0.24f, std::numbers::pi_v<float>, 0.0f});
         camera->SnapToThirdPerson(18.0f, 2.5f, 0.24f);
         camera->SetInputEnabled(true);
@@ -744,6 +777,7 @@ void GamePlayScene::ResetCrownFinaleWorld() {
 
     if (player_)
         player_->ClearCrownPower();
+    // 最初に記録した配置へ戻します。イベント受信側の基準位置も戻し、次の更新で復元が打ち消されないようにします。
     for (auto& pose : s.originalObjects) {
         if (!pose.object)
             continue;
@@ -759,6 +793,7 @@ void GamePlayScene::ResetCrownFinaleWorld() {
         pose.object->UpdateWorldMatrix(true);
     }
 
+    // 元の配置を復元した後に、演出で追加した床片と闘技場を削除対象へ移します。
     for (auto* object : s.generatedObjects) {
         if (crownMoviePreview_.active) {
             object->SetIsVisible(false);
@@ -778,6 +813,7 @@ void GamePlayScene::DrawCrownFinaleWorld(ID3D12Resource* pointLightResource, ID3
 }
 
 void GamePlayScene::DrawCrownFinaleUi() {
+    // ゲーム操作と演出の案内が不要な場面、またはポーズ中は描画を省きます。
     if (!player_ || (!SceneManager::GetInstance()->IsPlaying() && !crownMoviePreview_.active) || isGoal_ ||
         (controlsGuideOverlay_ && controlsGuideOverlay_->IsActive()) ||
         (pauseMenuOverlay_ && pauseMenuOverlay_->IsActive()))
@@ -788,6 +824,7 @@ void GamePlayScene::DrawCrownFinaleUi() {
     int index = boss->GetBattlePhase() == 2 ? 0 : (boss->GetBattlePhase() == 3 ? 2 : -1);
     float alpha = 1.0f;
 
+    // 登場では名前、継承では時刻ごとの指示、それ以外は現在の形態に必要な案内を選びます。
     if (arenaBossIntroActive_) {
         index = 3;
         alpha = Easing::SmoothStep01((arenaBossIntroTimer_ - arenaBossIntroMessageInTime_) / 0.35f) *
@@ -796,6 +833,7 @@ void GamePlayScene::DrawCrownFinaleUi() {
         const float t = crownFinale_.time.Elapsed() / crownFinale_.duration;
         const auto tuning = GetCrownFinaleTiming();
         index = t < tuning.movieFragmentPullTime ? 4 : (t < tuning.movieFragmentAbsorbTime ? 1 : 5);
+        // 案内の開始と終了は全尺に対する割合。前後の境目を同じ幅でフェードさせる。
         const float begin = index == 4 ? 0.0f : (index == 1 ? tuning.movieFragmentPullTime : tuning.movieFragmentAbsorbTime);
         const float end = index == 4 ? tuning.movieFragmentPullTime : (index == 1 ? tuning.movieFragmentAbsorbTime : tuning.movieEscapeTime);
         alpha = Easing::SmoothStep01((t - begin) / 0.025f) * (1.0f - Easing::SmoothStep01((t - end + 0.025f) / 0.025f));
@@ -805,6 +843,7 @@ void GamePlayScene::DrawCrownFinaleUi() {
         return;
     if (alpha <= 0.001f)
         return;
+    // 表示対象が決まった時点で画像を用意し、次のフレームから同じSpriteを使います。
     if (!crownFinaleMessages_[index]) {
         const char* paths[] = {"ui/crown_finale/seals.png",    "ui/crown_finale/inherit.png",
                                "ui/control_guide/book/crown_gate/controls.png", "ui/crown_finale/boss_intro_title.png",
@@ -824,6 +863,7 @@ void GamePlayScene::DrawCrownFinaleUi() {
     const auto& metadata = TextureManager::GetInstance()->GetMetadata(message->GetTextureHandle());
     const auto& introStyle = BossIntroSettings::Get();
     const float titlePop = arenaBossIntroActive_ ? std::lerp(1.12f,1.0f,Easing::SmoothStep01((arenaBossIntroTimer_-arenaBossIntroMessageInTime_)/.18f)) : 1.0f;
+    // 幅と高さそれぞれの最大倍率の小さい方を使い、文字画像を縦横比を保ったまま表示範囲に収める。
     const float fit = titlePop * std::min((arenaBossIntroActive_ ? introStyle.titleWidth : movie ? 1020.0f : 820.0f) / std::max(1.0f, static_cast<float>(metadata.width)),
                                (arenaBossIntroActive_ ? 190.0f : movie ? 72.0f : 64.0f) / std::max(1.0f, static_cast<float>(metadata.height)));
     message->SetPosition(SpriteLayoutScaler::ScaleDesignPosition({movie ? 640.0f : 830.0f, arenaBossIntroActive_ ? introStyle.titleY : movie ? 620.0f : 662.0f}, {1280.0f, 720.0f}));

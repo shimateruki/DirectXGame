@@ -10,9 +10,11 @@ constexpr const char* kAstralReaverChargePreset = "enemy/false_king/false_king_a
 void PlaceMagicLayer(EffectObject3D* effect, float deltaTime, bool visible, const engine::Vector3& position,
                      const engine::Vector3& rotation, const engine::Vector3& scale, const engine::Vector4& color) {
     // 魔法陣の各層を同じ時刻で更新し、描画前にワールド行列を確定します。
+    // 素材を用意できなかった層はスキップし、同じ演出の残りの層は更新できるようにします。
     if (!effect)
         return;
     effect->Update(deltaTime);
+    // 素材自身の時間を進めた後に、このフレームの演出位置と色を反映します。
     effect->SetIsVisible(visible);
     effect->SetTranslate(position);
     effect->SetRotation(rotation);
@@ -32,6 +34,7 @@ engine::Vector3 AstralReaverRimOffset(const engine::Vector3& rotation, const eng
 
 engine::Vector3 AstralReaverFlightPosition(const engine::Vector3& origin, const engine::Vector3& destination, const engine::Vector3& forward,
                                    const engine::Vector3& right, float progress, size_t index, float hitRadius) {
+    // 向きの算出で進行率の前後をサンプルするため、軌道の始点と終点で範囲を止めます。
     const float t = std::clamp(progress, 0.0f, 1.0f);
 
     // 前半は外へ回り込み、後半で急加速して着弾点へ収束します。
@@ -39,6 +42,7 @@ engine::Vector3 AstralReaverFlightPosition(const engine::Vector3& origin, const 
     const float late = std::clamp((t - 0.56f) / 0.44f, 0.0f, 1.0f);
     const float travel =
         t < 0.56f ? early * 0.38f : 0.38f + 0.62f * (1.0f - (1.0f - late) * (1.0f - late) * (1.0f - late));
+    // 迂回の幅は中盤で大きくし、命中範囲と飛行距離に合わせて半径を制限します。
     const float orbitEnvelope = Easing::SmoothStep01((t - 0.04f) / 0.22f) * (1.0f - Easing::SmoothStep01((t - 0.75f) / 0.25f));
     const float dx = destination.x - origin.x;
     const float dz = destination.z - origin.z;
@@ -47,6 +51,7 @@ engine::Vector3 AstralReaverFlightPosition(const engine::Vector3& origin, const 
         std::clamp(distance * 0.27f, (std::max)(1.2f, hitRadius * 0.7f), (std::max)(2.4f, hitRadius * 1.6f));
     const float turnDirection = index == 1 ? -1.0f : 1.0f;
     const float orbitPhase = turnDirection * (t * kTwoPi * 1.15f) + static_cast<float>(index) * 2.12f;
+    // 始点から終点への移動に、左右・前後の回り込みと高さの弧を重ねます。
     engine::Vector3 position = origin + (destination - origin) * travel;
     position += right * (std::sin(orbitPhase) * orbitRadius * orbitEnvelope);
     position += forward * (std::cos(orbitPhase) * orbitRadius * orbitEnvelope * 0.33f);
@@ -65,11 +70,13 @@ void EnemyFalseKingSlime::PrepareLanceTargets(bool dominionPattern) {
     const float phaseOffset =
         std::fmod(idleTimer_ * 1.37f + static_cast<float>(automaticAttackSerial_) * 0.83f, kTwoPi);
     for (size_t index = 0; index < lanceTargets_.size(); ++index) {
+        // 通常の槍は一発目だけ固定した狙いに直接落とし、残りを周囲へ散らします。
         if (!dominionPattern && index == 0) {
             lanceTargets_[index] = lockedTargetPosition_;
             continue;
         }
 
+        // 六方向を一周として外側の列へ進め、列ごとに角度をずらして地表に投影します。
         const int ring = static_cast<int>(index) / 6;
         const int spoke = static_cast<int>(index) % 6;
         const float radius = dominionPattern
@@ -101,36 +108,48 @@ void EnemyFalseKingSlime::SpawnCrownLance(const engine::Vector3& groundPosition,
                           kGatePortalMaterialType,
                           battlePhase_ >= 3 ? engine::Vector4{0.94f, 0.30f, 1.0f, 0.94f} : engine::Vector4{1.0f, 0.66f, 0.18f, 0.94f},
                           battlePhase_ >= 3 ? 2.8f : 2.5f);
+    // 槍本体は毎フレーム更新に必須です。生成できなければ、射出口も登録せずに中止します。
     if (!lance.visual) {
         return;
     }
 
+    // 指定地点を地面に合わせ、出現を遅らせる時間・射出前の待機・飛行時間を秒で保持します。
     lance.groundPosition = FindGroundPoint(groundPosition);
     lance.delay = delay;
     lance.readyDuration = (std::max)(readyDuration, 0.08f);
     lance.flightDuration = battlePhase_ >= 3 ? 0.44f : 0.54f;
 
+    // 生成順で中央列から左右へ開き、5本ごとに後方かつ上方の段へ切り替えます。
     const int formationIndex = lanceSpawnSerial_++;
     constexpr std::array<int, 5> kColumnOpenOrder = {2, 1, 3, 0, 4};
+    // 5で割った余りは段内で何本目かを示し、商は段番号です。3段を使い切ったら下段に戻ります。
     const int column = kColumnOpenOrder[static_cast<size_t>(formationIndex % 5)];
     const int row = (formationIndex / 5) % 3;
+    // 列番号2を中心の0とし、左右1列につき2.35ワールド単位ずらします。
     const float sideOffset = static_cast<float>(column - 2) * 2.35f;
+    // 攻撃開始時に固定した水平向きから、ボスを基準に射出口のワールド座標を求めます。
     const engine::Vector3 planarForward = NormalizePlanar(lockedDirection_);
     const engine::Vector3 planarRight = {planarForward.z, 0.0f, -planarForward.x};
     const engine::Vector3 bossCenter = GetWorldPosition();
+    // 後方と上方への距離は段ごとに増やし、高さには中央列からの距離に比例する補正も加えます。
     lance.portalPosition = bossCenter - planarForward * (1.65f + static_cast<float>(row) * 0.72f) +
                            planarRight * sideOffset +
                            engine::Vector3{0.0f, 3.7f + static_cast<float>(row) * 1.72f + std::abs(sideOffset) * 0.12f, 0.0f};
+    // 着弾点より少し上を狙い、射出口から槍が進む方向を決めます。
     const engine::Vector3 impactAim = lance.groundPosition + engine::Vector3{0.0f, 0.55f, 0.0f};
+    // 始点と照準点が重なった場合は、正規化の代わりに真下を向けます。
     lance.flightDirection = SafeNormalize(impactAim - lance.portalPosition, {0.0f, -1.0f, 0.0f});
 
+    // 槍の先端が進行方向を向くように姿勢を固定し、射出口の後ろに隠しておきます。
     lance.visual->SetTranslate(lance.portalPosition - lance.flightDirection * 1.25f);
     lance.visual->SetScale({1.12f, 2.35f, 1.12f});
+    // 槍モデルの長手方向はローカル−Y、射出口の法線は+Zなので、それぞれ別の軸を飛行方向に合わせます。
     lance.visual->SetQuaternion(MakeAxisToDirectionQuaternion({0.0f, -1.0f, 0.0f}, lance.flightDirection));
     lance.visual->SetQuaternionMaster(true);
     lance.visual->SetIsVisible(false);
     lance.visual->UpdateWorldMatrix(true);
 
+    // 射出口を生成できた場合は、槍の進行方向に面を向け、開口前の小さい状態で隠しておきます。
     if (lance.portal) {
         lance.portal->SetBlendMode(BlendMode::Normal);
         lance.portal->SetTranslate(lance.portalPosition);
@@ -139,8 +158,9 @@ void EnemyFalseKingSlime::SpawnCrownLance(const engine::Vector3& groundPosition,
         lance.portal->SetQuaternionMaster(true);
         lance.portal->SetIsVisible(false);
 
-        if (MeshRenderer* renderer = lance.portal->GetMeshRenderer()) {
-            if (MeshRenderer::WaterParamForGpu* portal = renderer->GetWaterParamData()) {
+        // 材質パラメータを取得できた場合に、戦闘段階に応じた波と開口前のUVを設定します。
+        if (engine::MeshRenderer* renderer = lance.portal->GetMeshRenderer()) {
+            if (engine::MeshRenderer::WaterParamForGpu* portal = renderer->GetWaterParamData()) {
                 portal->waveSpeed = battlePhase_ >= 3 ? 2.8f : 2.25f;
                 portal->waveHeight = 1.18f;
                 portal->waveFrequency = 19.0f;
@@ -162,6 +182,7 @@ void EnemyFalseKingSlime::SpawnCrownLance(const engine::Vector3& groundPosition,
         lance.portal->UpdateWorldMatrix(true);
     }
 
+    // 描画物と各段階の初期値をまとめて登録し、開口以降は UpdateCrownLances() に任せます。
     crownLances_.push_back(std::move(lance));
 }
 
@@ -170,6 +191,7 @@ void EnemyFalseKingSlime::UpdateCrownLances(float deltaTime) {
     auto lance = crownLances_.begin();
 
     while (lance != crownLances_.end()) {
+        // 本体を表示できない槍は、残りの更新・着弾判定から外します。
         if (!lance->visual) {
             lance = crownLances_.erase(lance);
             continue;
@@ -178,19 +200,25 @@ void EnemyFalseKingSlime::UpdateCrownLances(float deltaTime) {
         lance->age += deltaTime;
         const float localAge = lance->age - lance->delay;
 
+        // 槍ごとの発生待ち中は、経過時間だけを進めます。
         if (localAge < 0.0f) {
             ++lance;
             continue;
         }
 
+        // ゲートの開口と槍の装填を重ね、開口と待機が済んだ時刻を射出の基準にします。
         const float launchTime = lance->portalOpenDuration + lance->readyDuration;
+        // 時間を割合に変える除数は0.01秒以上にし、継続時間がほぼゼロでも割り算を成立させます。
         const float openProgress = SmoothStep01(localAge / (std::max)(lance->portalOpenDuration, 0.01f));
+        // 装填は開口時間の35%を過ぎてから始め、残る65%と待機時間の合計で0から1まで進めます。
         const float loadProgress =
             SmoothStep01((localAge - lance->portalOpenDuration * 0.35f) /
                          (std::max)(lance->portalOpenDuration * 0.65f + lance->readyDuration, 0.01f));
+        // 射出時刻を引いて飛行開始を0秒にし、飛行時間で割った割合を0〜1に収めます。
         const float flightProgress =
             std::clamp((localAge - launchTime) / (std::max)(lance->flightDuration, 0.01f), 0.0f, 1.0f);
         const bool launched = localAge >= launchTime;
+        // 射出時刻に飛行時間を足した地点が着弾です。impactAgeが負なら、まだ着弾していません。
         const float impactAge = localAge - launchTime - lance->flightDuration;
         const float dissolveProgress =
             SmoothStep01((impactAge - lance->impactHoldDuration) / (std::max)(lance->dissolveDuration, 0.01f));
@@ -198,6 +226,7 @@ void EnemyFalseKingSlime::UpdateCrownLances(float deltaTime) {
         const engine::Vector3 loadedPosition =
             lance->portalPosition + lance->flightDirection * engine::Math::Lerp(-1.32f, 0.48f, loadProgress);
         const engine::Vector3 impactPosition = lance->groundPosition + engine::Vector3{0.0f, 0.72f, 0.0f};
+        // 装填の終点と飛行の始点を、射出口から前方0.48ワールド単位に揃えます。
         const engine::Vector3 flightPosition = LerpVector3(lance->portalPosition + lance->flightDirection * 0.48f,
                                                    impactPosition, EaseOutCubic(flightProgress));
 
@@ -206,7 +235,9 @@ void EnemyFalseKingSlime::UpdateCrownLances(float deltaTime) {
         lance->visual->SetTranslate(launched ? flightPosition : loadedPosition);
         lance->visual->SetScale({1.10f * glow, 2.35f + (1.0f - flightProgress) * 0.18f, 1.10f * glow});
 
+        // 着弾後の静止時間を終えたら、飛行方向に沿ったクリップで槍を消します。
         if (impactAge >= lance->impactHoldDuration) {
+            // 消散率0と1で発光の加算を0にし、中間の0.5だけ加算を最大にします。
             const float edgePeak = 1.0f - std::abs(dissolveProgress * 2.0f - 1.0f);
             lance->visual->SetMaterialType(4);
             lance->visual->SetBlendMode(BlendMode::Normal);
@@ -230,6 +261,7 @@ void EnemyFalseKingSlime::UpdateCrownLances(float deltaTime) {
         lance->visual->Update(deltaTime);
         lance->visual->UpdateWorldMatrix(true);
 
+        // 射出を起点にゲートを閉じ、開閉の進行度をサイズ・透明度・材質にも反映します。
         const float closeProgress =
             SmoothStep01((localAge - launchTime) / (std::max)(lance->portalCloseDuration, 0.01f));
         if (lance->portal) {
@@ -239,8 +271,8 @@ void EnemyFalseKingSlime::UpdateCrownLances(float deltaTime) {
             lance->portal->SetScale({portalScale, portalScale, portalScale});
             lance->portal->SetColor(battlePhase_ >= 3 ? engine::Vector4{0.94f, 0.30f, 1.0f, 0.94f * portalVisibility}
                                                       : engine::Vector4{1.0f, 0.66f, 0.18f, 0.94f * portalVisibility});
-            if (MeshRenderer* renderer = lance->portal->GetMeshRenderer()) {
-                if (MeshRenderer::WaterParamForGpu* portal = renderer->GetWaterParamData()) {
+            if (engine::MeshRenderer* renderer = lance->portal->GetMeshRenderer()) {
+                if (engine::MeshRenderer::WaterParamForGpu* portal = renderer->GetWaterParamData()) {
                     portal->effectIntensity = 0.08f + portalVisibility * 1.74f;
                     portal->uvOffsetY = portalVisibility;
                     portal->uvOffsetX =
@@ -252,20 +284,25 @@ void EnemyFalseKingSlime::UpdateCrownLances(float deltaTime) {
             lance->portal->UpdateWorldMatrix(true);
         }
 
+        // 飛行中だけ、槍の進行方向に沿って残光を間欠的に出します。
         lance->particleTimer -= deltaTime;
 
         if (lance->particleTimer <= 0.0f && launched && flightProgress < 0.96f) {
             EmitDirectedPreset(kLanceTrailPreset, flightPosition, lance->flightDirection,
                                1.15f + flightProgress * 0.70f);
+            // 0.08秒を代入せず加えることで、今回のフレームで間隔を過ぎた分を次の発生へ持ち越します。
             lance->particleTimer += 0.08f;
         }
 
+        // 到達時の演出と封印破壊の試行は、槍ごとに一度だけ行います。
         if (flightProgress >= 1.0f && !lance->impactPlayed) {
             lance->impactPlayed = true;
             EmitDirectedPreset(kLanceImpactPreset, lance->groundPosition, {0.0f, 1.0f, 0.0f}, 1.35f);
             TryBreakCrownSeal(lance->groundPosition);
         }
 
+        // 着弾ダメージは技ごとの攻撃設定を使い、着弾地点から外向きに吹き飛ばします。
+        // 描画の消散完了まで待たず、飛行率が初めて1になった時点でダメージ条件を評価します。
         if (flightProgress >= 1.0f && !lance->damageApplied) {
             const EnemyAttackDefinition& attack = currentAttack_ == AttackKind::CrownDominion
                                                       ? GetAttackDefinition(kCrownDominionAttackId)
@@ -278,6 +315,7 @@ void EnemyFalseKingSlime::UpdateCrownLances(float deltaTime) {
             lance->damageApplied = true;
         }
 
+        // 消散が終わった槍を取り除き、次の槍の更新へ進みます。
         if (localAge >= launchTime + lance->flightDuration + lance->impactHoldDuration + lance->dissolveDuration) {
             lance = crownLances_.erase(lance);
             continue;
@@ -299,6 +337,7 @@ void EnemyFalseKingSlime::SpawnRoyalWaves() {
 
     for (int index = 0; index < kWaveCount; ++index) {
         RoyalWave wave;
+        // 隣り合う波を色で区別し、各波に本体と内側の発光用メッシュを作ります。
         const bool alternateColor = index % 2 != 0;
         wave.alternateColor = alternateColor;
         const engine::Vector4 waveColor =
@@ -311,10 +350,12 @@ void EnemyFalseKingSlime::SpawnRoyalWaves() {
             CreateRoyalMesh("FalseKing_RoyalWaveCore_" + std::to_string(index), kRoyalShockwaveWallModel,
                             battlePhase_ >= 3 ? engine::Vector4{0.86f, 0.78f, 1.0f, 0.72f} : engine::Vector4{1.0f, 0.94f, 0.46f, 0.72f},
                             battlePhase_ >= 3 ? 5.4f : 4.8f);
+        // 本体を作れなかった波だけ飛ばし、次の波の生成を続けます。
         if (!wave.visual) {
             continue;
         }
 
+        // 本体と補助光を加算合成に揃え、照明や環境反射の影響を切ります。
         wave.visual->SetBlendMode(BlendMode::Add);
         wave.visual->SetEnableLighting(false);
         wave.visual->SetEnableEnvMap(false);
@@ -327,6 +368,7 @@ void EnemyFalseKingSlime::SpawnRoyalWaves() {
             wave.glow->SetMetallic(0.0f);
         }
 
+        // ボス直下を中心に各波の待機時間と半径を設定します。前の半径は初回の命中判定にも使います。
         wave.center = FindGroundPoint(GetTranslate()) + engine::Vector3{0.0f, 0.04f, 0.0f};
         wave.delay = static_cast<float>(index) * waveDelay;
         wave.lifetime = waveLifetime;
@@ -334,6 +376,7 @@ void EnemyFalseKingSlime::SpawnRoyalWaves() {
         wave.endRadius = attack.maxRange * (0.90f + static_cast<float>(index) * 0.022f);
         wave.previousRadius = wave.startRadius;
         wave.particleTimer = static_cast<float>(index) * 0.025f;
+        // 最初の波だけ表示し、後続の波はそれぞれの待機時間を過ぎるまで隠します。
         wave.visual->SetTranslate(wave.center);
         wave.visual->SetScale({wave.startRadius, 1.45f, wave.startRadius});
         wave.visual->SetIsVisible(index == 0);
@@ -346,6 +389,7 @@ void EnemyFalseKingSlime::SpawnRoyalWaves() {
             wave.glow->UpdateWorldMatrix(true);
         }
 
+        // 準備した波を UpdateRoyalWaves() に渡し、生成後の拡大と命中判定を任せます。
         royalWaves_.push_back(std::move(wave));
     }
 }
@@ -355,11 +399,13 @@ void EnemyFalseKingSlime::UpdateRoyalWaves(float deltaTime) {
     auto wave = royalWaves_.begin();
 
     while (wave != royalWaves_.end()) {
+        // 本体が失われた波は、見えないまま命中判定が残らないようここで取り除きます。
         if (!wave->visual) {
             wave = royalWaves_.erase(wave);
             continue;
         }
 
+        // 波ごとの待機時間を引き、拡大を始めた時点をローカル時刻のゼロにします。
         wave->age += deltaTime;
         const float localAge = wave->age - wave->delay;
 
@@ -368,6 +414,7 @@ void EnemyFalseKingSlime::UpdateRoyalWaves(float deltaTime) {
             continue;
         }
 
+        // 半径は時間に比例して広げ、波頭の高さと終盤の透明度だけ個別に変えます。
         const float progress = std::clamp(localAge / (std::max)(wave->lifetime, 0.01f), 0.0f, 1.0f);
         const float radius = engine::Math::Lerp(wave->startRadius, wave->endRadius, progress);
         const float crest = std::sin(progress * kPi);
@@ -385,6 +432,7 @@ void EnemyFalseKingSlime::UpdateRoyalWaves(float deltaTime) {
         wave->visual->Update(deltaTime);
         wave->visual->UpdateWorldMatrix(true);
 
+        // 発光用メッシュは本体の少し内側・上側に重ね、逆向きに回します。
         if (wave->glow) {
             wave->glow->SetIsVisible(progress < 1.0f);
             wave->glow->SetTranslate(wave->center + engine::Vector3{0.0f, lift + 0.04f, 0.0f});
@@ -396,6 +444,7 @@ void EnemyFalseKingSlime::UpdateRoyalWaves(float deltaTime) {
             wave->glow->UpdateWorldMatrix(true);
         }
 
+        // 薄くなる終盤に入るまでは、波頭の周囲に粒子と破片を一定間隔で出します。
         wave->particleTimer -= deltaTime;
 
         if (wave->particleTimer <= 0.0f && progress < 0.88f) {
@@ -416,11 +465,14 @@ void EnemyFalseKingSlime::UpdateRoyalWaves(float deltaTime) {
             wave->particleTimer += 0.09f;
         }
 
+        // 一つの波で同じ対象に複数回当たらないよう、命中済みの波は判定を省きます。
         if (!wave->hitTarget && GetTarget()) {
             const float distance = PlanarDistance(GetTarget()->GetWorldPosition(), wave->center);
+            // 球の中心だけでなく端が波に触れた場合も拾い、さらに0.82ワールド単位の余裕を両側に取ります。
             const float padding = GetTarget()->GetCollisionRadius() + 0.82f;
 
             // 波の上を飛び越えられるよう、接地付近だけを当たりにします。
+            // 前回から今回まで波頭が通った区間を調べるので、フレーム間隔が長くても波が対象を飛び越えません。
             if (distance >= wave->previousRadius - padding && distance <= radius + padding &&
                 std::abs(GetTarget()->GetWorldPosition().y - wave->center.y) <= 2.25f) {
                 const EnemyAttackDefinition& attack = GetAttackDefinition(kRoyalShockwaveAttackId);
@@ -431,6 +483,7 @@ void EnemyFalseKingSlime::UpdateRoyalWaves(float deltaTime) {
             }
         }
 
+        // 現在半径を次フレームの内端として記録し、寿命を過ぎた波は片付けます。
         wave->previousRadius = radius;
 
         if (progress >= 1.0f) {
@@ -447,11 +500,13 @@ void EnemyFalseKingSlime::BeginRush() {
     rushStep_ = 0;
     rushWingsVisual_ = CreateRoyalMesh("FalseKing_RushWings", kRushWingsModel, {1.0f, 1.0f, 1.0f, 1.0f},
                                        battlePhase_ >= 3 ? 2.0f : 1.7f);
+    // 翼は予兆の進行に合わせて表示するため、生成直後は隠します。
     if (rushWingsVisual_) {
         rushWingsVisual_->SetIsVisible(false);
         rushWingsVisual_->UpdateWorldMatrix(true);
     }
 
+    // 一段目の開始位置と予告線は、後続の突進と同じ入口で準備します。
     BeginRushStep(rushStep_);
 }
 
@@ -460,16 +515,19 @@ void EnemyFalseKingSlime::BeginRushStep(int step) {
     const EnemyAttackDefinition& attack = GetAttackDefinition(kKingRushAttackId);
     attackStartPosition_ = FindGroundPoint(GetTranslate());
 
+    // 対象がいる場合だけ、現在の対象位置を使ってこの段の初期方向を決めます。
     if (GetTarget()) {
         lockedTargetPosition_ = FindGroundPoint(GetTarget()->GetWorldPosition());
         lockedDirection_ = NormalizePlanar(lockedTargetPosition_ - attackStartPosition_);
     }
 
+    // 攻撃設定の最大射程を上限として終点を置き、段ごとの時間と命中履歴をリセットします。
     const float distance = (std::min)(attack.maxRange, 13.0f + static_cast<float>(battlePhase_) * 2.6f);
     attackEndPosition_ = FindGroundPoint(attackStartPosition_ + lockedDirection_ * distance);
     rushStepTimer_ = 0.0f;
     rushStepDuration_ = battlePhase_ >= 3 ? 0.70f : 0.82f;
     rushDamageApplied_ = false;
+    // この時点の進行方向と移動距離を予告線に渡します。溜め中の追従は UpdateRush() が担当します。
     ShowAttackTelegraphLine(attackStartPosition_, lockedDirection_, distance, attack.radius * 2.0f, 0.85f,
                             battlePhase_ >= 3 ? engine::Vector4{0.88f, 0.18f, 1.0f, 0.82f}
                                               : engine::Vector4{1.0f, 0.64f, 0.10f, 0.82f});
@@ -481,6 +539,7 @@ void EnemyFalseKingSlime::UpdateRush(float deltaTime, const engine::Vector3& tar
     const EnemyAttackDefinition& attack = GetAttackDefinition(kKingRushAttackId);
     const int rushCount = battlePhase_ == 1 ? 2 : 3;
 
+    // 全段が終わったら、速度と予告線・翼を片付けて突進処理を抜けます。
     if (rushStep_ >= rushCount) {
         velocity = {0.0f, 0.0f, 0.0f};
         HideAttackTelegraph();
@@ -494,8 +553,10 @@ void EnemyFalseKingSlime::UpdateRush(float deltaTime, const engine::Vector3& tar
 
     rushStepTimer_ += deltaTime;
     const float progress = std::clamp(rushStepTimer_ / (std::max)(rushStepDuration_, 0.01f), 0.0f, 1.0f);
+    // 一段の時間を0〜1で表し、最初の22%を溜め、残る78%を実際の移動に使います。
     const float chargeEnd = 0.22f;
 
+    // 溜め中はその場で対象の方向を追い、終点と予告線を揃え続けます。
     if (progress < chargeEnd) {
         velocity = {0.0f, 0.0f, 0.0f};
         lockedDirection_ = NormalizePlanar(targetDirection);
@@ -506,6 +567,7 @@ void EnemyFalseKingSlime::UpdateRush(float deltaTime, const engine::Vector3& tar
         ShowAttackTelegraphLine(attackStartPosition_, lockedDirection_, distance, attack.radius * 2.0f,
                                 telegraphProgress,
                                 {1.0f, battlePhase_ >= 3 ? 0.18f : 0.60f, battlePhase_ >= 3 ? 1.0f : 0.08f, 0.82f});
+        // 溜めが進むにつれて翼を表示し、突進開始地点で広げます。
         if (rushWingsVisual_) {
             const float yaw = std::atan2(lockedDirection_.x, lockedDirection_.z);
             const float spread = 0.55f + telegraphProgress * 0.55f;
@@ -520,7 +582,9 @@ void EnemyFalseKingSlime::UpdateRush(float deltaTime, const engine::Vector3& tar
         return;
     }
 
+    // 溜めが終わったら方向を固定し、位置補間で移動します。このフレームの速度による移動は抑えます。
     HideAttackTelegraph();
+    // 残り78%を0〜1に引き伸ばすため、溜め終了時は始点、段が終わると正確に終点になります。
     const float dashProgress = SmoothStep01((progress - chargeEnd) / (1.0f - chargeEnd));
     const engine::Vector3 position = LerpVector3(attackStartPosition_, attackEndPosition_, dashProgress);
     SetTranslate(position);
@@ -530,6 +594,7 @@ void EnemyFalseKingSlime::UpdateRush(float deltaTime, const engine::Vector3& tar
 
     if (rushWingsVisual_) {
         const float yaw = std::atan2(lockedDirection_.x, lockedDirection_.z);
+        // 突進中は、翼を本体の補間位置に追従させて脈動させます。
         const float wingPulse = 1.22f + std::sin(rushStepTimer_ * 28.0f) * 0.08f;
         rushWingsVisual_->SetIsVisible(true);
         rushWingsVisual_->SetTranslate(position + engine::Vector3{0.0f, 0.78f, 0.0f});
@@ -539,6 +604,7 @@ void EnemyFalseKingSlime::UpdateRush(float deltaTime, const engine::Vector3& tar
         rushWingsVisual_->UpdateWorldMatrix(true);
     }
 
+    // 一定間隔で進行方向の後ろへ残光を出します。
     effectTimer_ -= deltaTime;
 
     if (effectTimer_ <= 0.0f) {
@@ -548,6 +614,7 @@ void EnemyFalseKingSlime::UpdateRush(float deltaTime, const engine::Vector3& tar
         effectTimer_ += 0.11f;
     }
 
+    // 各段のダメージは一度限りです。対象の大きさを足した水平範囲で接触候補を絞ります。
     if (!rushDamageApplied_ && GetTarget() &&
         PlanarDistance(GetTarget()->GetWorldPosition(), position) <= attack.radius + GetTarget()->GetCollisionRadius()) {
         DamageTargetAt(position, attack.radius + GetTarget()->GetCollisionRadius(), 3.4f, attack.damage,
@@ -555,6 +622,7 @@ void EnemyFalseKingSlime::UpdateRush(float deltaTime, const engine::Vector3& tar
         rushDamageApplied_ = true;
     }
 
+    // 段の終点で演出を出し、残りがあれば次の予兆へ進み、最終段なら翼を隠します。
     if (progress >= 1.0f) {
         EmitDirectedPreset(kLanceImpactPreset, attackEndPosition_, {-lockedDirection_.x, 0.7f, -lockedDirection_.z},
                            1.1f);
@@ -576,6 +644,7 @@ void EnemyFalseKingSlime::SpawnRoyalBeams(bool dominionPattern) {
     const float baseAngle = std::atan2(lockedDirection_.x, lockedDirection_.z);
 
     for (int index = 0; index < beamCount; ++index) {
+        // 攻撃本体のメッシュに、生成できれば補助光を重ねます。
         RoyalBeam beam;
         beam.visual = CreateRoyalMesh("FalseKing_RoyalBeam_" + std::to_string(index), kRoyalBeamModel,
                                       {1.0f, 1.0f, 1.0f, 1.0f}, dominionPattern ? 2.1f : 1.75f);
@@ -583,10 +652,12 @@ void EnemyFalseKingSlime::SpawnRoyalBeams(bool dominionPattern) {
             CreateRoyalVisual("FalseKing_RoyalBeamGlow_" + std::to_string(index), "Primitives/cube", kLaserMaterialType,
                               dominionPattern ? engine::Vector4{0.82f, 0.16f, 1.0f, 0.38f} : engine::Vector4{1.0f, 0.62f, 0.08f, 0.38f},
                               dominionPattern ? 2.2f : 1.8f);
+        // 本体が無いビームは、描画と命中判定の対象に登録しません。
         if (!beam.visual) {
             continue;
         }
 
+        // ボスの足元を回転の中心とし、間隔を等分して、出現時刻と回転方向をビームごとに変えます。
         beam.origin = FindGroundPoint(GetTranslate());
         beam.origin.y += dominionPattern ? 0.48f : 0.38f;
         beam.delay = static_cast<float>(index) * (dominionPattern ? 0.045f : 0.06f);
@@ -596,6 +667,7 @@ void EnemyFalseKingSlime::SpawnRoyalBeams(bool dominionPattern) {
         beam.length = attack.maxRange;
         beam.width = RoyalBeamHalfWidth(dominionPattern, attack.radius);
         beam.damageTimer = 0.0f;
+        // 本体と補助光は待機時間が明けるまで隠しておきます。
         beam.visual->SetIsVisible(false);
         beam.visual->UpdateWorldMatrix(true);
 
@@ -604,6 +676,7 @@ void EnemyFalseKingSlime::SpawnRoyalBeams(bool dominionPattern) {
             beam.glow->UpdateWorldMatrix(true);
         }
 
+        // 姿勢と攻撃範囲をひとまとめにし、以降の回転と判定を UpdateRoyalBeams() へ渡します。
         royalBeams_.push_back(std::move(beam));
     }
 }
@@ -613,11 +686,13 @@ void EnemyFalseKingSlime::UpdateRoyalBeams(float deltaTime) {
     auto beam = royalBeams_.begin();
 
     while (beam != royalBeams_.end()) {
+        // 見える本体を失ったビームは、このフレーム以降の表示と命中判定から外します。
         if (!beam->visual) {
             beam = royalBeams_.erase(beam);
             continue;
         }
 
+        // ビームごとの開始待ちを経過時間から引き、待機中は角度も進めません。
         beam->age += deltaTime;
         const float localAge = beam->age - beam->delay;
 
@@ -626,6 +701,7 @@ void EnemyFalseKingSlime::UpdateRoyalBeams(float deltaTime) {
             continue;
         }
 
+        // 寿命の前後だけ強度を補間し、回転方向に沿って根元から半分進んだ位置をメッシュの中心にします。
         const float progress = std::clamp(localAge / (std::max)(beam->lifetime, 0.01f), 0.0f, 1.0f);
         const float envelope = (std::min)(SmoothStep01(progress / 0.12f), SmoothStep01((1.0f - progress) / 0.14f));
         beam->angle += beam->angularSpeed * deltaTime;
@@ -640,6 +716,7 @@ void EnemyFalseKingSlime::UpdateRoyalBeams(float deltaTime) {
         beam->visual->Update(deltaTime);
         beam->visual->UpdateWorldMatrix(true);
 
+        // 補助光があれば、本体と同じ角度で少し上に重ね、強度に合わせて透明度を変えます。
         if (beam->glow) {
             beam->glow->SetIsVisible(envelope > 0.01f);
             beam->glow->SetTranslate(center + engine::Vector3{0.0f, 0.08f, 0.0f});
@@ -651,10 +728,12 @@ void EnemyFalseKingSlime::UpdateRoyalBeams(float deltaTime) {
             beam->glow->UpdateWorldMatrix(true);
         }
 
+        // 明るさが閾値を超えた間だけ、ビームの範囲とダメージ間隔を判定します。
         if (envelope > 0.65f) {
             DamageTargetOnBeam(*beam, deltaTime);
         }
 
+        // 寿命を終えたビームは、補助光を含めてリストから取り除きます。
         if (progress >= 1.0f) {
             beam = royalBeams_.erase(beam);
             continue;
@@ -666,6 +745,7 @@ void EnemyFalseKingSlime::UpdateRoyalBeams(float deltaTime) {
 
 void EnemyFalseKingSlime::UpdateDominion(float deltaTime) {
     // 画面を一度に槍で埋めず、回転する帯状の着弾点を段階的に生成します。
+    // 槍の発射待ちとは別に、魔法陣はボスの頭上に追従させ続けます。
     if (dominionSigilVisual_) {
         const float duration = (std::max)(attackStateDuration_, 0.01f);
         const float progress = 1.0f - std::clamp(attackTimer_ / duration, 0.0f, 1.0f);
@@ -678,6 +758,7 @@ void EnemyFalseKingSlime::UpdateDominion(float deltaTime) {
         dominionSigilVisual_->UpdateWorldMatrix(true);
     }
 
+    // 魔法陣を更新した後で発射間隔を進め、待ち時間が残っていれば槍の処理だけ省きます。
     dominionLanceTimer_ -= deltaTime;
 
     if (dominionLanceTimer_ > 0.0f) {
@@ -694,6 +775,7 @@ void EnemyFalseKingSlime::UpdateDominion(float deltaTime) {
         SpawnCrownLance(lanceTargets_[static_cast<size_t>(targetIndex)], static_cast<float>(index) * 0.055f);
     }
 
+    // 次回の着弾帯をずらすため発射回数を進め、経過した時間を残したまま次の間隔を加えます。
     ++actionIndex_;
     dominionLanceTimer_ += kDominionLanceInterval;
 }
@@ -702,6 +784,7 @@ std::unique_ptr<engine::Object3D> EnemyFalseKingSlime::CreateRoyalVisual(const s
                                                                  int materialType, const engine::Vector4& color,
                                                                  float emissive) const {
     // 特殊材質の演出物には衝突を付けず、実ダメージは攻撃側の時刻処理で管理します。
+    // 描画オブジェクトの初期化に必要な共通部がない場合は生成失敗を返します。
     if (!GetObjectCommon()) {
         return nullptr;
     }
@@ -726,8 +809,9 @@ std::unique_ptr<engine::Object3D> EnemyFalseKingSlime::CreateRoyalVisual(const s
     visual->SetRoughness(0.18f);
     visual->SetMetallic(0.0f);
 
-    if (MeshRenderer* renderer = visual->GetMeshRenderer()) {
-        if (MeshRenderer::WaterParamForGpu* parameter = renderer->GetWaterParamData()) {
+    // 特殊材質のパラメータを取得できたときだけ、王冠と衝撃波で波や流れの強さを切り替えます。
+    if (engine::MeshRenderer* renderer = visual->GetMeshRenderer()) {
+        if (engine::MeshRenderer::WaterParamForGpu* parameter = renderer->GetWaterParamData()) {
             const bool shockwave = materialType == kShockwaveMaterialType;
             const bool crown = materialType == kCrownMaterialType;
             parameter->waveSpeed = shockwave ? 2.0f : 3.1f;
@@ -749,6 +833,7 @@ std::unique_ptr<engine::Object3D> EnemyFalseKingSlime::CreateRoyalVisual(const s
 std::unique_ptr<engine::Object3D> EnemyFalseKingSlime::CreateRoyalMesh(const std::string& name, const std::string& model,
                                                                const engine::Vector4& color, float emissive) const {
     // 通常 PBR で描く王冠部品を作り、光の演出物とは別に保持します。
+    // 描画共通部が利用できない場合は、呼び出し側に生成失敗を返します。
     if (!GetObjectCommon()) {
         return nullptr;
     }
@@ -758,9 +843,11 @@ std::unique_ptr<engine::Object3D> EnemyFalseKingSlime::CreateRoyalMesh(const std
     visual->SetName(name);
     visual->SetClassName("EnemyVisualPart");
     visual->SetModel(model);
+    // 王冠や槍の外見を描画専用にし、接触判定は個々の攻撃更新に任せます。
     visual->SetColliderType(ColliderType::None);
     visual->SetCollisionAttribute(0);
     visual->SetCollisionMask(0);
+    // 特殊材質の補助光と重ねる土台として、環境反射を使う金属の質感を設定します。
     visual->SetMaterialType(0);
     visual->SetBlendMode(BlendMode::None);
     visual->SetEnableLighting(true);
@@ -782,16 +869,19 @@ engine::Vector3 EnemyFalseKingSlime::FindGroundPoint(const engine::Vector3& samp
 void EnemyFalseKingSlime::DamageTargetAt(const engine::Vector3& center, float radius, float verticalTolerance, float damage,
                                          DamageType damageType, const engine::Vector3& knockback) {
     // 水平距離と高さを両方満たした対象へ、共通のダメージイベントを送ります。
+    // 対象がいない・撃破済み・非表示のいずれかなら、攻撃判定を行いません。
     if (!GetTarget() || GetTarget()->IsDead() || !GetTarget()->GetIsVisible()) {
         return;
     }
 
     const engine::Vector3 targetPosition = GetTarget()->GetWorldPosition();
 
+    // 高さに余裕があっても水平範囲外なら当たらず、見下ろした距離が近くても上下に離れていれば回避できます。
     if (std::abs(targetPosition.y - center.y) > verticalTolerance || PlanarDistance(targetPosition, center) > radius) {
         return;
     }
 
+    // 条件を満たしたときだけ、攻撃者と吹き飛ばしを含めたダメージイベントを発行します。
     DamageEvent event;
     event.target = GetTarget();
     event.attacker = this;
@@ -804,14 +894,17 @@ void EnemyFalseKingSlime::DamageTargetAt(const engine::Vector3& center, float ra
 void EnemyFalseKingSlime::PrepareAstralReaver() {
     // 三枚の魔法刃の発射元と着弾先を固定し、各層の EffectObject を準備します。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kAstralReaverAttackId);
+    // 飛行時間と命中履歴を初期化します。着弾経過が負の間は着弾演出を始めません。
     astralReaverElapsed_ = 0.0f;
     astralReaverImpactAge_ = -1.0f;
     astralReaverDamageApplied_ = false;
+    // ボスの向きとモデルの大きさから、刃を体の前へ置く基準を作ります。
     const engine::Vector3 forward = NormalizePlanar(lockedDirection_);
     const engine::Vector3 right{forward.z, 0.0f, -forward.x};
     const Aabb bounds = GetModelWorldAabb();
     const float casterRadius = (std::max)(baseScale_.x * 0.84f, (bounds.max.x - bounds.min.x) * 0.5f);
     const float casterHeight = (std::max)(baseScale_.y * 1.2f, bounds.max.y - bounds.min.y);
+    // 各層は素材を読めたときだけ生成し、配置と表示は毎フレームの更新に任せます。
     auto makeEffect = [this](const char* path, const std::string& name) {
         auto effect = std::make_unique<EffectObject3D>();
         effect->Initialize(GetObjectCommon());
@@ -829,6 +922,7 @@ void EnemyFalseKingSlime::PrepareAstralReaver() {
         orb.blade = makeEffect(kAstralReaverCutterBladeEffect, "FalseKing_AstralReaverBlade_" + std::to_string(index));
         orb.arc = makeEffect(kAstralReaverCutterArcEffect, "FalseKing_AstralReaverArc_" + std::to_string(index));
         orb.core = makeEffect(kAstralReaverOrbEffect, "FalseKing_AstralReaverGlint_" + std::to_string(index));
+        // 刃の出発点と到着点を左右にずらし、三枚が同じ軌道を通らないようにします。
         const float lateral = static_cast<float>(index) - 1.0f;
         orb.origin = GetWorldPosition() + forward * (casterRadius + 0.7f) + right * (lateral * 0.82f) +
                      engine::Vector3{0.0f, casterHeight * (0.57f + 0.13f * static_cast<float>(index % 2)), 0.0f};
@@ -841,6 +935,7 @@ void EnemyFalseKingSlime::PrepareAstralReaver() {
         orb.trailTimer = 0.0f;
     }
 
+    // 着弾範囲の予兆と、全刃到着後に広がる衝撃の素材を、飛ぶ刃とは別に用意します。
     astralReaverTargetRing_ = makeEffect(kAstralReaverRingEffect, "FalseKing_AstralReaverTarget");
     astralReaverImpactCore_ = makeEffect(kAstralReaverOrbEffect, "FalseKing_AstralReaverImpactCore");
 
@@ -857,6 +952,7 @@ void EnemyFalseKingSlime::UpdateAstralReaver(float deltaTime, bool active) {
     const engine::Vector3 right{forward.z, 0.0f, -forward.x};
     const float yaw = std::atan2(forward.x, forward.z);
     const float finalArrival = astralReaverOrbs_.back().launchDelay + astralReaverOrbs_.back().flightDuration;
+    // 汎用の予兆を消し、この技専用のリングで範囲を表示します。最後の刃の到着に合わせて薄くします。
     HideAttackTelegraph();
     const float windupProgress =
         active ? 1.0f : 1.0f - std::clamp(attackTimer_ / (std::max)(attackStateDuration_, 0.001f), 0.0f, 1.0f);
@@ -873,6 +969,7 @@ void EnemyFalseKingSlime::UpdateAstralReaver(float deltaTime, bool active) {
         astralReaverTargetRing_->UpdateWorldMatrix();
     }
 
+    // 詠唱中は発射元で刃と発光を組み立て、飛行時間と着弾判定は進めません。
     if (!active) {
         for (size_t index = 0; index < astralReaverOrbs_.size(); ++index) {
             AstralReaverOrb& orb = astralReaverOrbs_[index];
@@ -913,11 +1010,13 @@ void EnemyFalseKingSlime::UpdateAstralReaver(float deltaTime, bool active) {
         return;
     }
 
+    // 実行に入ってからの時間を進め、各刃の発射待ちを引いて軌道上の位置を求めます。
     astralReaverElapsed_ += deltaTime;
 
     for (size_t index = 0; index < astralReaverOrbs_.size(); ++index) {
         AstralReaverOrb& orb = astralReaverOrbs_[index];
         const float t = std::clamp((astralReaverElapsed_ - orb.launchDelay) / orb.flightDuration, 0.0f, 1.0f);
+        // 前後にずらす0.012は秒ではなく飛行区間の1.2%です。二点の差から曲線の接線を近似します。
         const engine::Vector3 previousPosition =
             AstralReaverFlightPosition(orb.origin, orb.destination, forward, right, t - 0.012f, index, attack.radius);
         const engine::Vector3 nextPosition =
@@ -934,11 +1033,13 @@ void EnemyFalseKingSlime::UpdateAstralReaver(float deltaTime, bool active) {
             position = position + (orbitPosition - position) * blend;
         }
 
+        // 発射前は隠し、着弾後は刃を消します。軌道の前後二点から飛行中の向きを求めます。
         const bool visible = astralReaverElapsed_ >= orb.launchDelay && astralReaverImpactAge_ < 0.20f;
         const float fade =
             astralReaverImpactAge_ < 0.0f ? 1.0f : std::clamp(1.0f - astralReaverImpactAge_ / 0.20f, 0.0f, 1.0f);
         const float phase = astralReaverElapsed_ * 12.0f + static_cast<float>(index) * 1.8f;
         const engine::Vector3 pathTangent = nextPosition - previousPosition;
+        // 前後の点の水平距離がほぼゼロなら向きを算出できないため、攻撃開始時のヨーを使います。
         const float pathYaw = pathTangent.x * pathTangent.x + pathTangent.z * pathTangent.z > 0.0001f
                                   ? std::atan2(pathTangent.x, pathTangent.z)
                                   : yaw;
@@ -969,6 +1070,7 @@ void EnemyFalseKingSlime::UpdateAstralReaver(float deltaTime, bool active) {
         }
     }
 
+    // 最後の刃が到着した時点で一度だけ範囲ダメージを出し、衝撃演出の時計を開始します。
     if (!astralReaverDamageApplied_ && astralReaverElapsed_ >= finalArrival) {
         astralReaverDamageApplied_ = true;
         astralReaverImpactAge_ = 0.0f;
@@ -977,11 +1079,13 @@ void EnemyFalseKingSlime::UpdateAstralReaver(float deltaTime, bool active) {
         EmitPreset(kAstralReaverImpactPreset, lockedTargetPosition_ + engine::Vector3{0.0f, 1.1f, 0.0f});
     }
 
+    // 未着弾の間は、衝撃の芯とリングを更新する段階へ進みません。
     if (astralReaverImpactAge_ < 0.0f)
         return;
     astralReaverImpactAge_ += deltaTime;
     const float fade = std::clamp(1.0f - astralReaverImpactAge_ / 0.72f, 0.0f, 1.0f);
 
+    // 着弾点で中央の光を広げながら薄くします。
     if (astralReaverImpactCore_) {
         astralReaverImpactCore_->Update(deltaTime);
         astralReaverImpactCore_->SetIsVisible(fade > 0.01f);
@@ -993,6 +1097,7 @@ void EnemyFalseKingSlime::UpdateAstralReaver(float deltaTime, bool active) {
         astralReaverImpactCore_->UpdateWorldMatrix();
     }
 
+    // リングは互いに角度を変え、各リングの開始をずらして立体的に広げます。
     for (size_t index = 0; index < astralReaverImpactRings_.size(); ++index) {
         auto& ring = astralReaverImpactRings_[index];
         if (!ring)
@@ -1013,7 +1118,9 @@ void EnemyFalseKingSlime::UpdateAstralReaver(float deltaTime, bool active) {
 
 void EnemyFalseKingSlime::PrepareNightfallLances() {
     // 天空・着弾点・衝撃の各層を JSON エフェクトから個別に読み込みます。
+    // 前回の描画物と時刻・命中状態を破棄し、素材の読み込みから始めます。
     nightfallLances_ = {};
+    // 素材の読み込みに失敗した層は空のまま返し、表示を担当する更新側に渡します。
     auto makeEffect = [this](const char* path, const std::string& name) {
         auto effect = std::make_unique<EffectObject3D>();
         effect->Initialize(GetObjectCommon());
@@ -1025,6 +1132,7 @@ void EnemyFalseKingSlime::PrepareNightfallLances() {
         return effect;
     };
 
+    // 落下前に使う上空と地面の術式を用意し、地面の印には更新側の色を使います。
     nightfallLances_.skySigil = makeEffect(kNightfallLancesSkySigilEffect, "FalseKing_NightfallLancesSkySigil");
     nightfallLances_.skyCounterSigil = makeEffect(kNightfallLancesSkySigilEffect, "FalseKing_NightfallLancesSkyCounterSigil");
     nightfallLances_.skyOuterRing = makeEffect(kNightfallLancesRingEffect, "FalseKing_NightfallLancesSkyOuterRing");
@@ -1034,6 +1142,7 @@ void EnemyFalseKingSlime::PrepareNightfallLances() {
         nightfallLances_.targetSigil->SetUseTextureColor(false);
     nightfallLances_.targetRing = makeEffect(kNightfallLancesRingEffect, "FalseKing_NightfallLancesTargetRing");
     nightfallLances_.innerRing = makeEffect(kNightfallLancesRingEffect, "FalseKing_NightfallLancesInnerRing");
+    // 落ちる槍を芯・発光・周囲の刃に分け、位置や回転を別々に更新できるようにします。
     nightfallLances_.spearCore = makeEffect(kNightfallLancesCoreEffect, "FalseKing_NightfallLancesCore");
     nightfallLances_.spearGlow = makeEffect(kNightfallLancesGlowEffect, "FalseKing_NightfallLancesGlow");
 
@@ -1042,6 +1151,7 @@ void EnemyFalseKingSlime::PrepareNightfallLances() {
             makeEffect(kNightfallLancesCoreEffect, "FalseKing_NightfallLancesBarb_" + std::to_string(index));
     }
 
+    // 最初の着弾で広がるリング、中央の光、地面を走る光を用意します。
     nightfallLances_.impactRing = makeEffect(kNightfallLancesRingEffect, "FalseKing_NightfallLancesImpactRing");
     nightfallLances_.impactCore = makeEffect(kAstralReaverOrbEffect, "FalseKing_NightfallLancesImpactCore");
     nightfallLances_.groundArc = makeEffect(kNightfallGroundArcEffect, "FalseKing_NightfallGroundArc");
@@ -1051,6 +1161,7 @@ void EnemyFalseKingSlime::PrepareNightfallLances() {
             makeEffect(kNightfallImpactLightningEffect, "FalseKing_NightfallGroundLightning_" + std::to_string(index));
     }
 
+    // 着弾地点から立ち上がる光柱の内外と、その周囲の稲妻を準備します。
     nightfallLances_.impactBeam = makeEffect(kNightfallImpactBeamEffect, "FalseKing_NightfallImpactBeam");
     nightfallLances_.impactBeamHalo = makeEffect(kNightfallImpactBeamEffect, "FalseKing_NightfallImpactBeamHalo");
 
@@ -1059,6 +1170,7 @@ void EnemyFalseKingSlime::PrepareNightfallLances() {
             makeEffect(kNightfallImpactLightningEffect, "FalseKing_NightfallImpactLightning_" + std::to_string(index));
     }
 
+    // 最後に二段目の衝撃波で使うリングと外殻を用意します。
     nightfallLances_.blastRing = makeEffect(kNightfallLancesRingEffect, "FalseKing_NightfallLancesBlastRing");
     nightfallLances_.blastShell = makeEffect(kAstralReaverOrbEffect, "FalseKing_NightfallLancesBlastShell");
 }
@@ -1066,6 +1178,7 @@ void EnemyFalseKingSlime::PrepareNightfallLances() {
 void EnemyFalseKingSlime::UpdateNightfallLances(float deltaTime, bool active) {
     // 予兆から落下、着弾、二段目の衝撃波までを共通の経過時間で同期します。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kNightfallLancesAttackId);
+    // 汎用予告を専用の魔法陣に置き換え、実行段階に入ってから秒単位の落下・着弾・衝撃時刻を進めます。
     HideAttackTelegraph();
     const engine::Vector3 ground = lockedTargetPosition_;
     const float windup =
@@ -1150,6 +1263,7 @@ void EnemyFalseKingSlime::UpdateNightfallLances(float deltaTime, bool active) {
         nightfallLances_.skyParticleTimer += 0.12f;
     }
 
+    // 槍の芯、逆回転する外光、周囲を回る刃に同じ落下位置と組み立て率を反映します。
     PlaceMagicLayer(nightfallLances_.spearCore.get(), deltaTime, spearFade > 0.01f, spearCenter, {0.0f, spin, 0.0f},
                     {1.50f * visibleScale, 1.20f * visibleScale, 1.50f * visibleScale},
                     {0.045f, 0.018f, 0.09f, spearFade * 0.98f});
@@ -1177,6 +1291,7 @@ void EnemyFalseKingSlime::UpdateNightfallLances(float deltaTime, bool active) {
     for (const auto& barb : nightfallLances_.barbs)
         applySpearDissolve(barb.get());
 
+    // 槍が消え始めるまで粒子タイマーを初期状態に保ち、消散中だけ高さを分けて破片を出します。
     if (!active || age < damageTime) {
         nightfallLances_.dissolveParticleTimer = 0.0f;
     } else if (dissolveProgress < 1.0f) {
@@ -1213,6 +1328,7 @@ void EnemyFalseKingSlime::UpdateNightfallLances(float deltaTime, bool active) {
                                1.0f);
         }
 
+        // 落下して接地するまでの間は、槍の後ろに上向きの残光を重ねます。
         if (active && age < impactTime) {
             EmitDirectedPreset(kNightfallLancesTrailPreset, spearCenter + engine::Vector3{0.0f, 1.5f, 0.0f}, {0.0f, 1.0f, 0.0f},
                                1.2f);
@@ -1221,6 +1337,7 @@ void EnemyFalseKingSlime::UpdateNightfallLances(float deltaTime, bool active) {
         nightfallLances_.particleTimer += 0.045f;
     }
 
+    // 着弾時刻をまたいだフレームだけ、小さな接地エフェクトを出します。
     if (active && age >= impactTime && age - deltaTime < impactTime) {
         EmitPreset(kNightfallLancesImpactPreset, ground + engine::Vector3{0.0f, 0.30f, 0.0f});
     }
@@ -1236,6 +1353,7 @@ void EnemyFalseKingSlime::UpdateNightfallLances(float deltaTime, bool active) {
         }
     }
 
+    // 外周まで波が届く時刻に一度だけダメージを適用し、第二形態では封印への判定も行います。
     if (active && !nightfallLances_.damageApplied && age >= damageTime) {
         nightfallLances_.damageApplied = true;
 
@@ -1252,6 +1370,7 @@ void EnemyFalseKingSlime::UpdateNightfallLances(float deltaTime, bool active) {
             TryBreakCrownSeal(ground, sealAttackStage_);
     }
 
+    // 着地後は地表の光へ収束させ、第二波の開始から判定時刻まで輪を攻撃半径へ広げます。
     const float impactFade =
         active && age >= impactTime ? std::clamp(1.0f - (std::max)(0.0f, age - damageTime) / 0.40f, 0.0f, 1.0f) : 0.0f;
     const float charge = std::clamp((age - impactTime) / (pulseTime - impactTime), 0.0f, 1.0f);
@@ -1334,7 +1453,9 @@ void EnemyFalseKingSlime::UpdateNightfallLances(float deltaTime, bool active) {
 
 void EnemyFalseKingSlime::PrepareSealNightfallSatellites() {
     // 封印戦専用の小槍を個別の着弾時刻で準備します。
+    // 前回の小槍の描画物と命中履歴を破棄してから、今回の素材を用意します。
     sealNightfallSatellites_ = {};
+    // 読み込めた素材を非表示で再生待機させます。読み込めなかった層は空のまま返します。
     auto makeEffect = [this](const char* path, const std::string& name) {
         auto effect = std::make_unique<EffectObject3D>();
         effect->Initialize(GetObjectCommon());
@@ -1346,6 +1467,7 @@ void EnemyFalseKingSlime::PrepareSealNightfallSatellites() {
         return effect;
     };
 
+    // 各槍に地面の印・槍の芯・外側の光を割り当て、着弾を0.23秒ずつずらします。
     for (size_t index = 0; index < sealNightfallSatellites_.size(); ++index) {
         auto& satellite = sealNightfallSatellites_[index];
         const std::string suffix = std::to_string(index);
@@ -1360,6 +1482,7 @@ void EnemyFalseKingSlime::UpdateSealNightfallSatellites(float deltaTime, bool ac
     // 第二形態に限って周囲の小槍を順に落とし、命中は各槍一度に制限します。
     if (battlePhase_ != 2)
         return;
+    // 固定した狙いを中心に、ボスから見た前と右を配置の基準にします。
     const engine::Vector3 center = lockedTargetPosition_;
     const engine::Vector3 forward = NormalizePlanar(center - GetTranslate());
     const engine::Vector3 right{forward.z, 0.0f, -forward.x};
@@ -1371,10 +1494,12 @@ void EnemyFalseKingSlime::UpdateSealNightfallSatellites(float deltaTime, bool ac
         const float side = static_cast<float>(index) - 1.0f;
         const engine::Vector3 offset = right * (side * spread) + forward * (index == 1 ? spread * 0.85f : spread * 0.25f);
         satellite.ground = FindGroundPoint(center + offset);
+        // 予兆中は槍を空中に留め、実行中は各槍の着弾時刻を基準に落下と消散を計算します。
         const float untilImpact = satellite.impactAge - age;
         const float fall = active ? Easing::SmoothStep01((age - satellite.impactAge + 0.34f) / 0.34f) : 0.0f;
         const float fade = active ? std::clamp((satellite.impactAge + 0.38f - age) / 0.38f, 0.0f, 1.0f) : 1.0f;
         const float warning = active ? std::clamp(untilImpact / 0.45f, 0.0f, 1.0f) : 1.0f;
+        // 地面の予兆は着弾前に薄くし、空中の芯と光は同じ位置で逆向きに回します。
         PlaceMagicLayer(satellite.sigil.get(), deltaTime, warning > 0.01f,
                         satellite.ground + engine::Vector3{0.0f, 0.23f, 0.0f}, {0.0f, idleTimer_ * 0.55f, 0.0f},
                         {1.45f, 1.0f, 1.45f}, {0.95f, 0.18f, 0.70f, warning * 0.80f});
@@ -1384,6 +1509,7 @@ void EnemyFalseKingSlime::UpdateSealNightfallSatellites(float deltaTime, bool ac
                         {0.68f, 0.75f, 0.68f}, {0.08f, 0.02f, 0.16f, fade});
         PlaceMagicLayer(satellite.glow.get(), deltaTime, spearVisible, spearCenter, {0.0f, -idleTimer_ * 2.0f, 0.0f},
                         {0.78f, 0.80f, 0.78f}, {0.88f, 0.14f, 0.72f, fade * 0.55f});
+        // 着弾時刻を越えた小槍だけ、衝撃とダメージを一回発生させます。
         if (active && !satellite.damageApplied && age >= satellite.impactAge) {
             satellite.damageApplied = true;
             EmitPreset(kNightfallLancesImpactPreset, satellite.ground + engine::Vector3{0.0f, 0.25f, 0.0f});
@@ -1395,6 +1521,7 @@ void EnemyFalseKingSlime::UpdateSealNightfallSatellites(float deltaTime, bool ac
 
 void EnemyFalseKingSlime::DamageTargetOnBeam(RoyalBeam& beam, float deltaTime) {
     // ビーム方向への射影と横方向の幅で判定し、命中後は短い再判定間隔を設けます。
+    // 攻撃可能な対象がいるフレームだけ再判定の待ち時間を進めます。
     if (!GetTarget() || GetTarget()->IsDead() || !GetTarget()->GetIsVisible()) {
         return;
     }
@@ -1405,14 +1532,18 @@ void EnemyFalseKingSlime::DamageTargetOnBeam(RoyalBeam& beam, float deltaTime) {
         return;
     }
 
+    // 中心線への射影で、ビームの始点から終点までの範囲と高さを確認します。
     const engine::Vector3 direction = {std::sin(beam.angle), 0.0f, std::cos(beam.angle)};
     const engine::Vector3 toTarget = GetTarget()->GetWorldPosition() - beam.origin;
+    // 根元からの変位を水平単位ベクトルへ射影します。負は背後、beam.length超過は先端より先です。
     const float projection = toTarget.x * direction.x + toTarget.z * direction.z;
     if (projection < 0.0f || projection > beam.length ||
         std::abs(GetTarget()->GetWorldPosition().y - beam.origin.y) > 3.0f) {
         return;
     }
 
+    // 中心線に沿う成分を引き、残りの水平距離をビーム半幅と対象の半径で判定します。
+    // 変位から中心線上の成分を引いた残りが横ずれです。XとZの長さをビームの半幅と比較します。
     const float lateralX = toTarget.x - direction.x * projection;
     const float lateralZ = toTarget.z - direction.z * projection;
     const float lateralDistance = std::sqrt(lateralX * lateralX + lateralZ * lateralZ);
@@ -1421,6 +1552,7 @@ void EnemyFalseKingSlime::DamageTargetOnBeam(RoyalBeam& beam, float deltaTime) {
         return;
     }
 
+    // 発動中の技から威力を選び、ビームの横へ押し出す電撃を発行します。
     const EnemyAttackDefinition& attack =
         GetAttackDefinition(currentAttack_ == AttackKind::CrownDominion ? kCrownDominionAttackId : kRoyalCrossAttackId);
     const engine::Vector3 side = {direction.z, 0.0f, -direction.x};
@@ -1431,12 +1563,14 @@ void EnemyFalseKingSlime::DamageTargetOnBeam(RoyalBeam& beam, float deltaTime) {
     event.damageType = DamageType::Electric;
     event.knockbackVelocity = {side.x * 7.0f, 3.8f, side.z * 7.0f};
     EventManager::GetInstance()->Dispatch(event);
+    // 次の判定を0.72秒遅らせ、触れ続けたときの連続命中を防ぎます。
     beam.damageTimer = 0.72f;
 }
 
 void EnemyFalseKingSlime::BeginShockwaveJump() {
     // 着地点を開始時に固定し、ジャンプ後に出す波の予告位置と揃えます。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kRoyalShockwaveAttackId);
+    // 地面上の始点から狙いへ移動します。距離は攻撃設定由来の上限を超えないようにします。
     attackStartPosition_ = FindGroundPoint(GetTranslate());
     engine::Vector3 toTarget = lockedTargetPosition_ - attackStartPosition_;
     toTarget.y = 0.0f;
@@ -1446,11 +1580,13 @@ void EnemyFalseKingSlime::BeginShockwaveJump() {
     const float travelDistance = (std::min)(targetDistance, maximumTravel);
     attackEndPosition_ = FindGroundPoint(attackStartPosition_ + lockedDirection_ * travelDistance);
 
+    // ジャンプ時間と高さを決め、着地フラグと溜め用の表示を初期化します。
     shockwaveJumpTimer_ = 0.0f;
     shockwaveJumpDuration_ = std::clamp(attack.activeDuration * 0.31f, 0.74f, 1.05f);
     shockwaveJumpHeight_ = 5.6f + static_cast<float>(battlePhase_) * 0.85f;
     shockwaveLanded_ = false;
     shockwaveChargeVisual_.reset();
+    // 通常の接地・速度を解除して、次の更新から演出用の軌道で動かします。
     SetGrounded(false);
     SetVelocity({});
     EmitDirectedPreset(kShockwaveDustPreset, attackStartPosition_, {0.0f, 1.0f, 0.0f}, 0.58f);
@@ -1460,26 +1596,32 @@ void EnemyFalseKingSlime::UpdateShockwaveJump(float deltaTime, engine::Vector3& 
     // 始点と終点を滑らかに補間し、弧の高さだけを正弦波で加えます。
     velocity = {};
 
+    // 着地後は時間だけ進め、飛行時の位置更新と着地処理を繰り返しません。
     if (shockwaveLanded_) {
         shockwaveJumpTimer_ += deltaTime;
         HideAttackTelegraph();
         return;
     }
 
+    // 離陸から着地までの進行率でワールド位置を上書きし、通常移動をこのフレームは抑えます。
     shockwaveJumpTimer_ += deltaTime;
     const float progress = std::clamp(shockwaveJumpTimer_ / (std::max)(shockwaveJumpDuration_, 0.01f), 0.0f, 1.0f);
     engine::Vector3 position = LerpVector3(attackStartPosition_, attackEndPosition_, SmoothStep01(progress));
+    // sinに0〜πを渡すと、始点と終点の加算は0、進行率0.5ではジャンプ高さを全量加えます。
     position.y += std::sin(progress * kPi) * shockwaveJumpHeight_;
     SetTranslate(position);
+    // ここで移動先を確定したので、同じフレームに通常の移動で位置を上書きしないようにします。
     scriptedMovementThisFrame_ = true;
     SetGrounded(false);
     UpdateFacing(lockedDirection_, 0.34f);
 
+    // 地面の円で、空中のボスの下ではなく実際の着地点を示します。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kRoyalShockwaveAttackId);
     ShowAttackTelegraphCircle(attackEndPosition_, (std::max)(2.8f, attack.radius * 3.4f), SmoothStep01(progress),
                               battlePhase_ >= 3 ? engine::Vector4{0.90f, 0.18f, 1.0f, 0.78f}
                                                 : engine::Vector4{1.0f, 0.62f, 0.10f, 0.78f});
 
+    // 離陸直後と着地直前を除いた飛行区間だけ、後方へ粒子を出します。
     effectTimer_ -= deltaTime;
 
     if (effectTimer_ <= 0.0f && progress > 0.10f && progress < 0.92f) {
@@ -1488,6 +1630,7 @@ void EnemyFalseKingSlime::UpdateShockwaveJump(float deltaTime, engine::Vector3& 
         effectTimer_ += 0.12f;
     }
 
+    // 軌道の終端で着地処理に渡し、波と着弾判定を起動します。
     if (progress >= 1.0f) {
         FinishShockwaveLanding();
     }
@@ -1497,6 +1640,7 @@ void EnemyFalseKingSlime::FinishShockwaveLanding() {
     // 着地後に波を生成し、ジャンプの着弾判定を重複させません。
     if (shockwaveLanded_)
         return;
+    // 終点で接地状態を確定し、空中の速度と着地点の予兆を片付けます。
     shockwaveLanded_ = true;
     SetTranslate(attackEndPosition_);
     scriptedMovementThisFrame_ = true;
@@ -1504,17 +1648,20 @@ void EnemyFalseKingSlime::FinishShockwaveLanding() {
     SetVelocity({});
     HideAttackTelegraph();
 
+    // 地面の着弾位置を基準に封印破壊を試し、拡大する波と即時の着地エフェクトを出します。
     const engine::Vector3 impactPosition = FindGroundPoint(attackEndPosition_);
     TryBreakCrownSeal(impactPosition, 1);
     SpawnRoyalWaves();
     EmitDirectedPreset(kShockwavePreset, impactPosition, {0.0f, 1.0f, 0.0f}, 1.72f);
     EmitDirectedPreset(kShockwaveDustPreset, impactPosition, {0.0f, 1.0f, 0.0f}, 1.32f);
 
+    // 着地直後の近距離判定を行います。後から広がる波の判定は UpdateRoyalWaves() が担当します。
     const EnemyAttackDefinition& attack = GetAttackDefinition(kRoyalShockwaveAttackId);
     DamageTargetAt(impactPosition, (std::max)(2.7f, attack.radius * 3.1f), 3.2f, attack.damage, DamageType::Explosion,
                    {lockedDirection_.x * 6.5f, 7.2f, lockedDirection_.z * 6.5f});
 
-    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+    // カメラを取得できる場合は、着地の衝撃を短い画面揺れで伝えます。
+    if (engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         camera->StartShake(0.24f, battlePhase_ >= 3 ? 0.085f : 0.065f, 27.0f, {0.58f, 0.38f, 0.20f});
     }
 }

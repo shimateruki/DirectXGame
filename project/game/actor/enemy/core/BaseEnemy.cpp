@@ -300,6 +300,7 @@ engine::Vector3 BaseEnemy::GetWanderTargetPosition(float deltaTime, float radius
     const float distanceFromOrigin = PlanarDistance(GetTranslate(), wanderOrigin_);
 
     if (distanceFromOrigin > radius * 1.08f) {
+        // 中心から離れすぎた場合は再抽選せず、中心へ向かう目標に置き換えます。
         engine::Vector3 toOrigin = wanderOrigin_ - GetTranslate();
         toOrigin.y = 0.0f;
         const float length = (std::max)(0.001f, std::sqrt(toOrigin.x * toOrigin.x + toOrigin.z * toOrigin.z));
@@ -307,9 +308,11 @@ engine::Vector3 BaseEnemy::GetWanderTargetPosition(float deltaTime, float radius
         wanderTarget_.y = wanderOrigin_.y + verticalOffset;
         wanderRetargetTimer_ = 1.2f;
     } else if (distanceToTarget < 0.85f) {
+        // 目標へ着いたら休止に入り、休止後に向かう地点を決めます。
         wanderWaitTimer_ = 0.45f + NextWanderRandom() * 1.0f;
         PickWanderTarget(radiusScale, verticalOffset);
     } else if (wanderRetargetTimer_ <= 0.0f) {
+        // 障害物などで到達できないまま時間が経った場合も、新しい目標を選びます。
         PickWanderTarget(radiusScale, verticalOffset);
     }
 
@@ -369,12 +372,14 @@ engine::Vector3 BaseEnemy::CalculateWanderVelocity(float deltaTime, float moveSp
 void BaseEnemy::BeginThrown(const engine::Vector3& initialVelocity) {
     // 運搬状態から物理投擲へ移る際に、攻撃予告と気付き演出を先に解除する。
     CancelNoticeReaction();
+    // 投げる直前の向きを起き上がりの終点として保存する。
     throwRecoveryTargetRotation_ = GetRotation();
 
     if (isCarried_) {
         SetCarried(false);
     }
 
+    // 前回の着地回数とタイマーを消し、今回の初速から投擲を始める。
     isThrownPhysics_ = true;
     isThrowRotationRecovering_ = false;
     slamImpactCount_ = 0;
@@ -389,11 +394,13 @@ void BaseEnemy::BeginThrown(const engine::Vector3& initialVelocity) {
         ResetParameters();
     }
 
+    // 投げた向きと速さから回転を作る。上下の回転量には上限を設ける。
     const float planarSpeed = PlanarLength(initialVelocity);
     thrownAngularVelocity_ = {(std::clamp)(initialVelocity.z * 0.08f, -7.5f, 7.5f),
                               (std::clamp)(planarSpeed * 0.08f, 1.5f, 8.0f),
                               (std::clamp)(-initialVelocity.x * 0.08f, -7.5f, 7.5f)};
 
+    // 運搬中に止めていた当たり判定を戻し、地面やプレイヤーの攻撃に反応できるようにする。
     SetCollisionAttribute(CollisionCategories::Get("enemy"));
     SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("ground") | CollisionCategories::Get("player_bullet") | CollisionCategories::Get("player_attack"));
 }
@@ -403,6 +410,7 @@ void BaseEnemy::UpdateThrownPhysics(float deltaTime) {
     thrownTimer_ += deltaTime;
     slamImpactCooldownTimer_ = (std::max)(0.0f, slamImpactCooldownTimer_ - deltaTime);
 
+    // 空中でも水平方向を減衰させ、地面では滑走用の摩擦をさらに適用する。
     SetVelocityX(GetVelocity().x * (kThrownAirDrag));
     SetVelocityZ(GetVelocity().z * (kThrownAirDrag));
 
@@ -410,25 +418,30 @@ void BaseEnemy::UpdateThrownPhysics(float deltaTime) {
         SetVelocityX(GetVelocity().x * (kThrownGroundFriction));
         SetVelocityZ(GetVelocity().z * (kThrownGroundFriction));
 
+        // 水平と上下の速度がどちらも小さい間だけ、静止へ近づいた時間を加算する。
         if (PlanarLength(GetVelocity()) <= kThrownSettleSpeed && std::abs(GetVelocity().y) <= 1.0f) {
             thrownSettleTimer_ += deltaTime;
         } else {
             thrownSettleTimer_ = 0.0f;
         }
 
+        // 着地衝撃を出し、一定時間ほぼ止まった場合は起き上がりへ進む。
         if (slamImpactCount_ > 0 && thrownSettleTimer_ >= kThrownSettleTime) {
             EndThrownPhysics();
         }
     }
 
+    // 衝撃が発生しなかった場合も、最大時間で投擲を終える。
     if (thrownTimer_ >= kThrownMaxTime) {
         EndThrownPhysics();
     }
 
+    // このフレームで起き上がりへ移ったら、投擲中の回転は重ねない。
     if (!isThrownPhysics_) {
         return;
     }
 
+    // 投擲が続く間は、開始時に決めた角速度で姿勢を更新する。
     engine::Vector3 rotation = GetRotation();
     rotation.x += thrownAngularVelocity_.x * deltaTime;
     rotation.y += thrownAngularVelocity_.y * deltaTime;
@@ -439,15 +452,18 @@ void BaseEnemy::UpdateThrownPhysics(float deltaTime) {
 void BaseEnemy::HandleThrownCollision(const CollisionInfo& info, uint32_t attribute) {
     // 衝突法線方向の入射速度で着地衝撃と反発を分け、横滑りだけでは着地扱いしない。
     const engine::Vector3 incomingVelocity = GetVelocity();
+    // 法線は面から敵へ向くため、内積の符号を反転すると面へ向かう速さが正になります。
     const float normalSpeed = -engine::Math::Dot(incomingVelocity, info.normal);
     const bool isGroundLike = info.normal.y > kThrownGroundNormal;
 
+    // 着地判定に使う速度は補正前に取得しておき、実際の押し戻しと接地は共通処理へ渡す。
     ApplyPhysicsCollision(info, attribute);
 
     if (normalSpeed <= 0.0f) {
         return;
     }
 
+    // 初回と再着地で別のしきい値を使い、接触が連続しても発生回数と間隔を制限する。
     const float slamSpeedThreshold = slamImpactCount_ == 0 ? kThrownSlamMinSpeed : kThrownFollowUpSlamMinSpeed;
     if (isGroundLike && slamImpactCount_ < kMaxSlamImpacts && slamImpactCooldownTimer_ <= 0.0f &&
         normalSpeed >= slamSpeedThreshold) {
@@ -456,17 +472,21 @@ void BaseEnemy::HandleThrownCollision(const CollisionInfo& info, uint32_t attrib
         OnSlamImpact(GetTranslate(), normalSpeed);
     }
 
+    // 入射速度が小さい接触では押し戻しだけを残し、新しい反発速度は与えない。
     if (normalSpeed < kThrownBounceMinSpeed) {
         return;
     }
 
+    // 面に沿う速度と法線方向への反発を分け、床と壁で減衰率を変える。
     const float normalDot = engine::Math::Dot(incomingVelocity, info.normal);
     const engine::Vector3 tangentVelocity = incomingVelocity - info.normal * normalDot;
     const float tangentKeep = isGroundLike ? 0.62f : 0.78f;
     const float bounceRate = isGroundLike ? 0.34f : 0.36f;
 
+    // 滑りの残りと面から離れる速度を合成し、床では壁より両方を弱めます。
     SetVelocity(tangentVelocity * tangentKeep + info.normal * (normalSpeed * bounceRate));
 
+    // 着地衝撃の余地が残る間は、小さい反跳でも地面から離れる高さを確保する。
     if (isGroundLike && GetVelocity().y < 3.2f && slamImpactCount_ < kMaxSlamImpacts) {
         SetVelocityY(3.2f);
     }
@@ -505,6 +525,7 @@ void BaseEnemy::UpdateThrowRecovery(float deltaTime) {
         throwRecoveryTimer_ = (std::max)(0.0f, throwRecoveryTimer_ - deltaTime);
     }
 
+    // 接地中に残った水平速度だけを落とし、空中ではこの摩擦を適用しない。
     if (IsGrounded()) {
         SetVelocityX(GetVelocity().x * (kThrowRecoveryGroundFriction));
         SetVelocityZ(GetVelocity().z * (kThrowRecoveryGroundFriction));
@@ -514,6 +535,7 @@ void BaseEnemy::UpdateThrowRecovery(float deltaTime) {
         return;
     }
 
+    // 衝突直後の向きから投げる前の向きへ、クォータニオンで姿勢を補間する。
     throwRecoveryRotateTimer_ += deltaTime;
     const float t = Easing::OutCubic01(throwRecoveryRotateTimer_ / kThrowRecoveryDuration);
     const engine::Quaternion start = engine::Math::EulerToQuaternion(throwRecoveryStartRotation_);
@@ -521,6 +543,7 @@ void BaseEnemy::UpdateThrowRecovery(float deltaTime) {
     const engine::Quaternion current = engine::Math::Slerp(start, target, t);
     SetRotation(engine::Math::MatrixToEuler(engine::Math::MakeRotateQuaternionMatrix(current)));
 
+    // 時間を使い切ったら目的の角度に確定し、今後の姿勢更新から起き上がりを外す。
     if (throwRecoveryRotateTimer_ >= kThrowRecoveryDuration) {
         SetRotation(throwRecoveryTargetRotation_);
         isThrowRotationRecovering_ = false;
@@ -587,6 +610,7 @@ void BaseEnemy::DamageSlamTargets(const engine::Vector3& impactPosition, float i
             continue;
         }
 
+        // 高さ方向の距離を軽く扱い、衝撃の中心から遠い敵ほど水平の押し出しと威力を弱めます。
         engine::Vector3 diff = object->GetWorldPosition() - impactPosition;
         diff.y *= 0.45f;
         const float distance = engine::Math::Length(diff);
@@ -596,6 +620,7 @@ void BaseEnemy::DamageSlamTargets(const engine::Vector3& impactPosition, float i
         }
 
         engine::Vector3 knockbackDir = NormalizePlanarOr(diff, {0.0f, 0.0f, 1.0f});
+        // 衝撃の中心で1、判定半径の端で0。端でも威力は55%残しますが、水平方向の吹き飛びはなくなります。
         const float distanceRate = 1.0f - (std::clamp)(distance / radius, 0.0f, 1.0f);
 
         DamageEvent damageEvent;
@@ -639,6 +664,7 @@ void BaseEnemy::PlayDamageReaction(engine::Object3D* attacker, const engine::Vec
         return;
     }
 
+    // 吹き飛び方向がなければ、攻撃元から離れる方向、次に自分の後方を使います。
     engine::Vector3 worldDirection = {knockbackVelocity.x, 0.0f, knockbackVelocity.z};
     float planarLength = std::sqrt(worldDirection.x * worldDirection.x + worldDirection.z * worldDirection.z);
 
@@ -658,11 +684,13 @@ void BaseEnemy::PlayDamageReaction(engine::Object3D* attacker, const engine::Vec
     worldDirection.z /= planarLength;
 
     const float yaw = GetRotation().y;
+    // 敵の前と右に投影し、固有アニメーションに重ねやすいローカル方向へ変換します。
     const engine::Vector3 localRight = {std::cos(yaw), 0.0f, -std::sin(yaw)};
     const engine::Vector3 localForward = {std::sin(yaw), 0.0f, std::cos(yaw)};
     damageReactionLocalDirection_ = {worldDirection.x * localRight.x + worldDirection.z * localRight.z, 0.0f,
                                      worldDirection.x * localForward.x + worldDirection.z * localForward.z};
 
+    // 吹き飛びとダメージから変形の強さを分けて算出し、顔と赤い点滅の開始時刻を揃えます。
     const float knockbackStrength = std::clamp(planarLength / 18.0f, 0.0f, 1.0f);
     const float damageStrength = std::clamp(damage / 24.0f, 0.0f, 1.0f);
     damageReactionStrength_ = std::clamp(0.72f + knockbackStrength * 0.28f + damageStrength * 0.34f, 0.72f, 1.30f);
@@ -724,17 +752,21 @@ EnemyVisualReactionPose BaseEnemy::GetDamageReactionPose() const {
     float response = 0.0f;
 
     if (progress < 0.18f) {
+        // 衝撃の直後は変形を立ち上げます。
         const float t = progress / 0.18f;
         response = Easing::SmoothStep(t);
     } else if (progress < 0.52f) {
+        // 変形が最大になったあと逆方向へ戻して反動を見せます。
         const float t = (progress - 0.18f) / 0.34f;
         const float eased = Easing::SmoothStep(t);
         response = 1.0f + (-0.38f - 1.0f) * eased;
     } else {
+        // 残り時間で揺れを減らし、通常姿勢へ戻します。
         const float t = (progress - 0.52f) / 0.48f;
         response = -0.38f * (1.0f - t) * std::cos(t * kWanderPi * 2.0f);
     }
 
+    // ローカルの衝撃方向に応じて、縮む軸・傾き・移動量へ変換します。
     const float impulse = response * damageReactionStrength_;
     const float localX = damageReactionLocalDirection_.x;
     const float localZ = damageReactionLocalDirection_.z;
@@ -838,7 +870,7 @@ void BaseEnemy::BeginNoticeReaction(NoticeReactionKind kind) {
 }
 
 void BaseEnemy::EndNoticeReaction(bool restoreVisual) {
-    // 演出が中断されても元の色とスケールを戻し、次の行動へ残さない。
+    // スケールを復元し、見回しで向きを変えた場合だけ演出前の回転も戻します。
     const NoticeReactionKind finishedKind = noticeReactionKind_;
 
     if (restoreVisual && isNoticeReactionActive_) {
@@ -1133,12 +1165,14 @@ void BaseEnemy::UpdateDefeatEffect(float deltaTime) {
     const float pulse = 1.0f + std::sin(progress * kWanderPi * 6.0f) * 0.06f * (1.0f - progress);
     const float shrink = 1.0f - eased * 0.34f;
 
+    // 退場開始時の大きさを基準に縮め、序盤だけ脈動を重ねます。
     engine::Vector3 scale = defeatBaseScale_;
     scale.x *= shrink * pulse;
     scale.z *= shrink * pulse;
     scale.y *= (1.0f - eased * 0.18f) * (1.0f + std::sin(progress * kWanderPi * 3.0f) * 0.10f * (1.0f - progress));
     SetScale(scale);
 
+    // 高度は開始位置から補間し、回転はこのフレームの時間分だけ進めます。
     engine::Vector3 position = defeatBasePosition_;
     position.y += kDefeatRiseHeight * eased;
     SetTranslate(position);
@@ -1148,6 +1182,7 @@ void BaseEnemy::UpdateDefeatEffect(float deltaTime) {
     rotation.x += 0.55f * (1.0f - progress) * deltaTime;
     SetRotation(rotation);
 
+    // 発光色を明るくしながら、ディゾルブのしきい値を下げて消していきます。
     const float dissolveThreshold = 1.0f - (Easing::SmoothStep(progress));
     const engine::Vector3 glowColor = {defeatBaseColor_.x * (1.0f - eased) + 1.0f * eased,
                                defeatBaseColor_.y * (1.0f - eased) + 0.92f * eased,
@@ -1159,6 +1194,7 @@ void BaseEnemy::UpdateDefeatEffect(float deltaTime) {
         defeatEffectParticleTimer_ = kDefeatParticleInterval;
     }
 
+    // 最後に撃破の通知を送り、シーンの安全な除去時点へこの実体を渡します。
     if (progress >= 1.0f) {
         isDefeatEffectPlaying_ = false;
         isDefeatEffectFinished_ = true;
@@ -1246,9 +1282,11 @@ void BaseEnemy::SetDormant(bool dormant) {
 
 // 個別AIが速度と状態を決めた後の共通更新です。休眠、撃破、運搬は通常物理より優先します。
 void BaseEnemy::Update(float deltaTime) {
+    // 共通状態の分岐へ入る前に、表示期限を過ぎた被弾モデルを外す。
     if (hurtFaceModel_ && !IsHurtFaceActive()) {
         ClearHurtFaceModel();
     }
+    // 休眠中は予兆と移動を止め、描画に必要な Object3D の更新だけを進める。
     if (isDormant_) {
         HideAttackTelegraph();
         SetVelocity({0.0f, 0.0f, 0.0f});
@@ -1260,6 +1298,7 @@ void BaseEnemy::Update(float deltaTime) {
         attackTelegraph_->Update(deltaTime);
     }
 
+    // 撃破演出に入った敵は予兆を消し、演出の開始と更新を通常物理より優先する。
     if (ShouldHandleDefeatEffect()) {
         HideAttackTelegraph();
 
@@ -1285,6 +1324,7 @@ void BaseEnemy::Update(float deltaTime) {
     // 固有AIが追跡・攻撃状態へ移っていても、範囲外への遷移と見渡しを共通で更新します。
     UpdateNoticeAwareness(deltaTime);
 
+    // 投げられている間は投擲用の速度で物理を動かし、通常の移動補正は通さない。
     if (isThrownPhysics_) {
         UpdateThrownPhysics(deltaTime);
         Character::Update(deltaTime);
@@ -1336,7 +1376,7 @@ void BaseEnemy::DrawAttackTelegraph(ID3D12Resource* pointLightResource, ID3D12Re
 }
 
 void BaseEnemy::ShowAttackTelegraphCircle(const engine::Vector3& center, float radius, float progress, const engine::Vector4& color) {
-    // 予兆オブジェクトは攻撃開始時に遅延生成し、予兆を使わない敵には割り当てない。
+    // 通常は Initialize() で用意した予兆を使い、未生成なら共通描画資源から補います。
     if (!attackTelegraph_ && GetObjectCommon()) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(GetObjectCommon());
@@ -1362,7 +1402,7 @@ void BaseEnemy::ShowAttackTelegraphDecalCircle(const engine::Vector3& center, fl
 
 void BaseEnemy::ShowAttackTelegraphLine(const engine::Vector3& center, const engine::Vector3& direction, float length, float width,
                                         float progress, const engine::Vector4& color) {
-    // 線状攻撃を持つ敵だけに予兆オブジェクトを用意する。
+    // 共通の予兆描画で、指定された進行方向と幅の線を表示します。
     if (!attackTelegraph_ && GetObjectCommon()) {
         attackTelegraph_ = std::make_unique<AttackTelegraph>();
         attackTelegraph_->Initialize(GetObjectCommon());
@@ -1491,7 +1531,7 @@ bool BaseEnemy::OnCollision(engine::Object3D* other) {
     // ========================================================
     if (attribute & CollisionCategories::Get("player_attack")) {
 
-        // ★ 追加: クールダウン中（無敵時間中）ならダメージ処理を無視して抜ける！
+        // 同じ相手へ接触が続く間のダメージ通知を短時間だけ間引きます。
         if (damageCooldownTimer_ > 0.0f) {
             return true;
         }
@@ -1539,6 +1579,7 @@ void BaseEnemy::SetCarried(bool isCarried) {
     isCarried_ = isCarried;
 
     if (isCarried_) {
+        // 捕獲が始まったら前の投擲と警戒を止め、速度や接触をプレイヤー側の管理へ譲ります。
         CancelNoticeReaction();
         isThrownPhysics_ = false;
         isThrowRotationRecovering_ = false;
@@ -1550,16 +1591,14 @@ void BaseEnemy::SetCarried(bool isCarried) {
         thrownAngularVelocity_ = {0.0f, 0.0f, 0.0f};
         throwRecoveryTargetRotation_ = GetRotation();
 
-        // --- 無力化 ---
-        // ★ 修正: Object3D の関数を使って完全に当たり判定を消滅させる！
+        // 運搬中の敵を攻撃や地形の判定候補から外します。
         SetCollisionAttribute(0);
         SetCollisionMask(0);
 
         // 引っ張られるので速度も強制ゼロに
         SetVelocity({0.0f, 0.0f, 0.0f});
     } else {
-        // --- 復活（地面に投げ出された時など） ---
-
+        // 敵としての接触を戻し、実際に運搬を解除した場合だけ復帰猶予と巡回の再設定を行います。
         SetCollisionAttribute(CollisionCategories::Get("enemy"));
 
         if (wasCarried) {

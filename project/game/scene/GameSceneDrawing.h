@@ -11,7 +11,7 @@
 #include <functional>
 
 // カメラ近傍は表示を優先し、遠方だけ視錐台で間引きます。
-inline bool IsSceneObjectVisibleByFrustum(engine::Object3D* object, Camera* camera) {
+inline bool IsSceneObjectVisibleByFrustum(engine::Object3D* object, engine::Camera* camera) {
     // カメラ近傍の大きなモデルは視錐台端で消えやすいため、一定距離だけ判定を省く。
     if (!object || !object->GetIsVisible()) {
         return false;

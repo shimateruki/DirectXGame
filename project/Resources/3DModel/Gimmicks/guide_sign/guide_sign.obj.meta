@@ -1,0 +1,11 @@
+{
+  "assetType": "Model",
+  "guid": "9779de88d77edb79b9b05f760d3365c7",
+  "importSettings": {
+    "generateTangents": true,
+    "scale": 1.0
+  },
+  "importer": "ModelImporter",
+  "source": "Resources/3DModel/Gimmicks/guide_sign/guide_sign.obj",
+  "version": 1
+}

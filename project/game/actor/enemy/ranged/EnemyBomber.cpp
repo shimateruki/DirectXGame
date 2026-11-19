@@ -65,7 +65,7 @@ float Saturate(float value) {
 
 
 
-// 進行率を制限して爆弾演出の数値を線形補間します。
+// 呼び出し元が用意した進行率で、爆弾演出の数値を線形補間します。
 float LerpFloat(float start, float end, float rate) {
     // 投げ動作内で指定した進行率を使い、位置や角度の目標値を補間する。
     return start + (end - start) * rate;
@@ -208,6 +208,7 @@ void EnemyBomber::UpdateThrowTimers(float deltaTime) {
 }
 
 void EnemyBomber::UpdateCombatMovement(float deltaTime, const engine::Vector3& direction, float distance, bool inRange) {
+    // 歩法を更新するのは待機中だけです。跳躍と放出は投擲状態側の担当です。
     if (throwState_ == ThrowState::Idle) {
         UpdateFootwork(deltaTime, direction, distance, inRange);
     } else if (throwState_ == ThrowState::Windup) {
@@ -216,6 +217,7 @@ void EnemyBomber::UpdateCombatMovement(float deltaTime, const engine::Vector3& d
         velocity.x *= 0.18f;
         velocity.z *= 0.18f;
         SetVelocity(velocity);
+    // 着地中は新しい進行方向を選ばず、直前の跳躍の水平速度を弱めます。
     } else if (throwState_ == ThrowState::Landing) {
         engine::Vector3 velocity = GetVelocity();
         velocity.x *= 0.58f;
@@ -225,6 +227,7 @@ void EnemyBomber::UpdateCombatMovement(float deltaTime, const engine::Vector3& d
 }
 
 void EnemyBomber::UpdateThrowState(float deltaTime, bool inRange) {
+    // 新しい投球を待っている間だけ、対象が射程を外れたら投擲の準備をリセットする。
     if (!inRange && throwState_ == ThrowState::Idle) {
         ResetThrowStateAfterTargetLost();
         return;
@@ -232,6 +235,7 @@ void EnemyBomber::UpdateThrowState(float deltaTime, bool inRange) {
 
     switch (throwState_) {
     case ThrowState::Idle:
+        // 手持ち爆弾は隠し、再使用待ちが終わったら構えに入る。
         HideHeldBombVisual();
         throwTimer_ -= deltaTime;
 
@@ -242,6 +246,7 @@ void EnemyBomber::UpdateThrowState(float deltaTime, bool inRange) {
         break;
 
     case ThrowState::Windup:
+        // 手元に爆弾を見せ、溜め時間が尽きた時点で投球用の跳躍を始める。
         windupTimer_ -= deltaTime;
         {
             // この時点では着弾後の転がりを予測できない。誤った爆発予定地を示さない。
@@ -256,10 +261,12 @@ void EnemyBomber::UpdateThrowState(float deltaTime, bool inRange) {
         break;
 
     case ThrowState::LeapThrow:
+        // 跳躍中の移動と、爆弾を手放すタイミングは UpdateThrowLeap() が担当する。
         UpdateThrowLeap(deltaTime);
         break;
 
     case ThrowState::Landing:
+        // 保持表示と予兆を片付け、着地の硬直が終わってから次の投球待ちへ戻る。
         HideHeldBombVisual();
         HideAttackTelegraph();
         throwLandingTimer_ -= deltaTime;
@@ -362,6 +369,7 @@ void EnemyBomber::ApplySlimeAnimation(float deltaTime) {
 
     engine::Vector3 targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, IsGrounded(), params);
 
+    // 溜め・空中投擲・着地では歩行用の基準形状を上書きし、技の状態を見分けられるようにします。
     if (throwState_ == ThrowState::Windup) {
         const float chargeRate = GetThrowProgress();
         targetScale = SlimeBounceAnimator::MakeChargeSquash(baseScale_, chargeRate, idleTimer_, 0.92f);
@@ -382,6 +390,7 @@ void EnemyBomber::ApplySlimeAnimation(float deltaTime) {
         targetScale.z = baseScale_.z * (1.0f + impact * 0.22f - rebound * 0.25f);
     }
 
+    // 待機へ戻った後もしばらく反動と揺れを重ね、投げた直後に通常形状へ飛ばないようにします。
     if (throwRecoilTimer_ > 0.0f && throwState_ == ThrowState::Idle) {
         const float recoilRate = 1.0f - Saturate(throwRecoilTimer_ / kThrowRecoilDuration);
         const float kick = std::sin(recoilRate * kPi);
@@ -398,6 +407,7 @@ void EnemyBomber::ApplySlimeAnimation(float deltaTime) {
         targetScale.z *= 1.0f + remainingRate * 0.18f + wave * 0.06f;
     }
 
+    // 形状と別に傾きを作り、空中投擲では踏み切り時の向きを軸に一回転させます。
     engine::Vector3 animatedRotation = GetRotation();
     float yaw = animatedRotation.y;
     float pitch = 0.0f;
@@ -433,6 +443,7 @@ void EnemyBomber::ApplySlimeAnimation(float deltaTime) {
         roll += std::sin((1.0f - remainingRate) * kPi * 2.0f) * remainingRate * 0.10f;
     }
 
+    // 被弾の姿勢を最後に重ね、スケールは前フレームから補間して反映します。
     engine::Vector3 targetRotation = {pitch, yaw, roll};
     ApplyDamageReactionPose(targetScale, targetRotation);
     SetRotation(targetRotation);
@@ -535,6 +546,7 @@ void EnemyBomber::UpdateFootwork(float deltaTime, const engine::Vector3& directi
     velocity.x = 0.0f;
     velocity.z = 0.0f;
 
+    // 射程内では時間ごとに横移動を反転し、同じ側へ回り続けないようにします。
     if (inRange) {
         footworkTimer_ -= deltaTime;
 
@@ -547,6 +559,7 @@ void EnemyBomber::UpdateFootwork(float deltaTime, const engine::Vector3& directi
         velocity.x += side.x * kFootworkSpeed;
         velocity.z += side.z * kFootworkSpeed;
 
+        // 投げ終わりは通常の横移動に後退を足し、技の反動を足運びにも出します。
         if (throwRecoverPoseTimer_ > 0.0f) {
             const float recoverRate = Saturate(throwRecoverPoseTimer_ / kThrowRecoverPoseDuration);
             velocity.x -= direction.x * recoverRate * 1.15f;
@@ -555,6 +568,7 @@ void EnemyBomber::UpdateFootwork(float deltaTime, const engine::Vector3& directi
             velocity.z += side.z * recoverRate * 0.45f;
         }
 
+        // 横移動は維持したまま、近すぎると後退し、十分に離れると少し近づきます。
         if (distance < kPreferredDistance) {
             velocity.x -= direction.x * 0.8f;
             velocity.z -= direction.z * 0.8f;
@@ -624,6 +638,7 @@ void EnemyBomber::UpdateThrowLeap(float deltaTime) {
         throwBombReleased_ = true;
     }
 
+    // 投擲後に早く接地しても最低限の空中姿勢を見せ、時間超過では接地を待たず硬直へ進めます。
     if (throwBombReleased_ && ((IsGrounded() && progress >= 0.68f) || throwLeapTimer_ <= -0.32f)) {
         BeginThrowLanding();
     }
@@ -645,6 +660,7 @@ void EnemyBomber::ThrowBomb() {
     HideHeldBombVisual();
     throwRecoilTimer_ = kThrowRecoilDuration;
     throwRecoverPoseTimer_ = 0.0f;
+    // 手持ち表示と反動は先に更新します。爆弾の追加先や目標が失われた場合は実体を生成しません。
     if (!spawnCallback_ || !common_ || !GetTarget())
         return;
 
@@ -660,6 +676,7 @@ void EnemyBomber::ThrowBomb() {
         targetDirection = {std::sin(GetRotation().y), 0.0f, std::cos(GetRotation().y)};
     }
 
+    // 対象への水平向きを使ってモデルの前上方に放出点を置き、そこから投擲の方向を計算し直します。
     const engine::Vector3 releasePos = {bodyPos.x + targetDirection.x * 2.95f, bodyPos.y + 2.85f,
                                 bodyPos.z + targetDirection.z * 2.95f};
 
@@ -689,10 +706,12 @@ void EnemyBomber::ThrowBomb() {
     const engine::Vector3 targetPos = GetTarget()->GetTranslate();
     engine::Vector3 deltaToTarget = {targetPos.x - spawnPos.x, (targetPos.y + 0.35f) - spawnPos.y, targetPos.z - spawnPos.z};
     const float horizontalDistance = std::sqrt(deltaToTarget.x * deltaToTarget.x + deltaToTarget.z * deltaToTarget.z);
+    // 水平距離から到達秒数を決め、重力で落ちる量を補った鉛直初速を与えます。
     const float flightTime = std::clamp(horizontalDistance / 12.0f, 0.85f, 1.35f);
     const float gravity = 60.0f;
     const float velocityX = deltaToTarget.x / flightTime;
     const float velocityZ = deltaToTarget.z / flightTime;
+    // 到達時の高さ差を vY×時間－重力×時間²/2 と置いて初速を逆算し、極端な仰角を避けるため直後に制限します。
     float velocityY = (deltaToTarget.y + 0.5f * gravity * flightTime * flightTime) / flightTime;
     velocityY = std::clamp(velocityY, 14.0f, 28.0f);
     bomb->SetVelocity({velocityX, velocityY, velocityZ});
@@ -711,6 +730,7 @@ void EnemyBomber::ThrowBomb() {
         gpuParticleManager->Emit(kCarryBomberSparkPreset, releasePos);
     }
 
+    // 起爆と軌道を確定した実体の所有権を、登録済みの追加先へ移します。
     spawnCallback_(std::move(bomb));
 }
 

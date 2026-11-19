@@ -101,11 +101,13 @@ void PlayerCopyAbilityController::Update(Player& player, float deltaTime) {
 }
 
 void PlayerCopyAbilityController::NotifyDamageStarted(Player& player) {
+    // 被弾で進行中の技をどう扱うかは能力別のセッションに任せます。
     if (impl_->session_)
         impl_->session_->NotifyDamageStarted(player);
 }
 
 void PlayerCopyAbilityController::Interrupt(Player& player) {
+    // 実行中の処理をキャンセルします。コピー自体を解除する場合は外側の Cancel() がセッションを破棄します。
     if (impl_->session_)
         impl_->session_->Cancel(player);
 }
@@ -119,7 +121,7 @@ void PlayerCopyAbilityController::Cancel(Player& player) {
 }
 
 void PlayerCopyAbilityController::Draw(Player& player, ID3D12Resource* pointLight, ID3D12Resource* spotLight,
-                                       Camera* camera, int previewBufferIndex) {
+                                       engine::Camera* camera, int previewBufferIndex) {
     // 能力固有の3D表示を、現在のセッションがある時だけ描く。
     if (impl_->session_)
         impl_->session_->Draw(player, pointLight, spotLight, camera, previewBufferIndex);
@@ -142,7 +144,7 @@ void PlayerCopyAbilityController::SetPreviewAttackId(const std::string& id) {
 }
 
 void PlayerCopyAbilityController::DrawOwnedVisuals(Player& player, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
-                                                   Camera* camera, int previewBufferIndex) {
+                                                   engine::Camera* camera, int previewBufferIndex) {
     // 深度・画面取得テクスチャを使う能力の見た目を専用パスへ転送する。
     if (impl_->session_) {
         impl_->session_->DrawOwnedVisuals(player, depthSrvHandle, grabSrvHandle, camera, previewBufferIndex);

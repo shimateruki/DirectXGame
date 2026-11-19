@@ -28,21 +28,22 @@ class PlayerWhipDeformer final {
     using Vec = engine::Vector3;
     // 一つのメッシュの元頂点・変形後頂点と、本体だけを変形するための対応表。
     struct Surface {
-        std::vector<Model::VertexData> rest, output;
+        std::vector<engine::Model::VertexData> rest, output;
         std::vector<bool> body;
     };
 public:
-    Model* GetSource() const { return source_; }
-    Model* GetModel() const { return model_.get(); }
+    engine::Model* GetSource() const { return source_; }
+    engine::Model* GetModel() const { return model_.get(); }
 
     // 元モデルのCPUデータを複製・細分化して専用モデルを作る。元のModelは変更しない。
-    bool Initialize(Model* source, ModelCommon* common) {
+    bool Initialize(engine::Model* source, ModelCommon* common) {
+        // 専用のCPU変形を適用できる静的モデルだけを受け付けます。
         if (!source || !common || source->GetModelData().hasSkinning) return false;
         source_ = source;
         center_ = source->GetCenter();
         half_ = source->GetSize() * 0.5f;
         if (half_.x < 0.001f || half_.y < 0.001f || half_.z < 0.001f) return false;
-        Model::ModelData data = source->GetModelData();
+        engine::Model::ModelData data = source->GetModelData();
         for (auto& mesh : data.meshes) {
             Surface surface;
             // 接続成分を調べ、4頂点の目などを面積の大きな体表と区別します。
@@ -67,7 +68,7 @@ public:
                     const uint64_t key = (uint64_t((std::min)(a,b)) << 32) | (std::max)(a,b);
                     if (auto it = edges.find(key); it != edges.end()) return it->second;
                     const auto va = mesh.vertices[a], vb = mesh.vertices[b];
-                    Model::VertexData v{};
+                    engine::Model::VertexData v{};
                     v.position = {(va.position.x+vb.position.x)*0.5f,(va.position.y+vb.position.y)*0.5f,
                                   (va.position.z+vb.position.z)*0.5f,1.0f};
                     v.normal = Unit(va.normal + vb.normal, va.normal);
@@ -95,7 +96,7 @@ public:
             surfaces_.push_back(std::move(surface));
             mesh.vertexResource.Reset();mesh.indexResource.Reset();mesh.computeSkinnedVertexResource.Reset();
         }
-        model_ = std::make_unique<Model>();
+        model_ = std::make_unique<engine::Model>();
         model_->InitializeFromCpuData(common,std::move(data),"PlayerWhipSurface");
         for (const auto& mesh : model_->GetModelData().meshes) if (!mesh.vertexResource) return false;
         return !surfaces_.empty();
@@ -108,6 +109,7 @@ public:
                 float returnProgress = 0.0f, float returnBulge = 0.0f,
                 float returnReceive = 0.0f, const PlayerWhipLaunchShape& launch = {}) {
         if (!model_) return;
+        // 曲線の世界座標を、見た目の傾きや伸びが入った描画モデルの座標へ戻します。
         const auto inverse = engine::Math::Inverse(world);
         std::array<Vec,N> local;
         for(size_t i=0;i<N;++i) local[i]=engine::Math::Transform(origin+curve[i],inverse);
@@ -214,6 +216,7 @@ public:
             const auto shaped = engine::Math::Transform(pointWorld, inverse);
             return p+(shaped-p)*activation+received+launched;
         };
+        // 毎回元の頂点から変形し、前フレームの伸びを重ねません。変形した面の法線も取り直します。
         const float epsilon=(std::max)(half_.x*0.001f,0.00005f);
         for (size_t m=0;m<surfaces_.size();++m) {
             auto& surface=surfaces_[m];
@@ -228,23 +231,25 @@ public:
                 const auto n=Unit(rest.normal,{0,1,0});
                 const auto a=Unit(engine::Math::Cross(std::abs(n.y)<0.9f?Vec{0,1,0}:Vec{1,0,0},n),{1,0,0});
                 const auto b=engine::Math::Cross(n,a);
+                // 接平面上の正負の微小点も変形し、二つの差ベクトルの外積から変形後の法線を求めます。
                 const auto da=deform(p+a*epsilon)-deform(p-a*epsilon);
                 const auto db=deform(p+b*epsilon)-deform(p-b*epsilon);
                 out.normal=Unit(engine::Math::Cross(da,db),n);
                 out.tangent=Unit(da,a);
             }
+            // 作り直した頂点はこの表示専用モデルのバッファだけに転送します。
             const auto& resource=model_->GetModelData().meshes[m].vertexResource;
             void* mapped=nullptr;const D3D12_RANGE readRange{0,0};
             if(SUCCEEDED(resource->Map(0,&readRange,&mapped))) {
-                std::memcpy(mapped,surface.output.data(),surface.output.size()*sizeof(Model::VertexData));
+                std::memcpy(mapped,surface.output.data(),surface.output.size()*sizeof(engine::Model::VertexData));
                 resource->Unmap(0,nullptr);
             }
         }
     }
 private:
     static Vec Unit(const Vec& v,const Vec& fallback){const float length=engine::Math::Length(v);return length>0.000001f?v/length:fallback;}
-    Model* source_=nullptr;
-    std::unique_ptr<Model> model_;
+    engine::Model* source_=nullptr;
+    std::unique_ptr<engine::Model> model_;
     std::vector<Surface> surfaces_;
     Vec center_{},half_{};
     Vec lastHeading_{0,0,1};

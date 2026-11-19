@@ -247,6 +247,7 @@ bool DebugEditor::RaycastSceneSurface(const engine::Ray& ray, engine::RayResult&
             engine::Math::Dot(axisZ, axisZ) < 1e-12f) continue;
 
         const engine::Matrix4x4 inverseWorld = engine::Math::Inverse(worldMatrix);
+        // 始点は座標、差分は方向としてローカル空間へ移す。正規化せず、交差位置を元のレイと同じ 0～1 の比率で比較する。
         const engine::Ray localRay = {
             engine::Math::Transform(ray.origin, inverseWorld),
             engine::Math::TransformNormal(ray.diff, inverseWorld)
@@ -256,7 +257,7 @@ bool DebugEditor::RaycastSceneSurface(const engine::Ray& ray, engine::RayResult&
             !std::isfinite(localRay.diff.x) || !std::isfinite(localRay.diff.y) || !std::isfinite(localRay.diff.z)) continue;
         engine::Vector3 localMin = { -0.5f, -0.5f, -0.5f };
         engine::Vector3 localMax = { 0.5f, 0.5f, 0.5f };
-        Model* model = obj->GetModel();
+        engine::Model* model = obj->GetModel();
 
         if (model) {
             localMin = model->GetLocalAabbMin();
@@ -275,9 +276,11 @@ bool DebugEditor::RaycastSceneSurface(const engine::Ray& ray, engine::RayResult&
         bool startsInside = true;
         bool intersects = true;
 
+        // 各軸で箱に入っているレイ区間を重ねる。区間が重ならなければ、箱を通過する点は存在しない。
         for (int axis = 0; axis < 3; ++axis) {
             if (origins[axis] < mins[axis] || origins[axis] > maxs[axis])
                 startsInside = false;
+            // 面とほぼ平行な軸では、始点がその軸の範囲内かだけ確認する。
             if (std::abs(directions[axis]) < 1e-6f) {
                 if (origins[axis] < mins[axis] || origins[axis] > maxs[axis])
                     intersects = false;
@@ -325,6 +328,7 @@ bool DebugEditor::RaycastSceneSurface(const engine::Ray& ray, engine::RayResult&
                     const engine::Vector3 edge1 = { b.x - a.x, b.y - a.y, b.z - a.z };
                     const engine::Vector3 edge2 = { c.x - a.x, c.y - a.y, c.z - a.z };
                     const engine::Vector3 p = engine::Math::Cross(localRay.diff, edge2);
+                    // レイが面とほぼ平行な三角形を除外し、辺に対する比率 u と v で交差点が三角形内部かを判定する。
                     const float determinant = engine::Math::Dot(edge1, p);
                     if (std::abs(determinant) < 1e-8f)
                         continue;
@@ -410,6 +414,7 @@ void DebugEditor::SelectObjectsInGameViewRect(const engine::Vector2& start, cons
     if (!sceneManager_ || !sceneManager_->GetCurrentScene())
         return;
 
+    // ドラッグ方向にかかわらず同じ矩形を得るため、始点と終点から各軸の最小・最大を取る。
     const float localLeft = start.x < end.x ? start.x : end.x;
     const float localRight = start.x < end.x ? end.x : start.x;
     const float localTop = start.y < end.y ? start.y : end.y;
@@ -434,6 +439,7 @@ void DebugEditor::SelectObjectsInGameViewRect(const engine::Vector2& start, cons
         if (!obj->GetIsRenderVisible() || obj->GetIsLocked())
             continue;
 
+        // 境界が矩形に少しかかるだけでは選択しない。モデルの代表点を投影し、矩形に収まる Object を選ぶ。
         engine::Vector3 screenPosition = WorldToScreen(GetObjectWorldPositionForSelection(obj.get()));
         if (screenPosition.z < 0.0f)
             continue;
@@ -492,6 +498,7 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
         return (std::max)(minimum, (std::min)(value, maximum));
     };
 
+    // 副選択の点だけ表示する場合にも共通の中心マーカーを使う。主選択だけ半径と枠線を少し大きくする。
     auto drawPivotMarker = [&](const ImVec2& center, ImU32 color, bool primary) {
         const float radius = primary ? 5.0f : 4.5f;
         drawList->AddCircleFilled(center, radius + 2.0f, IM_COL32(10, 24, 36, 190), 16);
@@ -511,6 +518,7 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
     auto drawCornerBrackets = [&](const ImVec2& minimum, const ImVec2& maximum, ImU32 color, float thickness) {
         const float width = maximum.x - minimum.x;
         const float height = maximum.y - minimum.y;
+        // 枠の短辺に比例させ、8～18 ピクセルに制限する。小さい枠は角を見失わず、大きい枠も辺を覆いすぎない。
         const float bracketLength = clampFloat((std::min)(width, height) * 0.22f, 8.0f, 18.0f);
         const ImU32 shadowColor = IM_COL32(8, 18, 28, 210);
         const float shadowThickness = thickness + 2.0f;
@@ -548,7 +556,7 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
         bool hasOrientedModelBounds = false;
 
         // ワールドAABBを再投影せず、ローカル境界を直接変換して回転物の過剰な膨らみを防ぐ。
-        if (Model* model = object->GetModel()) {
+        if (engine::Model* model = object->GetModel()) {
             const engine::Vector3 localMin = model->GetLocalAabbMin();
             const engine::Vector3 localMax = model->GetLocalAabbMax();
             const bool isFiniteBounds =
@@ -676,6 +684,7 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
         const bool projectionIsUnstable = visibleCornerCount < 8;
         const bool isOversized =
             widthCoverage > 0.70f || heightCoverage > 0.70f || areaCoverage > 0.32f;
+        // 一部の角が投影できない箱や、画面を大きく覆う箱は枠が見づらいため、Compact では中心だけ示す。
         const bool useCompactMarker =
             selectionOverlayMode_ == SelectionOverlayMode::Compact &&
             !showTemporaryDetails &&
@@ -745,6 +754,7 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
                 viewMax.y - 2.0f);
         }
 
+        // 詳細表示は投影できた角同士を線で結ぶ。通常表示は画面座標で求めた矩形の角だけ描く。
         const bool showDetailedBounds =
             selectionOverlayMode_ == SelectionOverlayMode::Detailed || showTemporaryDetails;
         if (showDetailedBounds) {
@@ -780,6 +790,7 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
             const ImVec2 textSize = ImGui::CalcTextSize(label.c_str());
             ImVec2 labelPos = ImVec2(rectMin.x, rectMin.y - textSize.y - 4.0f);
 
+            // 上に名前を置けないほど枠が画面上端に近ければ、枠内へ移す。
             if (labelPos.y < viewMin.y + 3.0f) {
                 labelPos.y = rectMin.y + 4.0f;
             }
@@ -799,7 +810,7 @@ void DebugEditor::DrawSelectedObjectBoundsOverlay() {
 }
 
 bool DebugEditor::IsObjectInCurrentScene(const engine::Object3D* object) const {
-    // 生ポインタの逆参照前に、現行Sceneの所有Objectとアドレスを照合します。
+    // 内部用 Object を除き、現行シーンが保持する Object とアドレスが一致するか確認する。
     if (!object || object->IsEditorInternal() || !sceneManager_ || !sceneManager_->GetCurrentScene()) {
         return false;
     }

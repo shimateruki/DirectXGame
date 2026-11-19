@@ -17,6 +17,7 @@ struct PlayerLocomotionSettings {
 
     engine::Vector3 Apply(const engine::Vector3& current, const engine::Vector3& desired,
                          float maximumSpeed, bool grounded, float deltaTime) const {
+        // 水平速度だけを計算し、鉛直速度は重力とジャンプの処理へ残します。
         auto result = current;
         if (!std::isfinite(deltaTime) || deltaTime <= 0.0f || !std::isfinite(maximumSpeed))
             return result;
@@ -24,6 +25,7 @@ struct PlayerLocomotionSettings {
             result.x = result.z = 0.0f;
             return result;
         }
+        // 設定の補正はローカルのコピーで行い、目標の水平速度も最高速度以下へ収めます。
         auto settings = *this;
         settings.Normalize();
         float targetX = desired.x, targetZ = desired.z;
@@ -38,6 +40,7 @@ struct PlayerLocomotionSettings {
 
         // 逆入力では一度止める。停止後の余り時間も加速へ使い、FPSで切り返し時間を変えない。
         if (speed > 0.0001f && result.x * targetX + result.z * targetZ < 0.0f) {
+            // 制動時間は最高速から止まる場合の秒数。現在の速さに比例させ、効きの弱い空中では長くなります。
             const float stopTime = settings.brakingTime * speed / (maximumSpeed * response);
             if (stopTime > remaining) {
                 const float keep = 1.0f - remaining / stopTime;
@@ -48,6 +51,7 @@ struct PlayerLocomotionSettings {
             result.x = result.z = 0.0f;
             speed = 0.0f;
         }
+        // 目標の速さに応じて加速・制動を選び、逆入力で停止した場合は残りの秒数を使います。
         const float targetSpeed = std::hypot(targetX, targetZ);
         const float seconds = targetSpeed < speed ? settings.brakingTime : settings.accelerationTime;
         const float dx = targetX - result.x, dz = targetZ - result.z;

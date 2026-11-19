@@ -250,6 +250,7 @@ void DebugEditor::RequestObjectTypeChange(engine::Object3D* object, EditorObject
     if (!object || !IsObjectInCurrentScene(object) || sceneManager_->IsPlaying()) return;
     const std::string guid = object->EnsurePersistentGuid();
     const auto generation = sceneManager_->GetSceneGeneration();
+    // Inspector の描画中には実体を置き換えない。後で GUID から探し直し、別のシーンに切り替わっていれば予約を無効にする。
     pendingObjectTypeChange_ = [this, guid, kind, type, generation] {
         if (sceneManager_->GetSceneGeneration() == generation)
             ChangeObjectType(FindObjectByPersistentGuid(guid), kind, type);
@@ -271,6 +272,7 @@ bool DebugEditor::ChangeObjectType(engine::Object3D* object, EditorObjectFactory
 
     const auto before = CaptureObjectState(object);
     auto state = before;
+    // 位置や識別情報は編集中の状態から引き継ぎ、復元に使う C++ 型と分類だけを置き換える。
     state["_editorRuntimeType"] = typeid(*replacement).name();
     if (auto* gimmick = dynamic_cast<BaseGimmick*>(replacement.get()))
         state["_editorGimmickFactoryType"] = GimmickFactory::GetInstance()->GetCreationType(*gimmick);
@@ -308,6 +310,7 @@ engine::Object3D* DebugEditor::ReplaceObjectFromState(engine::Object3D* object, 
     // 作成・検証が済むまで元Objectを触りません。所有権の取り出しに失敗した場合も現状を保ちます。
     auto previous = RemoveObjectImmediate(object);
     if (!previous) return nullptr;
+    // 元の所有権を受け取ったまま子を控え、新しい実体を登録してから既存の子を親付けし直す。
     const auto children = previous->GetChildren();
     previous->SetParent(nullptr);
     auto* raw = scene->AddObjectImmediate(std::move(replacement));
@@ -331,7 +334,7 @@ void DebugEditor::RegisterCommand(const EditorCommand& command) {
 }
 
 void DebugEditor::RegisterObjectEdited(engine::Object3D* object, const std::string& label) {
-    // 単体編集も状態差分を使う共通経路へ渡す。
+    // 編集前の記録を持たない入口。通常の編集履歴を残す呼び出し側は、変更前の JSON を控えて beforeState 付き版へ渡す。
     if (!object)
         return;
     if (object == selectedObject_ && !IsObjectInCurrentScene(object))
@@ -460,6 +463,7 @@ void DebugEditor::AddEditorObject(std::unique_ptr<engine::Object3D> object, cons
         raw->SetParent(prefabEditRoot_, true);
     }
 
+    // 既定の床判定を追加した後の状態を控え、作成のやり直しでも同じ判定を復元する。
     EditorObjectDefaults::ApplyGroundCollision(raw);
     nlohmann::json afterState = CaptureObjectState(raw);
 
@@ -481,6 +485,7 @@ void DebugEditor::AddEditorObjects(std::vector<std::unique_ptr<engine::Object3D>
     if (objects.empty())
         return;
 
+    // 追加ごとに AddEditorObject が選択と作成履歴を更新する。最後に先頭へ選択を移し、階層全体の編集へ戻す。
     engine::Object3D* root = objects.front().get();
 
     for (auto& object : objects) {
@@ -522,6 +527,7 @@ void DebugEditor::TrackInspectorEdit(const std::vector<ObjectStateSnapshot>& bef
 
     bool active = ImGui::IsAnyItemActive();
 
+    // 最初に値が変わったフレームの状態だけを Undo の基準にする。途中のフレームで基準を更新しない。
     if (changedThisFrame && !hasInspectorEditStart_) {
         inspectorEditStartStates_ = beforeStates;
         hasInspectorEditStart_ = true;
@@ -535,6 +541,7 @@ void DebugEditor::TrackInspectorEdit(const std::vector<ObjectStateSnapshot>& bef
         }
     }
 
+    // 入力が完了した時点で前後を比較し、ドラッグ一回を一件の操作として確定する。
     if (!active && hasInspectorEditStart_) {
         RegisterObjectsEdited(inspectorEditStartStates_,
             inspectorEditStartStates_.size() > 1 ? "Inspector Multi Edit" : "Inspector Edit");
@@ -648,7 +655,7 @@ bool DebugEditor::IsDirty(SaveMode mode) const {
 }
 
 bool DebugEditor::HasAnyDirty() const {
-    // 保存ダイアログと終了警告が共有する未保存判定。
+    // Scene の保存区分だけを判定する。Prefab 編集専用の変更は prefabEditDirty_ で別途管理する。
     return dirtyPlayer_ || dirtyEnemy_ || dirtyObject_ || dirtyCamera_;
 }
 
@@ -698,6 +705,7 @@ void DebugEditor::DuplicateSelected() {
 
         const engine::Vector3 duplicateOffset = { 1.5f, 0.0f, 1.5f };
 
+        // 一つでも元と同じ型を生成できなければ、シーンへ何も追加せず複製を中止する。
         for (engine::Object3D* source : sourceObjects) {
             if (!source || !IsObjectInCurrentScene(source))
                 continue;
@@ -726,6 +734,7 @@ void DebugEditor::DuplicateSelected() {
             prepared.push_back({source, std::move(duplicatedState), std::move(object)});
         }
 
+        // 全候補を生成できた後でシーンに追加する。先に全コピーの対応を作り、親子関係は次の段階で結び直す。
         for (auto& candidate : prepared) {
             ApplyObjectState(candidate.object.get(), candidate.state);
 
@@ -762,6 +771,7 @@ void DebugEditor::DuplicateSelected() {
         }
 
         for (engine::Object3D* created : createdObjects) {
+            // 再接続後の親情報と姿勢を記録し、やり直しでコピー元の親に戻らないようにする。
             nlohmann::json afterState = CaptureObjectState(created);
             EditorCommand command;
             command.type = EditorCommandType::ObjectCreated;
@@ -987,64 +997,57 @@ void DebugEditor::DeleteSelected() {
 }
 
 void DebugEditor::ApplyEditorCommand(const EditorCommand& command, bool undo) {
-    // 作成・削除・属性変更で Undo と Redo の方向を反転して同じ適用経路を使う。
+    // 作成のUndoと削除のRedoは、GUID優先で対象を探して選択を解除する。
+    const auto removeObject = [&](const nlohmann::json& state, const std::string& name) {
+        auto* object = FindObjectByPersistentGuid(state.value("guid", std::string{}));
+        if (!object) {
+            object = FindObjectByName(name);
+        }
+        if (!object) {
+            return; // 既に対象が存在しなければ、現在の選択を保持する。
+        }
+        MarkDirtyForObject(object);
+        RemoveObjectImmediate(object);
+        ClearObjectSelection();
+        EditorManager::GetInstance()->ClearSelection();
+    };
+
+    // 復元できたオブジェクトを選択し、所属するSceneを保存対象に戻す。
+    const auto addObject = [&](const nlohmann::json& state) {
+        if (auto* object = AddObjectFromState(state)) {
+            SetSelectedObject(object);
+            EditorManager::GetInstance()->SetSelectedObject(this);
+            MarkDirtyForObject(object);
+        }
+    };
+
     switch (command.type) {
+    // 種類変更は属性を上書きするだけでは元の型に戻らないため、保存された型で実体を入れ替える。
     case EditorCommandType::ObjectReplaced: {
         const auto& state = undo ? command.beforeState : command.afterState;
         auto* object = FindObjectByPersistentGuid(state.value("guid", std::string{}));
         ReplaceObjectFromState(object, state);
         break;
     }
-    case EditorCommandType::ObjectCreated: {
+    // 作成前に戻すときは追加した実体を除去し、やり直しでは作成後の状態から再生成する。
+    case EditorCommandType::ObjectCreated:
         if (undo) {
-            engine::Object3D* object = FindObjectByPersistentGuid(
-                command.afterState.value("guid", std::string()));
-            if (!object)
-                object = FindObjectByName(command.afterName);
-            if (object) {
-                MarkDirtyForObject(object);
-                RemoveObjectImmediate(object);
-                ClearObjectSelection();
-                EditorManager::GetInstance()->ClearSelection();
-            }
+            removeObject(command.afterState, command.afterName);
         } else {
-            engine::Object3D* created = AddObjectFromState(command.afterState);
-
-            if (created) {
-                SetSelectedObject(created);
-                EditorManager::GetInstance()->SetSelectedObject(this);
-                MarkDirtyForObject(created);
-            }
+            addObject(command.afterState);
         }
-
         break;
-    }
 
-    case EditorCommandType::ObjectDeleted: {
+    // 削除前に戻すときは消す直前の状態から再生成し、やり直しでは同じ実体を除去する。
+    case EditorCommandType::ObjectDeleted:
         if (undo) {
-            engine::Object3D* restored = AddObjectFromState(command.beforeState);
-
-            if (restored) {
-                SetSelectedObject(restored);
-                EditorManager::GetInstance()->SetSelectedObject(this);
-                MarkDirtyForObject(restored);
-            }
+            addObject(command.beforeState);
         } else {
-            engine::Object3D* object = FindObjectByPersistentGuid(
-                command.beforeState.value("guid", std::string()));
-            if (!object)
-                object = FindObjectByName(command.beforeName);
-            if (object) {
-                MarkDirtyForObject(object);
-                RemoveObjectImmediate(object);
-                ClearObjectSelection();
-                EditorManager::GetInstance()->ClearSelection();
-            }
+            removeObject(command.beforeState, command.beforeName);
         }
-
         break;
-    }
 
+    // 通常の属性編集は既存の実体を保ち、操作の向きに合った JSON を適用する。
     case EditorCommandType::ObjectEdited:
     default: {
         const std::string& primaryName = undo ? command.afterName : command.beforeName;

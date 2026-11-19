@@ -51,6 +51,7 @@ class RuntimePresetCatalog {
             return;
         try {
             object->ImportFromJson(it->second);
+            // プリセットに含まれる旧ステータス値を使い続けないよう、適用直後にゲーム側の管理値へ戻します。
             auto* statusManager = GameplayStatusManager::GetInstance();
             statusManager->Initialize();
             statusManager->ApplyManagedStatus(object, false);

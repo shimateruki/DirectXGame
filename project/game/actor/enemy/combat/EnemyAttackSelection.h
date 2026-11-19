@@ -35,6 +35,7 @@ Kind FindKind(std::span<const Entry<Kind>> entries, std::string_view id, Kind fa
 template<class Kind, class Random>
 void Shuffle(std::span<Kind> cycle, Kind previous, Random& random) {
     std::shuffle(cycle.begin(), cycle.end(), random);
+    // 周期の境目で同じ技が続くときは、次の候補を先頭に繰り上げる。
     if (cycle.size() > 1 && cycle.front() == previous)
         std::swap(cycle[0], cycle[1]);
 }

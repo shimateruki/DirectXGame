@@ -18,18 +18,20 @@ bool SampleTerrainSurface(engine::Object3D* terrainObject, const engine::Vector3
         return false;
     }
 
-    const TerrainCollisionData* data = terrainObject->GetTerrainCollisionData();
+    const engine::TerrainCollisionData* data = terrainObject->GetTerrainCollisionData();
 
     if (!data || !data->enabled || data->resolution <= 0) {
         return false;
     }
 
+    // 区画の境界を含めて一軸に解像度+1個の高さが必要です。不完全な配列は使いません。
     const int sampleCount = data->resolution + 1;
 
     if (static_cast<int>(data->heights.size()) < sampleCount * sampleCount) {
         return false;
     }
 
+    // ワールドXZから地形の位置とスケールを除いて、中央原点の座標を0〜1の範囲へ変換します。
     const engine::Vector3 terrainPos = terrainObject->GetTranslate();
     const engine::Vector3 terrainScale = terrainObject->GetScale();
     const float scaleX = (std::max)(0.0001f, std::abs(terrainScale.x));
@@ -37,6 +39,7 @@ bool SampleTerrainSurface(engine::Object3D* terrainObject, const engine::Vector3
     const float scaleZ = (std::max)(0.0001f, std::abs(terrainScale.z));
     const float localX = (worldPosition.x - terrainPos.x) / scaleX;
     const float localZ = (worldPosition.z - terrainPos.z) / scaleZ;
+    // 地形中心を0.5、左右端を0と1にする。中心原点の座標を高さマップの添字へ変換できる。
     const float u = localX / (std::max)(0.0001f, data->sizeX) + 0.5f;
     const float v = localZ / (std::max)(0.0001f, data->sizeZ) + 0.5f;
 
@@ -44,6 +47,8 @@ bool SampleTerrainSurface(engine::Object3D* terrainObject, const engine::Vector3
         return false;
     }
 
+    // 格子の四隅と、その内側の位置を求めます。外縁では隣の点を最終インデックスで止めます。
+    // 格子上の小数座標を出し、四隅の添字とセル内での補間割合を分ける。
     const float fx = u * static_cast<float>(data->resolution);
     const float fz = v * static_cast<float>(data->resolution);
     const int x0 = std::clamp(static_cast<int>(std::floor(fx)), 0, data->resolution);
@@ -99,6 +104,8 @@ engine::Vector3 GroundEffectLocator::ResolveGroundPosition(const engine::Vector3
             continue;
         }
 
+        // レイの開始点より下かつ探索距離内にある地形だけ、通常の床と同じ距離基準で比較します。
+        // レイと同じ開始高度からの落差で比べ、照会区間内で最初に届く面を残す。
         const float drop = rayStart.y - terrainPoint.y;
 
         if (drop >= 0.0f && drop <= kGroundRayDistance && drop < bestDrop) {
@@ -107,5 +114,6 @@ engine::Vector3 GroundEffectLocator::ResolveGroundPosition(const engine::Vector3
         }
     }
 
+    // 有効な面が一つも無ければ、発生位置を勝手に下げず元の座標を返します。
     return bestDrop < (std::numeric_limits<float>::max)() ? bestPoint : position;
 }

@@ -104,6 +104,7 @@ float Easing::InOutExpo(float t) {
         return 0.0f;
     if (t == 1.0f)
         return 1.0f;
+    // 前半・後半の各半区間を長さ1に換算し、出力の変化幅は半分にして中点0.5へつなぎます。
     if ((t *= 2.0f) < 1.0f)
         return std::pow(2.0f, 10.0f * (t - 1.0f)) / 2.0f;
     return (2.0f - std::pow(2.0f, -10.0f * (t - 1.0f))) / 2.0f;
@@ -179,6 +180,7 @@ float Easing::OutBounce(float t) {
     const float d1 = 2.75f;
 
     if (t < 1.0f / d1) {
+        // 最初の区間は進行率1へ向かう落下です。後続区間では時間の原点と高さをずらし、跳ね返りを小さくします。
         return n1 * t * t;
     } else if (t < 2.0f / d1) {
         return n1 * (t -= 1.5f / d1) * t + 0.75f;

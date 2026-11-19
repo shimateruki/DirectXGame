@@ -13,6 +13,8 @@
 #include <cmath>
 #include <cstring>
 
+namespace engine {
+
 namespace {
 
 template <typename T>
@@ -223,11 +225,13 @@ engine::Matrix4x4 MeshRenderer::BuildRenderWorldMatrix() const {
     engine::Matrix4x4 shearLocal = engine::Math::MakeIdentity4x4();
     shearLocal.m[1][0] = visualShear_.x;
     shearLocal.m[1][2] = visualShear_.z;
+    // 高さに比例した横ずれから支点の高さ分を引き、胴体を傾けても支点の位置を動かしません。
     shearLocal.m[3][0] = -visualShearPivotY_ * visualShear_.x;
     shearLocal.m[3][2] = -visualShearPivotY_ * visualShear_.z;
 
     const engine::Matrix4x4 visualAffine = engine::Math::MakeAffineMatrix(visualScale_, visualRotation_, visualOffset_);
     engine::Matrix4x4 visualLocal = engine::Math::Multiply(shearLocal, visualAffine);
+    // 演出側がまだ姿勢を保持している場合だけ表示行列へ重ねます。演出終了後は通常の表示補正だけに戻ります。
     if (const auto timelinePose = timelineVisualPose_.lock())
         visualLocal = engine::Math::Multiply(*timelinePose, visualLocal);
     return engine::Math::Multiply(visualLocal, transform_->matWorld);
@@ -238,6 +242,7 @@ const engine::Matrix4x4& MeshRenderer::GetCachedWorldInverseTranspose(const engi
     if (!worldInverseTransposeCacheValid_ ||
         std::memcmp(&cachedWorldMatrix_, &worldMatrix, sizeof(engine::Matrix4x4)) != 0) {
         cachedWorldMatrix_ = worldMatrix;
+        // 不均等な拡縮があっても面に対する法線の向きを保つため、位置用の行列とは別に逆転置を使います。
         cachedWorldInverseTranspose_ = engine::Math::Transpose(engine::Math::Inverse(worldMatrix));
         worldInverseTransposeCacheValid_ = true;
     }
@@ -252,7 +257,7 @@ void MeshRenderer::RefreshCameraDependentData() {
     }
 
     engine::Math math;
-    Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
     if (camera) {
         const engine::Matrix4x4& viewProj = camera->GetViewProjectionMatrix();
@@ -292,6 +297,7 @@ void MeshRenderer::AdvanceWaterAnimation(float deltaTime) {
     if (!waterParamData_ || !std::isfinite(deltaTime) || deltaTime <= 0.0f)
         return;
     waterParamData_->time += deltaTime;
+    // 毎秒のUV移動量に実経過秒を掛け、水面画像の流れを通常の行列更新頻度から分離します。
     waterParamData_->uvOffsetX += waterParamData_->flowSpeedX * deltaTime;
     waterParamData_->uvOffsetY += waterParamData_->flowSpeedY * deltaTime;
 }
@@ -302,6 +308,7 @@ void MeshRenderer::Update() {
     }
 
 	// 経過時間を更新してGPUに転送
+    // 通常材質とフォグの旧時計は更新1回を1/60秒とみなす。水面の実時間はAdvanceWaterAnimationで別に進める。
     time_ += 1.0f / 60.0f;
 
     if (materialData_) {
@@ -346,65 +353,19 @@ void MeshRenderer::Update() {
 
     }
 
-    // Transformの計算結果 (matWorld) をGPUに転送する
-    if (wvpData_ && transform_) {
-        engine::Math math;
-        Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
-
-        if (camera) {
-            const engine::Matrix4x4& viewProj = camera->GetViewProjectionMatrix();
-
-            // Transform側ですでに計算されたワールド行列を使う
-            const engine::Matrix4x4 worldMatrix = BuildRenderWorldMatrix();
-
-            wvpData_->wvp = math.Multiply(worldMatrix, viewProj);
-            wvpData_->world = worldMatrix;
-            wvpData_->worldInverseTranspose = GetCachedWorldInverseTranspose(worldMatrix);
-            cameraData_->worldPosition = camera->GetEye();
-        UpdateCameraVisibility(camera);
-
-            if (waterParamData_) {
-                waterParamData_->cameraWorldPosition = camera->GetEye();
-                waterParamData_->waterInverseViewProjection = camera->GetInverseViewProjectionMatrix();
-            }
-
-            localFogData_->cameraPos = camera->GetEye();
-            localFogData_->inverseViewProj = camera->GetInverseViewProjectionMatrix();
-        } else {
-            wvpData_->wvp = engine::Math::MakeIdentity4x4();
-            wvpData_->world = engine::Math::MakeIdentity4x4();
-        }
-
-        if (isUiPreview_) {
-            if (shadowWvpData_) {
-                // 影マップの影響を受けないように、行列を初期化しておく
-                shadowWvpData_->wvp = engine::Math::MakeIdentity4x4();
-                shadowWvpData_->world = engine::Math::MakeIdentity4x4();
-                shadowWvpData_->worldInverseTranspose = engine::Math::MakeIdentity4x4();
-            }
-
-            return; 
-        }
-
-        if (shadowWvpData_ && transform_) {
-            const engine::Matrix4x4& lightVP =
-                LightManager::GetInstance()->GetDirectionalShadowViewProjection(camera);
-            const engine::Matrix4x4 shadowWorld = BuildRenderWorldMatrix();
-            shadowWvpData_->wvp = math.Multiply(shadowWorld, lightVP);
-            shadowWvpData_->world = shadowWorld;
-            shadowWvpData_->worldInverseTranspose = GetCachedWorldInverseTranspose(shadowWorld);
-        }
-    }
+    // 通常描画とカメラ切り替えで、描画・影・霧・水面の視点を同じ手順で揃える。
+    RefreshCameraDependentData();
 }
 
 
-void MeshRenderer::UpdateCameraVisibility(Camera* camera) {
+void MeshRenderer::UpdateCameraVisibility(engine::Camera* camera) {
     if (!cameraData_ || !waterParamData_) return;
     auto* manager = CameraManager::GetInstance();
     const auto& frame = manager->GetVisibilityFrame();
     const bool allowed = !isUiPreview_ && manager->CanFadeObject(visibilityOwner_, camera);
     if (!allowed) {
         visibilityAmount_ = 0.0f;
+        // 透過を適用できないカメラへ切り替えた直後も、前の画面の透過量をGPUに残しません。
         cameraData_->visibilityParameters = {};
         waterParamData_->visibilityParameters = {};
         waterParamData_->foregroundBarrierCenter = {};
@@ -425,6 +386,7 @@ void MeshRenderer::UpdateCameraVisibility(Camera* camera) {
             const float boxRadius = engine::Math::Length(bounds.max - bounds.min) * 0.5f;
             const float along = engine::Math::Dot(boxCenter - eye, direction);
             const float t = std::clamp(along, 0.0f, length);
+            // プレイヤー位置を底とする透過範囲を視点からの距離で縮め、手前の候補ほど狭い範囲で判定します。
             const float radius = frame.centerRadius.w * t / length;
             intersects = along + boxRadius > 0.0f && along - boxRadius < length - frame.parameters.w &&
                 engine::Math::Length(boxCenter - (eye + direction * t)) <= boxRadius + radius;
@@ -447,3 +409,5 @@ void MeshRenderer::UpdateCameraVisibility(Camera* camera) {
     waterParamData_->foregroundBarrierCenter.w *= visibilityAmount_;
     waterParamData_->foregroundBarrierParameters = frame.foregroundBarrierParameters;
 }
+
+} // namespace engine

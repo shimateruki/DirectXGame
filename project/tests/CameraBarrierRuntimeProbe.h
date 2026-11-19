@@ -31,8 +31,8 @@ inline void Run(BaseScene* scene, bool isSelect, std::ostream& log) {
         ~Unregister() { collisions->RemoveObject(wall); collisions->RemoveObject(rear); }
     } unregister{collisions, wall.get(), rear.get()};
     auto eyeZ = [&] {
-        Camera camera; camera.Initialize(); camera.SetFollowTarget(target.get());
-        camera.SetFollowMode(Camera::FollowMode::Aimable); camera.ConfigAimable(12, 2, {0, 0, 0});
+        engine::Camera camera; camera.Initialize(); camera.SetFollowTarget(target.get());
+        camera.SetFollowMode(engine::Camera::FollowMode::Aimable); camera.ConfigAimable(12, 2, {0, 0, 0});
         camera.SetAimCameraSuppressed(true); camera.Update(1.0f/60);
         return camera.GetEye().z;
     };

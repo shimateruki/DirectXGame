@@ -46,6 +46,7 @@ void PauseMenuOverlay::Finalize() {
 }
 
 void PauseMenuOverlay::SetActive(bool active) {
+    // ガイドと横に並べていた位置から通常のポーズ表示位置へ戻します。
     SetGuideTransitionOffset(0.0f, false);
 
     // 開く操作を閉じる操作として再使用しないよう、キー解放まで入力を抑制する。
@@ -79,11 +80,14 @@ PauseMenuOverlay::Action PauseMenuOverlay::Update(float deltaTime, bool acceptIn
         return Action::None;
     }
 
+    // 通常表示の基準位置へ一度戻す。ガイドへの移動量は遷移側が後から適用する。
     SetGuideTransitionOffset(0.0f, false);
     time_ += deltaTime;
+    // 入力を受けられない間も、選択表示などのUI更新は続ける。
     Action action = acceptInput ? UpdateInput() : Action::None;
     UpdateSprites();
 
+    // 選択状態をスプライトへ反映してから各部品の行列を確定する。
     for (auto& sprite : sprites_) {
         if (sprite) {
             sprite->Update();
@@ -95,6 +99,7 @@ PauseMenuOverlay::Action PauseMenuOverlay::Update(float deltaTime, bool acceptIn
 
 void PauseMenuOverlay::SetGuideTransitionOffset(float offsetX, bool transitioning) {
     // 前フレームとの差だけ移動し、繰り返しても基準位置がずれないようにする。
+    // 画面座標の相対差だけを各部品へ足す。固定した背景は位置を動かさず、遷移中に表示を切り替える。
     const float delta = offsetX - guideTransitionOffset_;
     guideTransitionOffset_ = offsetX;
 
@@ -179,6 +184,7 @@ void PauseMenuOverlay::LoadLayout(const std::string& layoutPath) {
     guideTransitionOffset_ = 0.0f;
     sprites_.clear();
 
+    // 描画基盤か有効な配置データがない場合は、旧レイアウトを持ち越さずに戻ります。
     if (!spriteCommon_) {
         return;
     }
@@ -200,6 +206,7 @@ void PauseMenuOverlay::LoadLayout(const std::string& layoutPath) {
         return;
     }
 
+    // 各Spriteと選択マーカーが同じ解像度倍率を使うよう、倍率を保存してから生成します。
     const auto layoutScale = SpriteLayoutScaler::Make(root);
     layoutRatio_ = layoutScale.enabled ? layoutScale.ratio : engine::Vector2{1.0f, 1.0f};
 
@@ -229,6 +236,7 @@ void PauseMenuOverlay::BindLayoutSprites() {
         cursorSlime_->SetTextureRect({115.0f, 218.0f}, {1024.0f, 827.0f});
     }
 
+    // パネルと操作行の基準サイズを控え、選択演出で拡大を累積させません。
     panelBaseSize_ = panel_ ? panel_->GetSize() : engine::Vector2{};
 
     constexpr std::array<const char*, 6> kPrefixes = {"pause_resume", "pause_guide", "pause_retry",
@@ -284,6 +292,7 @@ PauseMenuOverlay::Action PauseMenuOverlay::UpdateInput() {
         return Action::None;
     }
 
+    // 画面を開いた入力の解放を待ち、その押下でメニューが閉じるのを防ぎます。
     if (suppressOpenCloseInput_) {
         if (!IsOpenOrCloseHeld()) {
             suppressOpenCloseInput_ = false;
@@ -292,6 +301,7 @@ PauseMenuOverlay::Action PauseMenuOverlay::UpdateInput() {
         return Action::None;
     }
 
+    // 上下で選択を進めた後、ガイドへの左送り、閉じる操作、決定の順で処理します。
     const auto menu = MenuControls::Read(MenuControls::Screen::Pause, *inputManager_);
     const bool up = menu.up, down = menu.down;
 
@@ -312,6 +322,7 @@ PauseMenuOverlay::Action PauseMenuOverlay::UpdateInput() {
         return Action::Resume;
     }
 
+    // 決定時にシーンへ通知する操作を選びます。ここでは停止解除や場面転換を行いません。
     if (menu.confirm) {
         switch (static_cast<Item>(selectedIndex_)) {
         case Item::Resume:
@@ -347,6 +358,7 @@ void PauseMenuOverlay::UpdateSprites() {
 
     // 大きな共通フレームだけを軽く広げ、文字を伸縮させずに読みやすさを守る。
     if (panel_) {
+        // 開いてから0.20秒で枠だけを基準寸法へ戻し、同じ進行率で不透明にする。
         const float progress = std::clamp(time_ / 0.20f, 0.0f, 1.0f);
         const float eased = Easing::SmoothStep(progress);
         panel_->SetSize({panelBaseSize_.x * (0.98f + 0.02f * eased),
@@ -371,6 +383,7 @@ void PauseMenuOverlay::UpdateSprites() {
         updateHint(confirmHintText_, controls.confirmHint.Resolve(gamepad));
     }
 
+    // 現在行には明るい版の背景と脈動を使い、非選択行は一定の見た目にします。
     for (int i = 0; i < static_cast<int>(Item::Count); ++i) {
         MenuRow& row = rows_[static_cast<size_t>(i)];
         const bool selected = selectedIndex_ == i;
@@ -396,6 +409,7 @@ void PauseMenuOverlay::UpdateSprites() {
         }
     }
 
+    // 拡縮後の行左端からカーソル位置を出し、レイアウト変更にも追従させます。
     MenuRow& selectedRow = rows_[static_cast<size_t>(selectedIndex_)];
 
     if (selectedRow.backdrop) {
@@ -403,6 +417,7 @@ void PauseMenuOverlay::UpdateSprites() {
         const engine::Vector2 rowSize = selectedRow.backdrop->GetSize();
         const float pulse = 0.5f + 0.5f * std::sin(time_ * 5.6f);
         const float bob = std::sin(time_ * 7.5f) * 3.0f;
+        // アンカーが中央の行なので、拡縮後の半幅を引いてカーソルの基準になる左端を求める。
         const float rowLeft = rowPosition.x - rowSize.x * 0.5f;
 
         if (cursorSlime_) {

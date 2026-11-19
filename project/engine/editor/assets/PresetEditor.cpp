@@ -16,6 +16,7 @@
 
 // Singletonの寿命はEditor全体と同じで、外部から所有権を受け取りません。
 void PresetEditor::ClearPropertyEditors() {
+    // 前のシーンで使った一時Objectを破棄し、次回の編集時に現シーンの描画基盤で作り直せるようにする。
     propertyEditors_.clear();
 }
 
@@ -57,6 +58,7 @@ void PresetEditor::SetThumbnailProvider(std::function<uint64_t(const std::string
 }
 
 void PresetEditor::SetPreviewProvider(std::function<uint64_t(const std::string&, float, float, float)> provider) {
+    // 選択プリセットの名前、視点の角度と拡大率からプレビューを取得する関数を受け取る。
     previewProvider_ = std::move(provider);
 }
 
@@ -149,6 +151,7 @@ void PresetEditor::DrawLibrary(bool fromProject) {
     const ImVec4 dangerColor(0.90f, 0.27f, 0.30f, 1.0f);
     bool openBulkDeleteConfirmation = false;
 
+    // 削除モードは通常の配置導線を使わず、一覧項目を削除候補として選ぶ。
     if (!bulkDeleteMode_) {
         ImGui::PushStyleColor(ImGuiCol_Text, dangerColor);
 
@@ -200,6 +203,7 @@ void PresetEditor::DrawLibrary(bool fromProject) {
         listView_ = !listView_;
     ImGui::Separator();
     const char* categories[] = {"すべて", "お気に入り", "最近使ったもの", "地形・足場", "装飾", "ギミック", "ゲート", "アイテム", "当たり判定", "エフェクト", "敵"};
+    // 表示幅で分類の入口を切り替える。横幅が足りないときも同じ選択状態を使う。
     const bool sidebar = width >= 650.0f;
 
     if (sidebar) {
@@ -237,6 +241,7 @@ void PresetEditor::DrawLibrary(bool fromProject) {
         entries.push_back(key);
     }
 
+    // 最近使った一覧は履歴順、通常はおすすめを先頭にして、判定専用プリセットをその後ろへ回す。
     std::stable_sort(entries.begin(), entries.end(), [&](const std::string& a, const std::string& b) {
         if (libraryCategory_ == 2)
             return std::find(recentPresets_.begin(), recentPresets_.end(), a) < std::find(recentPresets_.begin(), recentPresets_.end(), b);
@@ -281,6 +286,7 @@ void PresetEditor::DrawLibrary(bool fromProject) {
     const int columns = listView_ ? 1 : (std::max)(1, static_cast<int>(ImGui::GetContentRegionAvail().x / (tile + 18.0f)));
     const float rowHeight = tile + ImGui::GetTextLineHeightWithSpacing() * (listView_ ? 1.0f : 3.0f) + 14.0f;
     bool openLibraryDeleteConfirmation = false;
+    // 絞り込んだ件数を行へ換算し、スクロール内に見える行だけ描画する。
     ImGuiListClipper clipper;
     clipper.Begin(static_cast<int>((entries.size() + columns - 1) / columns), rowHeight);
 
@@ -321,6 +327,7 @@ void PresetEditor::DrawLibrary(bool fromProject) {
                     placePresetCallback_(key);
                 }
 
+                // ドラッグ先で生成するため、画像や設定全体ではなく登録キーを渡す。
                 if (!bulkDeleteMode_ && ImGui::BeginDragDropSource()) {
                     ImGui::SetDragDropPayload("PRESET_ASSET", key.c_str(), key.size() + 1);
                     ImGui::TextUnformatted(display.c_str());
@@ -424,6 +431,7 @@ void PresetEditor::DrawLibrary(bool fromProject) {
         ImGui::EndChild();
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.65f, 0.15f, 0.18f, 1.0f));
 
+        // 一覧の登録と最近使った履歴を整え、削除対象だった詳細選択も解除する。
         if (ImGui::Button(ICON_FA_TRASH_ALT " まとめて削除する")) {
             const bool selectedPresetRemoved = std::find(bulkDeleteSelection_.begin(), bulkDeleteSelection_.end(), selectedName_) != bulkDeleteSelection_.end();
             PresetManager::GetInstance()->RemovePresets(bulkDeleteSelection_);
@@ -539,6 +547,7 @@ void PresetEditor::DrawPresetList() {
         entries.push_back({ &name, &data });
     }
 
+    // ステージ用コレクションを先にし、セクション順と個別順が同じときだけ名前順にする。
     std::stable_sort(entries.begin(), entries.end(), [this](const PresetListEntry& lhs, const PresetListEntry& rhs) {
         const bool lhsStage1 = IsStageLibraryPreset(*lhs.data);
         const bool rhsStage1 = IsStageLibraryPreset(*rhs.data);
@@ -653,6 +662,7 @@ void PresetEditor::DrawThumbnailButton(const std::string& name, const ImVec4& ac
     const ImVec2 size(thumbnailSize, thumbnailSize);
     const auto& data = PresetManager::GetInstance()->GetPreset(name);
     const bool colliderOnly = ReadString(data, "presetUsage", "") == "当たり判定";
+    // 画面内の表示対象だけに画像を要求し、判定専用プリセットはワイヤー表示へ分ける。
     const uint64_t gpuPtr = !colliderOnly && ImGui::IsRectVisible(size) && thumbnailProvider_ ? thumbnailProvider_(name) : 0;
 
     if (gpuPtr) {
@@ -695,6 +705,7 @@ void PresetEditor::DrawSettingsPane() {
     std::string displayName = GetDisplayName(selectedName_, data);
     ImGui::TextColored(GetCategoryColor(category), "%s", displayName.c_str());
 
+    // 選択したプリセットが変わったときだけ、プレビューの視点を既定位置へ戻す。
     if (previewSelectionName_ != selectedName_) {
         previewSelectionName_ = selectedName_;
         previewYaw_ = 0.0f;
@@ -715,6 +726,7 @@ void PresetEditor::DrawSettingsPane() {
             // 画像上の操作は視点だけに適用し、配置済みObjectとJSONの回転を変えない。
             if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
                 const ImVec2 delta = ImGui::GetIO().MouseDelta;
+                // マウス移動量をラジアンへ換算し、水平方向は一周で循環、上下は見下ろしの範囲に制限する。
                 previewYaw_ = std::remainder(previewYaw_ + delta.x * 0.01f, (2.0f * std::numbers::pi_v<float>));
                 previewPitch_ = std::clamp(previewPitch_ + delta.y * 0.01f, -1.2f, 1.2f);
             }
@@ -902,6 +914,7 @@ void PresetEditor::DrawSettingsPane() {
         changed |= DrawIntField(data, "衝突対象", "collisionMask", 0);
     }
 
+    // 接触イベントの送信元と送信先を設定し、登録済み項目は共通UIで編集する。
     if (ImGui::CollapsingHeader("イベント連携")) {
         changed |= DrawIntField(data, "自分ID", "myEventID", -1);
         changed |= DrawIntField(data, "送信先ID", "targetID", -1);
@@ -913,7 +926,9 @@ void PresetEditor::DrawSettingsPane() {
         ImGui::TextDisabled("組み合わせ: 親を配置すると、以下の子も同時に配置されます。");
 
         // ゲートの枠・ポータルや物理床を、配置前から個別に調整できます。
+        // 親と同じ材質入力を使い、子の位置・回転・拡縮は親基準として編集する。
         std::function<void(json&, int)> drawChildren = [&](json& node, int depth) {
+            // 深い構造でも描画が続きすぎないよう、深さ16までの子配列だけを扱う。
             if (depth > 16 || !node.contains("children") || !node["children"].is_array())
                 return;
             for (size_t index = 0; index < node["children"].size(); ++index) {
@@ -943,6 +958,7 @@ void PresetEditor::DrawSettingsPane() {
     }
 
     if (changed) {
+        // 変更があったときに保存用の分類を揃え、次の一覧表示でサムネイルを撮り直す。
         ApplyHiddenCategoryFields(data, category);
         manager->SaveAll();
         if (thumbnailInvalidator_)

@@ -20,6 +20,7 @@ inline void Update(float x, float y, float z, float deltaTime) {
     if (!std::isfinite(deltaTime) || deltaTime < 0.0f)
         return;
     const float dx = x - samples[0], dz = z - samples[2];
+    // 高さの変化を含めず、XZ平面の距離で通過履歴を判定します。64は8ワールド単位の二乗です。
     const float distanceSquared = dx * dx + dz * dz;
     if (distanceSquared > 64.0f)
         Reset(); // ワープ時は途中に跡を作らない。
@@ -30,12 +31,14 @@ inline void Update(float x, float y, float z, float deltaTime) {
         samples[i * 4 + 3] *= decay;
     if (samples[3] > 0.0f && distanceSquared > 0.0001f && sampleTimer >= 0.06f) {
         sampleTimer = 0.0f;
+        // 古い側から移し、まだコピーしていない一つ前の履歴を上書きしないようにします。
         for (int i = 7; i > 1; --i)
             for (int j = 0; j < 4; ++j)
                 samples[i * 4 + j] = samples[(i - 1) * 4 + j];
         for (int j = 0; j < 4; ++j)
             samples[4 + j] = samples[j];
     }
+    // 履歴へ前回値を移したあと、先頭だけを今回の位置と強さで更新します。
     samples[0] = x;
     samples[1] = y;
     samples[2] = z;

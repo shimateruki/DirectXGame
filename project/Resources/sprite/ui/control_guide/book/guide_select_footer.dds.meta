@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "7b8b8c067f6488eef28586b4797e31ad",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/guide_select_footer.dds",
+  "version": 1
+}

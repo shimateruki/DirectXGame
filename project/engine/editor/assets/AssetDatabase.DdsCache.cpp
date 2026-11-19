@@ -85,6 +85,7 @@ bool AssetDatabase::StartDdsCacheBuild() {
         return false;
     }
 
+    // スレッドハンドルは起動直後に閉じ、終了コードの回収に必要なプロセスハンドルだけ保持する。
     CloseHandle(processInfo.hThread);
     ddsCacheProcessHandle_ = processInfo.hProcess;
     lastDdsCacheBuildExitCode_ = STILL_ACTIVE;
@@ -100,6 +101,7 @@ bool AssetDatabase::PollDdsCacheBuild() {
     }
 
     HANDLE process = static_cast<HANDLE>(ddsCacheProcessHandle_);
+    // 待機時間は0ミリ秒。変換中でもエディターのフレームを止めない。
     const DWORD waitResult = WaitForSingleObject(process, 0);
 
     if (waitResult == WAIT_TIMEOUT) {
@@ -132,6 +134,7 @@ bool AssetDatabase::PollDdsCacheBuild() {
         }
     }
 
+    // 通知ファイルのバイト数を起動前と比べ、増えたときだけ索引更新を予約する。
     const bool generatedDds = notificationSizeAfterBuild > gDdsNotificationSizeBeforeBuild;
     refreshAfterDdsCacheBuild_ = generatedDds;
 

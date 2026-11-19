@@ -41,10 +41,10 @@ class EnemyPrismSlime : public BaseEnemy, public ISequencePreviewEnemy {
     void DrawOwnedTransparentVisuals(ID3D12Resource* pointLightResource,
                                      ID3D12Resource* spotLightResource) override;
 
-    void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+    void DrawForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource,
                        ID3D12Resource* spotLightResource, int previewBufferIndex = 0) override;
 
-    void DrawOwnedTransparentVisualsForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+    void DrawOwnedTransparentVisualsForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource,
                                               ID3D12Resource* spotLightResource,
                                               int previewBufferIndex = 0) override;
 
@@ -261,11 +261,8 @@ class EnemyPrismSlime : public BaseEnemy, public ISequencePreviewEnemy {
     // 予備動作、攻撃、硬直の順に更新し、終了後に再配置へ移ります。
     void UpdateAttack(float deltaTime, const engine::Vector3& direction, float distance);
 
-    /// 予備動作中の予告と詠唱を進める。
-    void UpdateWindup(float deltaTime);
-
-    /// 攻撃本体を更新し、終了時に硬直へ移す。
-    void UpdateActive(float deltaTime);
+    /// <summary>予兆または攻撃中の技を進め、残り時間が尽きたら次の段階へ移す。</summary>
+    void UpdateAttackPattern(AttackState phase, float deltaTime);
 
     /// 攻撃後の硬直へ切り替える。
     void BeginRecovery();

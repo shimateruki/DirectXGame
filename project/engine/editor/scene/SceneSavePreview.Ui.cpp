@@ -73,6 +73,7 @@ SceneSavePreview::Action SceneSavePreview::Draw() {
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.15f, 0.45f, 0.25f, 1.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.20f, 0.60f, 0.32f, 1.0f));
 
+        // ここでは確定を返すだけ。ファイルの書き込みには事前に組み立てた保存候補を呼び出し側が使う。
         if (ImGui::Button(ICON_FA_CHECK " この内容で保存", ImVec2(170.0f, 34.0f))) {
             action = Action::Confirm;
             ImGui::CloseCurrentPopup();
@@ -142,6 +143,7 @@ void SceneSavePreview::DrawFileSummaryTable() const {
 
         ImGui::TableSetColumnIndex(1);
 
+        // 保存前に存在しない場合は追加、読めない場合は無効を優先し、通常差分と区別する。
         if (!diff.oldFileExists) {
             DrawChangeBadge(ChangeKind::FileAdded);
         }
@@ -201,6 +203,7 @@ void SceneSavePreview::DrawFileDiff(FileDiff& diff) {
         ImGui::TextWrapped("%s", detail.c_str());
     }
 
+    // オブジェクト配列のないファイルは、ヘッダー直下に出したファイル全体の差分で表示を終える。
     if (!diff.hasObjectList) {
         return;
     }
@@ -243,6 +246,7 @@ void SceneSavePreview::DrawFileDiff(FileDiff& diff) {
             ImGui::TextDisabled("-");
         }
         else {
+            // 差分の一行目は常時表示し、残りはセルを展開した場合だけ描く。
             ImGui::TextWrapped("%s", change.details[0].c_str());
 
             if (change.details.size() > 1) {

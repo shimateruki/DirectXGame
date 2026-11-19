@@ -94,6 +94,7 @@ namespace {
             std::abs(value.z) < 0.0001f;
     }
 
+    // 交差面の法線を単位長にそろえる。向きが定まらない場合は床と同じ +Y を使う。
     engine::Vector3 NormalizeOrUp(const engine::Vector3& value) {
         if (IsNearlyZero(value)) {
             return { 0.0f, 1.0f, 0.0f };
@@ -221,7 +222,7 @@ void DebugEditor::SetPreviewObject(std::unique_ptr<engine::Object3D> obj, const 
         previewObjectOriginalClassName_.clear();
         previewObjectOriginalModelName_.clear();
         previewObjectOriginalModel_ = nullptr;
-        previewObjectOriginalColliderConfig_ = ColliderConfig{};
+        previewObjectOriginalColliderConfig_ = engine::ColliderConfig{};
         previewObjectUsesFallbackModel_ = false;
         hasPreviewPlacementContact_ = false;
         return;
@@ -260,6 +261,7 @@ void DebugEditor::OpenGameViewCreateContextMenu() {
     if (previewObject_ || isPresetBrushMode_ || isPathEditMode_)
         return;
 
+    // メニュー選択中のマウス移動で配置点が変わらないよう、画像内の位置とメニュー表示用の画面位置を別々に控える。
     gameViewCreateMenuMousePos_ = gameViewMousePos_;
     gameViewCreateMenuScreenPos_ = {
         gameViewOffset_.x + gameViewMousePos_.x,
@@ -361,6 +363,7 @@ void DebugEditor::DrawGameViewCreateContextMenu() {
                 playFromPositionCallback_(position, "選択Object: " + selectedObject_->GetName());
             }
 
+            // 名前ではなく Checkpoint イベントを持つ Object だけを試験プレイの開始候補にする。
             if (ImGui::BeginMenu("チェックポイントから開始")) {
                 bool found = false;
 
@@ -408,6 +411,7 @@ DebugEditor::PlacementResult DebugEditor::CalculateGameViewPlacement(const engin
     }
 
     engine::Math math;
+    // 画面上のカーソルをワールドレイへ変換し、方向を作れない場合は配置点を決めない。
     engine::Ray ray = ScreenPointToRay(mousePos);
 
     if (IsNearlyZero(ray.diff)) {
@@ -426,6 +430,7 @@ DebugEditor::PlacementResult DebugEditor::CalculateGameViewPlacement(const engin
         for (const auto& child : *group) {
             if (!child || !child->GetModel() || !child->GetIsRenderVisible()) continue;
             hasModel = true;
+            // 子の原点と親の原点の差を面の法線へ射影する。全ての子を面の外に置ける最大の移動量を採用する。
             offset = (std::max)(offset, GetSurfaceOffset(child.get(), normal) -
                 engine::Math::Dot(child->GetWorldPosition() - origin, normal));
         }
@@ -452,6 +457,7 @@ DebugEditor::PlacementResult DebugEditor::CalculateGameViewPlacement(const engin
     }
     else {
         result.normal = { 0.0f, 1.0f, 0.0f };
+        // 面が見つからない場合は、レイの始点から10ワールド単位だけ進んで配置プレビューを残す。
         result.position = ray.origin + math.Normalize(ray.diff) * 10.0f;
         result.contactPosition = result.position;
         result.found = true;
@@ -467,6 +473,7 @@ DebugEditor::PlacementResult DebugEditor::CalculateGameViewPlacement(const engin
 DebugEditor::PlacementResult DebugEditor::PlaceGameViewObjects(
     std::vector<std::unique_ptr<engine::Object3D>>& objects, const engine::Vector2& mousePos, bool useGridSnap,
     const std::unordered_set<std::string>* ignoredRootGuids) {
+    // 先頭が配置基準のルート。親子の姿勢から高さを計算するので、ルートのワールド行列を更新してからグループ全体を渡す。
     if (objects.empty() || !objects.front()) return {};
     auto* root = objects.front().get();
     root->UpdateWorldMatrix();
@@ -484,6 +491,7 @@ void DebugEditor::ApplyGameViewPlacement(engine::Object3D* object, const Placeme
     object->SetTranslate(placement.position);
 
     if (alignToSurface && placement.hasSurface && object->IsDecal()) {
+        // オブジェクト原点ではなくレイが当たった接点を渡し、面からの浮き量はデカール設定のdepthOffsetへ任せる。
         DecalSystem::AlignToSurface(
             *object, placement.contactPosition, placement.normal, 0.0f,
             object->GetDecalSettings().depthOffset);
@@ -497,6 +505,7 @@ void DebugEditor::ApplyGameViewPlacement(engine::Object3D* object, const Placeme
 
     if (alignToSurface && placement.hasSurface) {
         object->SetRotation(GetSurfaceAlignedRotation(object->GetTransform()->rotate, placement.normal));
+        // 回転後の姿勢でモデル下端を計り直す。回転前の厚みを使うと面へ食い込む。
         object->UpdateWorldMatrix();
         object->SetTranslate(placement.contactPosition + placement.normal * GetSurfaceOffset(object, placement.normal));
     }
@@ -685,6 +694,7 @@ void DebugEditor::UpdatePresetBrush() {
         return;
 
     engine::Vector3 stampPosition = root->GetWorldPosition();
+    // 配置間隔はスクリーン上のピクセルではなく、直前に置いたルートとのワールド距離。
     float spacing = std::max(brushSpacing_, 0.0f);
     bool farEnough = !hasLastBrushStamp_ || Distance(stampPosition, lastBrushStampPosition_) >= spacing;
 
@@ -848,10 +858,12 @@ void DebugEditor::RestorePreviewVisual(engine::Object3D* object) {
             object->SetModel(previewObjectOriginalModel_);
         }
 
+        // モデルの再設定で別の判定形状になり得るため、モデルを戻した後でコライダーの記録を適用する。
         object->SetColliderConfig(previewObjectOriginalColliderConfig_);
         previewObjectUsesFallbackModel_ = false;
     }
 
+    // 確定する個体ごとの退避があれば優先する。なければ単体プレビューの開始時に控えた設定を使う。
     const auto stateIt = previewVisualStates_.find(object);
 
     if (stateIt != previewVisualStates_.end()) {
@@ -897,6 +909,7 @@ void DebugEditor::DrawPreviewWire(ID3D12GraphicsCommandList* commandList, int& i
     if (!IsValidAabb(aabb))
         return;
 
+    // ワイヤーの単位立方体を境界の全幅まで拡大し、最小・最大の中点へ移動する。
     engine::Vector3 size = aabb.max - aabb.min;
     engine::Vector3 center = (aabb.max + aabb.min) * 0.5f;
 
@@ -937,6 +950,7 @@ void DebugEditor::DrawPreviewMarker() {
         float dx = objectCenter.x - center.x;
         float dy = objectCenter.y - center.y;
 
+        // 接点と原点が 6 ピクセル以内なら線を省き、接点の印がつぶれないようにする。
         if ((dx * dx + dy * dy) > 36.0f) {
             drawList->AddLine(center, objectCenter, IM_COL32(40, 255, 120, 120), 1.5f);
             drawList->AddCircle(objectCenter, 5.0f, IM_COL32(255, 255, 255, 150), 16, 1.5f);

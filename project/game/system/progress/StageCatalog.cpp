@@ -16,6 +16,7 @@ bool StageCatalog::LoadFromJson(const std::string& path, std::vector<StageData>&
         return false;
     }
 
+    // ファイルが開けても解析できない場合は失敗を返し、現在のカタログは保持します。
     nlohmann::json root;
     try {
         file >> root;
@@ -27,6 +28,7 @@ bool StageCatalog::LoadFromJson(const std::string& path, std::vector<StageData>&
         return false;
     }
 
+    // 各項目を型ごとに読み、旧データで欠けている項目には呼び出し側の既定値を使います。
     auto readString = [](const nlohmann::json& value, const char* key, const std::string& fallback) {
         return value.contains(key) && value[key].is_string() ? value[key].get<std::string>() : fallback;
     };
@@ -86,6 +88,7 @@ bool StageCatalog::LoadFromJson(const std::string& path, std::vector<StageData>&
         loadedStages.push_back(std::move(data));
     }
 
+    // 有効なステージが一件もなければ一覧を入れ替えません。
     if (loadedStages.empty()) {
         return false;
     }

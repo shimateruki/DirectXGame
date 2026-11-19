@@ -45,6 +45,7 @@ void GimmickHookPullBlock::Update(float deltaTime) {
 
     pullTimer_ = std::max(0.0f, pullTimer_ - deltaTime);
 
+    // 引き寄せ中は固定済みの目標へ水平速度を近づけ、時間が切れたら水平速度を減衰させます。
     if (pullTimer_ > 0.0f) {
         engine::Vector3 toTarget = pullTarget_ - GetWorldPosition();
         toTarget.y = 0.0f;
@@ -66,6 +67,7 @@ void GimmickHookPullBlock::Update(float deltaTime) {
             velocity_.z = 0.0f;
     }
 
+    // 引き寄せは水平方向に限るため、鉛直方向には常に重力と落下速度の上限を適用します。
     velocity_.y -= GetParameters()->gravity * deltaTime;
 
     if (velocity_.y < -GetParameters()->maxFallSpeed) {
@@ -74,6 +76,7 @@ void GimmickHookPullBlock::Update(float deltaTime) {
 
     SetTranslate(GetTranslate() + velocity_ * deltaTime);
 
+    // 水平方向へ滑っている間だけ、移動方向に合わせて転がる見た目を加えます。
     float speedXZ = std::sqrt(velocity_.x * velocity_.x + velocity_.z * velocity_.z);
 
     if (speedXZ > 0.05f) {
@@ -99,6 +102,7 @@ bool GimmickHookPullBlock::OnCollision(engine::Object3D* other) {
     if (!info.isColliding)
         return false;
 
+    // 実際に重なる地形から押し出し、地形へ向かう速度だけを取り除いて横滑りを残します。
     SetTranslate(GetTranslate() + info.normal * info.penetration);
 
     float dot = engine::Math::Dot(velocity_, info.normal);

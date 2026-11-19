@@ -41,6 +41,7 @@ void RenderStats::RecordIndexedDraw(uint32_t indexCount, uint32_t instanceCount,
     }
 
     const uint64_t instances = instanceCount;
+    // 三角形数が未指定なら、三角形リストとして3インデックスで1枚と見積もる。
     const uint64_t triangles = trianglesPerInstance != 0 ? trianglesPerInstance : indexCount / 3u;
     ++stats->drawCalls;
     ++stats->indexedDrawCalls;
@@ -58,6 +59,7 @@ void RenderStats::RecordNonIndexedDraw(uint32_t vertexCount, uint32_t instanceCo
     }
 
     const uint64_t instances = instanceCount;
+    // 三角形数が未指定なら、三角形リストとして3頂点で1枚と見積もる。
     const uint64_t triangles = trianglesPerInstance != 0 ? trianglesPerInstance : vertexCount / 3u;
     ++stats->drawCalls;
     stats->submittedVertices += static_cast<uint64_t>(vertexCount) * instances;
@@ -166,6 +168,7 @@ RenderPassStats* RenderStats::GetCurrentPassStats() {
     return &currentFrame_.passes[passIndex];
 }
 
+// 親の計測区間を保存し、スコープを抜けるときに戻すことで区間を入れ子にできる。
 ScopedRenderPass::ScopedRenderPass(RenderPass pass) {
     RenderStats* stats = RenderStats::GetInstance();
     previousPass_ = stats->GetCurrentPass();

@@ -20,7 +20,7 @@ constexpr float kDefaultTransitionDuration = 0.42f;
 void GimmickPrismBarrier::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
-    // 薄い Obb を壁面として使い、開放時には通行を妨げるようにします。
+    // 薄い Obb を壁面として使い、展開時に通行を妨げます。解除時の衝突は先に外します。
     SetClassName("Gimmick");
     SetGimmickType("PrismBarrier");
     SetName("Gimmick_PrismBarrier");
@@ -79,6 +79,7 @@ void GimmickPrismBarrier::Update(float deltaTime) {
 
     CaptureAuthoredState();
 
+    // プレイ開始前に受け取ったイベントを優先し、未受信なら配置設定を開始状態に使います。
     if (!initializedForPlay_) {
         initializedForPlay_ = true;
 
@@ -90,6 +91,7 @@ void GimmickPrismBarrier::Update(float deltaTime) {
         ApplyRuntimeVisual();
     }
 
+    // 発光用の時刻と展開率を別に進めます。展開率は指定時間で開閉の目標に到達します。
     visualTime_ += (std::max)(0.0f, deltaTime);
     const float duration = GetTransitionDuration();
     const float step = duration > 0.0001f ? deltaTime / duration : 1.0f;
@@ -158,6 +160,7 @@ void GimmickPrismBarrier::CaptureAuthoredState(bool force) {
     const uint32_t collisionAttribute = GetCollisionAttribute();
     const uint32_t collisionMask = GetCollisionMask();
 
+    // フェード中に解除した属性やマスクがゼロでも、後で戻すために最後の設定値を保持します。
     if (collisionAttribute != 0 || !authoredStateCaptured_) {
         authoredCollisionAttribute_ = collisionAttribute;
     }
@@ -200,6 +203,7 @@ void GimmickPrismBarrier::ApplyRuntimeVisual() {
     SetTranslate({authoredPosition_.x, authoredBottom + currentScaleY, authoredPosition_.z});
     SetScale({authoredScale_.x, currentScaleY, authoredScale_.z});
 
+    // 保存済みの色に展開率を掛け、発光側だけに周期的な明滅を重ねます。
     const float pulseSpeed = GetParameters().has_value() ? (std::max)(0.1f, GetParameters()->interval) : 2.4f;
     const float pulse = 0.5f + 0.5f * std::sin(visualTime_ * pulseSpeed * (2.0f * std::numbers::pi_v<float>));
     SetColor({
@@ -210,6 +214,7 @@ void GimmickPrismBarrier::ApplyRuntimeVisual() {
     });
     SetEmissive((1.45f + pulse * 0.72f) * eased);
 
+    // 材質には展開率と開閉の向きに応じたUV座標を渡し、表面の演出を形状と同期させます。
     if (auto* renderer = GetMeshRenderer(); renderer && renderer->GetWaterParamData()) {
         auto* effect = renderer->GetWaterParamData();
         effect->waveSpeed = 1.25f;
@@ -227,6 +232,7 @@ void GimmickPrismBarrier::ApplyRuntimeVisual() {
         effect->uvOffsetY = eased;
     }
 
+    // 解除はすぐ通れるようにし、展開は壁の高さが一定以上になってから固めます。
     const bool shouldCollide = targetActivation_ > 0.5f && activation_ >= 0.22f;
     SetCollisionEnabled(shouldCollide);
 

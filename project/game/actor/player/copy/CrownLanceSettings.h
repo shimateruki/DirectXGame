@@ -30,17 +30,21 @@ struct CrownLanceSettings {
 
     // EditorやJSONから入った調整値を、この設定で扱える有限値・範囲へ収める。
     void Sanitize() {
+        // JSONとエディターの両方から来る値を、有効な既定値と範囲に収める。
         auto clamp = [](float& v, float lo, float hi, float fallback) {
             v = std::clamp(std::isfinite(v) ? v : fallback, lo, hi);
         };
+        // 回避の距離・無敵・再使用待ちと、開くゲートの見た目を補正する。
         clamp(warpGateSize, 0.9f, 1.9f, 1.34f);
         clamp(warpMembraneOpacity, 0.0f, 0.45f, 0.045f);
         clamp(warpDistance, 2.0f, 10.0f, 5.0f);
         clamp(warpInvincibility, 0.14f, 0.45f, 0.26f);
         clamp(warpCooldown, 0.45f, 3.0f, 1.15f);
+        // 溜め段階が逆転しないよう、先に補正した段階から次の最低時刻を決める。
         clamp(threeGateTime, 0.15f, 0.8f, 0.4f);
         clamp(fiveGateTime, threeGateTime + 0.1f, 1.5f, 0.9f);
         clamp(fullChargeTime, fiveGateTime + 0.1f, 2.5f, 1.2f);
+        // 槍を並べる間隔と高さ、ゲートが開閉する長さ、各弾の発射間隔を有効範囲に収める。
         clamp(gateSpacing, 0.8f, 2.0f, 1.35f);
         clamp(gateHeight, 2.0f, 4.2f, 2.8f);
         clamp(gateScale, 0.45f, 1.15f, 0.72f);
@@ -50,6 +54,7 @@ struct CrownLanceSettings {
         clamp(fullCenterScale, 1.0f, 1.6f, 1.3f);
         clamp(shotSpeed, 18.0f, 60.0f, 36.0f);
         clamp(cooldown, 0.2f, 1.5f, 0.55f);
+        // 槍の消失と軌跡の見た目を補正し、色要素は0〜1に収める。
         clamp(appearance.dissolveTime, 0.12f, 0.45f, 0.24f);
         clamp(appearance.edgeWidth, 0.045f, 0.22f, 0.095f);
         clamp(appearance.trailLength, 0.6f, 7.0f, 3.8f);
@@ -58,9 +63,11 @@ struct CrownLanceSettings {
         for (size_t i = 0; i < appearance.edgeColor.size(); ++i)
             clamp(appearance.edgeColor[i], 0.0f, 1.0f, Appearance{}.edgeColor[i]);
     }
+    // 溜めた秒数に応じ、出すゲートを1・3・5枚のいずれかにする。
     int GateCount(float seconds) const { return seconds >= fiveGateTime ? 5 : seconds >= threeGateTime ? 3 : 1; }
-    // 設定JSONを読み込む。成功可否を返し、ゲーム中のActor生成や再生は開始しない。
+    // 設定JSONを読み込む。既存値を項目ごとに更新し、最後に範囲と段階の順を補正する。
     void Load() {
+        // 保存ファイルがない場合は、その時点で持っている設定を使う。
         try {
             std::ifstream in(kConfigPath);
             if (!in)
@@ -68,6 +75,7 @@ struct CrownLanceSettings {
             nlohmann::json j;
             in >> j;
 #define CROWN_READ(name) name = j.value(#name, name)
+            // メンバーと同じ保存キーを読み、旧ファイルで省略されている項目は現在値で補う。
             CROWN_READ(threeGateTime);
             CROWN_READ(warpDistance);
             CROWN_READ(warpInvincibility);
@@ -86,6 +94,7 @@ struct CrownLanceSettings {
             CROWN_READ(shotSpeed);
             CROWN_READ(cooldown);
 #undef CROWN_READ
+            // 描画パラメーターのキーは既存の平坦な形式から復元する。
             appearance.dissolveTime = j.value("dissolveTime", appearance.dissolveTime);
             appearance.edgeWidth = j.value("edgeWidth", appearance.edgeWidth);
             appearance.edgeColor = j.value("edgeColor", appearance.edgeColor);
@@ -94,12 +103,14 @@ struct CrownLanceSettings {
             appearance.trailNoise = j.value("trailNoise", appearance.trailNoise);
         } catch (...) {
         } // 読み込み失敗時も有効な既定値に収めます。
+        // 一部まで読んで失敗した場合にも、読み込んだ項目をすべて有効範囲へ収める。
         Sanitize();
     }
     // 現在の設定を専用JSONへ保存し、書き込みが成功したかを返す。
     bool Save() const {
         nlohmann::json j;
 #define CROWN_WRITE(name) j[#name] = name
+        // 回避と槍に共通する数値のキーを、読み込み時と同じ名前で生成する。
         CROWN_WRITE(threeGateTime);
         CROWN_WRITE(warpDistance);
         CROWN_WRITE(warpInvincibility);
@@ -118,12 +129,14 @@ struct CrownLanceSettings {
         CROWN_WRITE(shotSpeed);
         CROWN_WRITE(cooldown);
 #undef CROWN_WRITE
+        // 描画用の値も、既存の平坦なキー形式で出力する。
         j["dissolveTime"] = appearance.dissolveTime;
         j["edgeWidth"] = appearance.edgeWidth;
         j["edgeColor"] = appearance.edgeColor;
         j["trailLength"] = appearance.trailLength;
         j["trailWidth"] = appearance.trailWidth;
         j["trailNoise"] = appearance.trailNoise;
+        // 出力先を用意できた場合だけJSONを書き、ストリームの状態を成功判定に使う。
         std::error_code error;
         std::filesystem::create_directories(std::filesystem::path(kConfigPath).parent_path(), error);
         if (error)
@@ -144,6 +157,7 @@ struct CrownLanceSettings {
     }
 #ifdef USE_IMGUI
     void DrawEditor() {
+        // 回避のゲートと槍のゲートは用途が異なるため、別の折りたたみ欄で調整する。
         if (ImGui::CollapsingHeader("覇王・ゲート回避の設定", ImGuiTreeNodeFlags_DefaultOpen)) {
             ImGui::DragFloat("回避ゲートの大きさ", &warpGateSize, 0.01f, 0.9f, 1.9f);
             ImGui::SliderFloat("回避ゲート中央の濃さ", &warpMembraneOpacity, 0.0f, 0.45f, "%.3f");
@@ -152,6 +166,7 @@ struct CrownLanceSettings {
             ImGui::DragFloat("回避の再使用時間", &warpCooldown, 0.01f, 0.45f, 3.0f, "%.2f 秒");
             Sanitize();
             static int result = 0;
+            // 回避の欄で保存しても、同じ設定ファイルに他の項目を含めて書き出す。
             if (ImGui::Button("ゲート回避の設定を保存"))
                 result = Save() ? 1 : -1;
             if (result) ImGui::TextUnformatted(result > 0 ? "保存しました" : "保存に失敗しました");
@@ -179,6 +194,7 @@ struct CrownLanceSettings {
         ImGui::TextWrapped("粒子の色・数・大きさ・寿命はGPU Particle Editorのplayer_crown_で始まるプリセットから調整できます。");
         Sanitize();
         static int saved = 0;
+        // 槍の欄でも同じ保存処理を使い、結果を欄内に表示する。
         if (ImGui::Button("ゲート槍の設定を保存"))
             saved = Save() ? 1 : -1;
         if (saved)

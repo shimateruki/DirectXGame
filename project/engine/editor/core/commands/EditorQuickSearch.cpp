@@ -42,6 +42,7 @@ std::string ToLowerAscii(std::string text) {
     return text;
 }
 
+// 空白で区切った全語を順位判定へ渡す。日本語のキーワード自体を文字単位には分割しない。
 std::vector<std::string> SplitWords(const std::string& text) {
     std::istringstream stream(text);
     std::vector<std::string> words;
@@ -145,6 +146,7 @@ void EditorQuickSearch::Draw() {
         focusQueryRequested_ = false;
     }
 
+    // 入力欄の Enter を別途受け取り、検索結果を更新した後で現在行を実行できるようにする。
     const bool submitted = ImGui::InputTextWithHint(
         "##EditorQuickSearchInput",
         "操作、Object、Asset、Scene、Preset、ウィンドウを検索...",
@@ -192,6 +194,7 @@ void EditorQuickSearch::Draw() {
 
             ImGui::EndDisabled();
 
+            // 行の当たり判定を増やさず、分類と詳細を選択行の矩形上へ重ねる。
             const ImVec2 rowMin = ImGui::GetItemRectMin();
             const ImVec2 rowMax = ImGui::GetItemRectMax();
             const std::string category = '[' + item.category + ']';
@@ -252,6 +255,7 @@ void EditorQuickSearch::RefreshResults(bool force) {
     const std::size_t presetCount = presetManager->GetPresets().size();
     const std::size_t prefabCount = presetManager->GetPrefabs().size();
 
+    // 描画のたびに索引を再走査しないよう、検索語と各台帳の変更指標が同じ間は候補を使い回す。
     if (!force && normalizedQuery == lastQuery_ &&
         commandRevision == lastCommandRevision_ &&
         sceneGeneration == lastSceneGeneration_ &&
@@ -284,6 +288,7 @@ void EditorQuickSearch::RefreshResults(bool force) {
         item.recentRank = FindRecentRank(item.id);
         item.score = ScoreItem(item, normalizedQuery);
 
+        // 検索語が空なら履歴とお気に入りを出す。履歴がない初回は操作とウィンドウだけを案内する。
         if (normalizedQuery.empty()) {
             if (hasHistory && !item.favorite && item.recentRank < 0) {
                 continue;
@@ -300,6 +305,7 @@ void EditorQuickSearch::RefreshResults(bool force) {
         results_.push_back(std::move(item));
     }
 
+    // 検索一致度を最優先し、同点では実行可能な候補を上へ置く。分類と表示名でさらに揃える。
     std::stable_sort(results_.begin(), results_.end(), [](const SearchItem& left, const SearchItem& right) {
         if (left.score != right.score)
             return left.score > right.score;
@@ -309,6 +315,7 @@ void EditorQuickSearch::RefreshResults(bool force) {
             return left.category < right.category;
         return left.label < right.label;
     });
+    // 上位 160 件を描画対象とし、入力で候補が減ったときは選択位置も範囲に収める。
     constexpr std::size_t kMaximumResults = 160;
 
     if (results_.size() > kMaximumResults) {
@@ -374,6 +381,7 @@ void EditorQuickSearch::CollectObjects(std::vector<SearchItem>& items) const {
         item.kind = ItemKind::Object;
         item.enabled = !sceneManager_->IsPlaying();
         item.execute = [this, raw]() {
+            // 候補作成から実行までに選択対象が消える場合があるため、現在のシーンで生存を確認してから渡す。
             BaseScene* current = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
             if (!current || !current->IsAlive(raw) || !editor_)
                 return;
@@ -408,6 +416,7 @@ void EditorQuickSearch::CollectAssets(std::vector<SearchItem>& items) const {
             asset.sourcePath.find("Resources/3DModel/") == 0;
         item.enabled = !placeableModel || (sceneManager_ && !sceneManager_->IsPlaying());
         const std::string assetPath = asset.sourcePath;
+        // 3D モデルだけは配置用の相対パスへ変換する。変換できなかったモデルとその他の素材は参照パスをコピーする。
         item.execute = [this, assetPath, placeableModel]() {
             if (placeableModel && editor_) {
                 std::error_code error;
@@ -510,9 +519,6 @@ void EditorQuickSearch::CollectEditorWindows(std::vector<SearchItem>& items) con
 
     const WindowTarget targets[] = {
         { "camera", "カメラ設定", "camera view", CameraEditor::GetInstance() },
-        { "sceneInventory", "配置物集計", "scene inventory", editor_->GetSceneInventoryWindow() },
-        { "materialPreview", "マテリアル確認", "material pbr", editor_->GetMaterialPreviewBoard() },
-        { "effectPreview", "エフェクト確認ステージ", "effect vfx preview", editor_->GetEffectPreviewStage() },
         { "animator", "Animator Controller", "animator state", editor_->GetAnimatorControllerEditor() },
         { "textPng", "テキストPNG生成", "text png", editor_->GetTextSpriteGenerator() },
         { "assetAudit", "アセット監査", "asset audit", editor_->GetAssetAuditWindow() },
@@ -601,6 +607,7 @@ void EditorQuickSearch::ExecuteItem(std::size_t index) {
     }
 
     const std::string id = results_[index].id;
+    // 操作の実行でシーンや候補一覧が変わっても参照が残らないよう、呼び出し先と ID を先にコピーする。
     const auto execute = results_[index].execute;
     ImGui::CloseCurrentPopup();
     query_[0] = '\0';

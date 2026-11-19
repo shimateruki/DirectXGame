@@ -2,7 +2,7 @@
 
 #include "BaseGimmick.h"
 
-/// <summary>マグマ上の継続ダメージと表面の発光を管理します。</summary>
+/// <summary>マグマ面の発光を更新し、旧配置の接触ダメージ設定を保持します。</summary>
 // 関連：BaseGimmickの配置・衝突基盤を使い、固有の状態と表示をこのクラスで更新する。調整項目はInitializeでProperty登録する。
 // 主な入口：Initialize / Update / OnCollision
 class GimmickMagmaHazard : public BaseGimmick {

@@ -37,6 +37,7 @@ bool Within(const fs::path& root, const fs::path& path) {
     for (const auto& part : path.lexically_relative(root)) {
         if (part == "..") return false;
     }
+    // 文字列上の検証に加えて実パスも比較し、シンボリックリンクなどを経由したルート外への操作を防ぐ。
     const auto base = fs::weakly_canonical(root);
     const auto target = fs::weakly_canonical(path);
     const auto relative = target.lexically_relative(base);
@@ -48,6 +49,7 @@ bool HasReference(const fs::path& target, const fs::path& rootDirectory, const f
     const auto filename = Utf8(target.filename());
     auto relative = target.lexically_relative(rootDirectory);
     const auto assetKey = Utf8(relative.replace_extension());
+    // 参照を調べるソースが見つからない環境では、参照がないと判断せず退避を止める。
     if (!fs::is_directory("game") || !fs::is_directory("engine")) return true;
     for (const fs::path root : {"game", "engine", "Resources/json"}) {
         for (auto it = fs::recursive_directory_iterator(root); it != fs::recursive_directory_iterator(); ++it) {
@@ -62,6 +64,7 @@ bool HasReference(const fs::path& target, const fs::path& rootDirectory, const f
             std::ifstream file(path, std::ios::binary);
             if (!file) return true;
             const std::string content((std::istreambuf_iterator<char>(file)), {});
+            // 完全ファイル名、引用符付きの短い名前、相対キーのいずれかを文字列検索する。
             if (content.find(filename) != std::string::npos ||
                 content.find('"' + Utf8(target.stem()) + '"') != std::string::npos ||
                 content.find('"' + assetKey + '"') != std::string::npos) return true;
@@ -86,6 +89,7 @@ std::vector<std::string> JsonAssetBrowser::ListKeys(const Path& root) {
 }
 
 void JsonAssetBrowser::RequestSaveAs(const std::string& suggestedName) {
+    // 次の描画で開く別名保存欄へ候補名を入れる。入力欄に収まらない名前は切り詰めず空にする。
     if (suggestedName.size() < sizeof(name_)) {
         suggestedName.copy(name_, suggestedName.size());
         name_[suggestedName.size()] = '\0';
@@ -105,6 +109,7 @@ void JsonAssetBrowser::SetBottomDock(unsigned int dockId) {
 }
 
 void JsonAssetBrowser::SetDocument(const Path& relative) {
+    // 開いた文書と現在選択したファイルを区別し、読み込み時はその文書のフォルダーへ合わせる。
     opened_ = relative;
     if (relative.empty()) saveAsRequested_ = false;
     if (!relative.empty()) {
@@ -115,18 +120,21 @@ void JsonAssetBrowser::SetDocument(const Path& relative) {
 }
 
 void JsonAssetBrowser::Draw(const char* title, const Path& root, const Read& read, const Write& write,
-    const std::function<void()>& reset, const std::function<void(const Path&)>& onSaved) {
+    const std::function<void()>& reset, const std::function<void(const Path&)>& onSaved, bool unsaved) {
 #ifdef USE_IMGUI
     if (bottomDockId == 0) return;
     ImGui::SetNextWindowDockID(bottomDockId, ImGuiCond_Always);
     if (saveAsRequested_) ImGui::SetNextWindowFocus();
-    const bool visible = ImGui::Begin(title, nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+    ImGuiWindowFlags flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse;
+    if (unsaved) flags |= ImGuiWindowFlags_UnsavedDocument;
+    const bool visible = ImGui::Begin(title, nullptr, flags);
     if (visible) {
         if (saveAsRequested_) {
             ImGui::OpenPopup("別名保存");
             saveAsRequested_ = false;
         }
         try {
+            // 復元で元の配置を使えるよう、保存ルートごとの退避先に相対パスを維持する。
             const auto archiveRoot = fs::path(".editor-json-trash") / root.filename();
             const auto base = archive_ ? archiveRoot : root;
             if (ImGui::Button(archive_ ? "ファイルに戻る" : ICON_FA_TRASH " ゴミ箱")) {
@@ -184,6 +192,7 @@ void JsonAssetBrowser::Draw(const char* title, const Path& root, const Read& rea
                     ImGui::EndChild();
                 }
 
+                // 対象と同じフォルダーに一時ファイルを作り、データの書き込みが成功した後に確定名へ移す。
                 auto save = [&](bool replace) {
                     const auto target = root / pending_;
                     if (!Within(root, target)) { status_ = "保存先が無効です。"; return; }
@@ -205,6 +214,7 @@ void JsonAssetBrowser::Draw(const char* title, const Path& root, const Read& rea
                     fs::remove(temp, error);
                     if (saved) {
                         opened_ = selected_ = pending_;
+                        // 実ファイルの確定後にだけ、呼び出し元へ保存済みパスを通知する。
                         if (onSaved) onSaved(opened_);
                     }
                     status_ = saved ? "保存しました。" : "保存できませんでした。";
@@ -213,6 +223,7 @@ void JsonAssetBrowser::Draw(const char* title, const Path& root, const Read& rea
                 const auto selected = base / selected_;
                 const bool hasFile = !selected_.empty() && Within(base, selected) && fs::is_regular_file(selected);
                 if (archive_) {
+                    // ゴミ箱内で保持している相対フォルダーへ戻す。同名ファイルを上書きしない。
                     if (hasFile && ImGui::Button("選択したJSONを復元")) {
                         const auto target = root / selected_;
                         if (!Within(root, target) || fs::exists(target)) status_ = "復元先に同名ファイルがあります。";
@@ -224,7 +235,7 @@ void JsonAssetBrowser::Draw(const char* title, const Path& root, const Read& rea
                         }
                     }
                 } else {
-                    ImGui::Text("編集中: %s", opened_.empty() ? "新規" : Utf8(opened_).c_str());
+                    ImGui::Text("編集中: %s%s", opened_.empty() ? "新規" : Utf8(opened_).c_str(), unsaved ? "（未保存）" : "");
                     if (ImGui::Button(ICON_FA_PLUS " 新規")) ImGui::OpenPopup("新規確認");
                     ImGui::SameLine();
                     if (ImGui::Button(ICON_FA_SAVE " 保存")) {
@@ -251,6 +262,7 @@ void JsonAssetBrowser::Draw(const char* title, const Path& root, const Read& rea
                     }
                 }
 
+                // 確認ダイアログは共通の枠で開き、選択した操作が失敗した場合も画面へ戻せるようにする。
                 auto modal = [&](const char* label, auto content) {
                     if (ImGui::BeginPopupModal(label, nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                         try { content(); }
@@ -297,6 +309,7 @@ void JsonAssetBrowser::Draw(const char* title, const Path& root, const Read& rea
                 modal("削除確認", [&] {
                     ImGui::TextWrapped("%s をゴミ箱に移します。", Utf8(pending_).c_str());
                     if (ImGui::Button("移動する")) {
+                        // 編集中の文書でも移動できるかを判定し、成功時だけファイルとの紐付けを外す。
                         const auto source = root / pending_;
                         const auto target = archiveRoot / pending_;
                         if (!Within(root, source) || !Within(archiveRoot, target) || fs::exists(target) || HasReference(source, root, archiveRoot))

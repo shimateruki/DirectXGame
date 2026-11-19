@@ -241,10 +241,12 @@ void AppendNormalizedLevelObjects(const json& sourceObjects, json& destination,
             continue;
         }
 
+        // 親を先に一覧へ入れ、子は親名を引き継いで同じ平坦な一覧に変換する。
         json normalized = NormalizeLevelObject(source, inheritedParentName);
         const std::string childParentName = normalized.value("name", inheritedParentName);
         destination.push_back(std::move(normalized));
 
+        // 元データの子配列も辿り、後続の生成側が階層形式を個別に扱わずに済むようにする。
         if (source.contains("children")) {
             AppendNormalizedLevelObjects(source["children"], destination, childParentName);
         }
@@ -301,6 +303,7 @@ void LevelLoader::LoadObjectLayout(BaseScene* scene, const std::string& filename
 // SceneAssetの参照を解決し、分割JSONの存在を調べて段階読込の対象一覧を作ります。
 // 親子リンクは全ファイルのObject生成後まで保留します。
 void LevelLoader::BeginObjectLayoutLoad(BaseScene* scene, const std::string& filename, bool resolveSceneAssetPath) {
+    // Scene Assetから読むときは登録済みの配置パスを優先し、直接指定の読込では受け取ったパスを使う。
     const std::string resolvedFilename =
         scene && resolveSceneAssetPath ? scene->ResolvePrimaryObjectLayoutPath(filename) : filename;
     std::string justName = resolvedFilename;
@@ -310,6 +313,7 @@ void LevelLoader::BeginObjectLayoutLoad(BaseScene* scene, const std::string& fil
         justName = justName.substr(slashPos + 1);
     }
 
+    // 通常のシーン読込だけは、エディターなどが参照する読込名を更新する。
     if (scene && resolveSceneAssetPath) {
         scene->SetLoadedFilename(justName);
     }
@@ -368,6 +372,7 @@ void LevelLoader::BeginObjectLayoutLoad(BaseScene* scene, const std::string& fil
 }
 
 bool LevelLoader::ContinueObjectLayoutLoad(BaseScene* scene, size_t maxObjects) {
+    // 読み込み済み、または開始していない場合は呼び元へ完了を返す。
     if (!objectLayoutLoading_) {
         return true;
     }
@@ -382,6 +387,7 @@ bool LevelLoader::ContinueObjectLayoutLoad(BaseScene* scene, size_t maxObjects) 
         return false;
     }
 
+    // プリセットに続いて、生成したキャラクターへ適用するステータス定義を用意する。
     if (preparationStep_ == 1) {
         const auto start = std::chrono::steady_clock::now();
         GameplayStatusManager::GetInstance()->Initialize();
@@ -395,6 +401,7 @@ bool LevelLoader::ContinueObjectLayoutLoad(BaseScene* scene, size_t maxObjects) 
     size_t remainingObjects = (std::max)(size_t{1}, maxObjects);
 
     while (pendingFileIndex_ < pendingObjectFiles_.size() && remainingObjects > 0) {
+        // ファイル内の途中まで生成した場合は、同じファイルの次の項目を次回に再開する。
         if (!LoadSingleJson(scene, pendingObjectFiles_[pendingFileIndex_], remainingObjects)) {
             return false;
         }
@@ -402,6 +409,7 @@ bool LevelLoader::ContinueObjectLayoutLoad(BaseScene* scene, size_t maxObjects) 
         ++pendingFileIndex_;
     }
 
+    // 今回の生成枠を使い切ってファイルが残った場合は、親子関係の復元をまだ始めない。
     if (pendingFileIndex_ < pendingObjectFiles_.size()) {
         return false;
     }
@@ -427,6 +435,7 @@ bool LevelLoader::ContinueObjectLayoutLoad(BaseScene* scene, size_t maxObjects) 
         }
     }
 
+    // 全オブジェクトと親子関係が揃った後に、敵が使うシーン内の参照を設定する。
     ConfigureEnemyRuntimeReferences(scene);
     objectLayoutLoading_ = false;
     pendingObjectFiles_.clear();
@@ -452,12 +461,15 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
     engine::Object3DCommon* object3dCommon = scene->GetObject3DCommon();
 
     try {
+        // 再開時は解析済みの配列を使う。新しいファイルの先頭だけJSONを展開する。
         if (!pendingFileLoaded_) {
             json sceneData;
 
+            // 非同期で解析済みの内容を優先し、準備されていないファイルだけここで読み込む。
             if (!scene->TakePreparedJson(filename, sceneData)) {
                 std::ifstream file(filename);
 
+                // 分割配置では一部のファイルがないことがあるため、このファイルを完了扱いにして次へ進む。
                 if (!file.is_open()) {
                     return true;
                 }
@@ -468,6 +480,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
             pendingObjects_ = json::array();
 
             if (sceneData.contains("objects") && sceneData["objects"].is_array()) {
+                // 階層などの正規化が必要な形式だけ変換し、平坦な配列はそのまま引き継ぐ。
                 if (RequiresLevelObjectNormalization(sceneData["objects"])) {
                     AppendNormalizedLevelObjects(sceneData["objects"], pendingObjects_);
                 } else {
@@ -481,6 +494,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
 
         if (pendingObjects_.is_array()) {
             while (pendingObjectIndex_ < pendingObjects_.size() && remainingObjects > 0) {
+                // 無効な項目も1件分として消費し、次のフレームで同じ項目に戻らないようにする。
                 const auto& objData = pendingObjects_[pendingObjectIndex_++];
                 --remainingObjects;
                 if (!objData.contains("name") || !objData["name"].is_string())
@@ -488,6 +502,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                 std::string name = objData["name"].get<std::string>();
 
                 // 1. 既存チェック
+                // 同名の既存オブジェクトがあれば、シーン固有の実体を残して配置値だけ更新します。
                 engine::Object3D* targetObject = nullptr;
 
                 for (auto& obj : objects) {
@@ -575,6 +590,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                         spawner->SetIsVisible(false);
 
                         // スポーン時のコールバック
+                        // 後から出現する敵も通常読込と同じ生成クラスを使い、発生地点とシーン参照を付けて追加します。
                         spawner->SetOnSpawnCallback([scene, spawnEnemyType](const engine::Vector3& spawnPos) {
                             auto newEnemy =
                                 EnemyFactory::GetInstance()->CreateEnemy(spawnEnemyType, scene->GetObject3DCommon());
@@ -658,9 +674,11 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                     }
                 }
 
+                // 既存の実体も生成結果もなければ、コンポーネントと表示の復元は行えない。
                 if (!targetObject)
                     continue;
 
+                // 旧データにはIDが省略されているため、保存値を採用した後で不足分を補う。
                 if (objData.contains("guid") && objData["guid"].is_string()) {
                     targetObject->SetPersistentGuid(objData["guid"].get<std::string>());
                 }
@@ -668,6 +686,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                 targetObject->EnsurePersistentGuid();
                 targetObject->DeserializeFeatureComponents(objData);
 
+                // Prefabから来たオブジェクトには、復元後の所属と元オブジェクトを辿るための情報を保持する。
                 if (objData.contains("prefabInstance") && objData["prefabInstance"].is_object()) {
                     const auto& prefab = objData["prefabInstance"];
                     engine::Object3D::PrefabInstanceInfo info;
@@ -679,6 +698,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                     targetObject->SetPrefabInstanceInfo(info);
                 }
 
+                // カメラは編集用モデルで場所を示し、衝突や影を持たない設定にする。
                 if (targetObject->IsCameraObject()) {
                     targetObject->SetClassName("Camera");
                     targetObject->SetSaveCategory("Camera");
@@ -700,6 +720,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                 std::string type = targetObject->GetClassName();
                 std::string loadedModelName;
 
+                // 判定や生成だけのオブジェクトはモデルを外し、シーン内の機能は引き続き使えるようにする。
                 if (type == "InvisibleBox" || type == "Spawner") {
                     targetObject->SetModel(nullptr);
                     targetObject->SetIsVisible(true);
@@ -885,6 +906,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                 }
 
                 if (!targetObject->IsCameraObject()) {
+                    // カテゴリID配列を優先して未知ビットも復元し、配列がない旧データだけ整数マスクから変換します。
                     auto loadCategoryMask = [&objData](const char* idsKey, const char* legacyKey, uint32_t fallback) {
                         if (objData.contains(idsKey) && objData[idsKey].is_array()) {
                             std::vector<std::string> ids;
@@ -933,6 +955,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
                     SceneEntityParameterCodec::Apply(*targetObject, objData["param"]);
                 }
 
+                // 個体の配置設定を先に読み、外観の既定値と共通ステータスを反映してから行列を確定します。
                 ApplySlimeMaterialDefault(targetObject);
                 GameplayStatusManager::GetInstance()->ApplyManagedStatus(targetObject, true);
                 targetObject->UpdateLocalMatrix();
@@ -986,6 +1009,7 @@ bool LevelLoader::LoadSingleJson(BaseScene* scene, const std::string& filename, 
             }
         }
 
+        // 今回の生成枠を使い切った場合は解析済み配列と索引を残し、次回はその続きから再開します。
         if (pendingObjectIndex_ < pendingObjects_.size()) {
             return false;
         }
@@ -1080,6 +1104,7 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
 
                     if (spriteData.contains("anchor"))
                         targetSprite->SetAnchorPoint({spriteData["anchor"][0], spriteData["anchor"][1]});
+                    // 旧レイアウトのRGBだけの指定では、元の透明度を引き継ぎます。
                     if (spriteData.contains("color")) {
                         engine::Vector4 currentColor = targetSprite->GetColor();
                         float alpha = currentColor.w;
@@ -1098,6 +1123,7 @@ void LevelLoader::LoadSpriteLayout(BaseScene* scene, const std::string& filename
                         targetSprite->SetEmissive(spriteData["emissive"].get<float>());
                     }
 
+                    // 親が後続の項目にあっても解決できるよう名前を保留し、親指定がないものは以前のリンクを解除します。
                     if (spriteData.contains("parentName") && spriteData["parentName"].is_string()) {
                         spriteParentPending.emplace_back(targetSprite, spriteData["parentName"].get<std::string>());
                     } else {

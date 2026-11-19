@@ -17,6 +17,8 @@
 #include <DebugConsole.h>
 #include <LightManager.h>
 
+namespace engine {
+
 namespace {
 constexpr std::array<char, 8> kModelCacheMagic = { 'G', 'E', '3', 'M', 'C', 'A', 'C', 'H' };
 constexpr uint32_t kModelCacheVersion = 2;
@@ -151,12 +153,13 @@ std::string ResolveMaterialTexturePath(const std::string& directoryPath, const s
     return filenameCandidate.generic_string();
 }
 
-// Assimpマテリアルから指定種別のテクスチャを取得し、解決済みパスとして返す。
+// Assimpマテリアルに記録された画像パスを取得する。ファイルの場所はResolveMaterialTexturePathで解決する。
 bool TryGetMaterialTexture(aiMaterial* material, const std::vector<aiTextureType>& types, aiString& outPath) {
     if (!material) {
         return false;
     }
 
+    // 呼び出し元が並べた用途の優先順位に従い、各用途で最初に登録された素材だけを調べる。
     for (aiTextureType type : types) {
         if (material->GetTexture(type, 0, &outPath) == AI_SUCCESS) {
             return true;
@@ -302,6 +305,7 @@ bool ReadNode(std::istream& is, Model::Node& node) {
         return false;
     }
 
+    // この時点では親の行列を合成せず、読み込み後の骨格構築と更新に階層計算を任せます。
     node.globalMatrix = node.localMatrix;
 
     uint32_t childCount = 0;
@@ -703,6 +707,7 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
             float shininess = 0.0f;
 
             if (aiMat->Get(AI_MATKEY_SHININESS, shininess) == AI_SUCCESS && shininess > 0.0f) {
+                // 粗さの値がない旧材質では光沢を0～128の範囲に対応させ、光沢が強いほど粗さを小さくします。
                 material.roughness = Clamp01(1.0f - (shininess / 128.0f));
             }
         }
@@ -785,6 +790,7 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
                 Bone newBone;
                 newBone.name = boneName;
                 aiMatrix4x4 offset = aiBone->mOffsetMatrix;
+                // Assimpの逆バインド行列を転置し、このエンジンの行ベクトルの変換順に合わせます。
                 newBone.inverseBindPoseMatrix.m[0][0] = offset.a1;
                 newBone.inverseBindPoseMatrix.m[0][1] = offset.b1;
                 newBone.inverseBindPoseMatrix.m[0][2] = offset.c1;
@@ -811,6 +817,7 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
                 if (vertexId < tempVertices.size()) {
                     auto& v = tempVertices[vertexId];
 
+                    // 頂点に用意された四枠を先に見つかった影響から埋めます。四枠を使い切った頂点には追加しません。
                     if (v.boneWeights.x == 0.0f) {
                         v.boneWeights.x = weight;
                         v.boneIndices.x = (float)boneIndex;
@@ -882,6 +889,7 @@ Model::ModelData Model::LoadFile(const std::string& directoryPath, const std::st
         else animation.name = "animation_" + std::to_string(i);
         float ticksPerSecond = (float)(aiAnim->mTicksPerSecond != 0 ? aiAnim->mTicksPerSecond : 25.0);
 
+        // 継続時間と各キーの時刻を同じ換算でtickから秒へ変えます。周波数がなければ毎秒25tickとします。
         animation.duration = (float)aiAnim->mDuration / ticksPerSecond;
         animation.ticksPerSecond = ticksPerSecond;
 
@@ -979,6 +987,7 @@ Model::Node Model::ReadNode(aiNode* node, std::vector<Node>& nodes) {
     return result;
 }
 
-#include "DirectXCommon.h"
 
 // 毎フレーム呼ぶ更新処理
+
+} // namespace engine

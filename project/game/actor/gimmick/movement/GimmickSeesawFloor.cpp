@@ -29,6 +29,7 @@ void GimmickSeesawFloor::Update(float deltaTime) {
         initializedBase_ = true;
     }
 
+    // 接触通知が短時間途切れても目標角を保持し、猶予が尽きた後で中心に戻します。
     if (contactTimer_ > 0.0f) {
         contactTimer_ -= deltaTime;
         if (contactTimer_ < 0.0f)
@@ -37,6 +38,7 @@ void GimmickSeesawFloor::Update(float deltaTime) {
         targetTilt_ = 0.0f;
     }
 
+    // フレーム時間に応じて現在の角度を基準姿勢と目標角へ近づけ、段差のない傾きにします。
     float t = 1.0f - std::exp(-tiltSpeed_ * deltaTime);
     engine::Vector3 rot = GetTransform()->rotate;
     rot.x = engine::Math::Lerp(rot.x, baseRotation_.x, t);
@@ -54,6 +56,7 @@ bool GimmickSeesawFloor::OnCollision(engine::Object3D* other) {
         CollisionInfo info = CheckCollision(other);
 
         if (info.isColliding && info.normal.y < -0.5f) {
+            // 床のヨーを打ち消してローカルXを求め、中央からの距離を最大角に対する割合へ変換します。
             engine::Vector3 diff = other->GetWorldPosition() - GetWorldPosition();
             float yaw = GetTransform()->rotate.y;
             float localX = diff.x * std::cos(yaw) - diff.z * std::sin(yaw);

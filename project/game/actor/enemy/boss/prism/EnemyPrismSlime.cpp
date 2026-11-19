@@ -72,6 +72,7 @@ void EnemyPrismSlime::Update(float deltaTime) {
         return;
     }
 
+    // 既に設置した棘・槍・召喚陣を進め、行動本体の更新と各オブジェクトの寿命を分離する。
     UpdatePrismSpikeVisuals(deltaTime);
     UpdateCrystalLanceVisuals(deltaTime);
     UpdateSummonPortalVisuals(deltaTime);
@@ -83,6 +84,7 @@ void EnemyPrismSlime::Update(float deltaTime) {
     impactPulseTimer_ = (std::max)(0.0f, impactPulseTimer_ - deltaTime);
     UpdateElementPhase();
 
+    // 標的があるときに水平距離を測り、向き・交戦開始・射程の共通基準にする。
     engine::Vector3 direction = lockedDirection_;
     float distance = 9999.0f;
 
@@ -104,9 +106,11 @@ void EnemyPrismSlime::Update(float deltaTime) {
 
     ApplySlimeAnimation(deltaTime);
     SyncCollisionRadius();
+    // 移動専用処理で座標を設定したフレームは、基底モーターを止めて二重移動を避ける。
     SetMotorSuspended(scriptedMovementThisFrame_);
     BaseEnemy::Update(deltaTime);
     SetMotorSuspended(false);
+    // 本体の移動と描画姿勢が確定してから、攻撃演出と顔の位置を追従させる。
     UpdateCrystalCircleVisual(deltaTime);
     UpdatePrismSpikeSectorVisual(deltaTime);
     UpdateWindSpellVisual(deltaTime);
@@ -200,24 +204,29 @@ void EnemyPrismSlime::DrawOwnedTransparentVisuals(ID3D12Resource* pointLightReso
     if (chantVisual_) chantVisual_->Draw(pointLightResource, spotLightResource);
 }
 
-void EnemyPrismSlime::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+void EnemyPrismSlime::DrawForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource,
                                     ID3D12Resource* spotLightResource, int previewBufferIndex) {
+    // カメラ描画の条件を満たさない場合や詠唱だけ確認する場合は、本体も所有部品もこのパスに出さない。
     if (!camera || !GetIsRenderVisible() || debugPreviewChantOnly_) return;
     engine::Object3D::DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+    // シーンの通常オブジェクト一覧にない結晶と槍を、ボスの所有物として同じカメラに描く。
     for (const PrismSpikeVisual& spike : prismSpikeVisuals_) {
         if (spike.object) spike.object->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
     }
     for (const CrystalLanceVisual& lance : crystalLanceVisuals_) {
         if (lance.object) lance.object->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
     }
+    // 不透明の所有エフェクトだけをここに描き、ブレンド付きは別の描画経路へ残す。
     ForEachOwnedEffect([&](engine::Object3D* visual) {
         if (visual && visual->GetIsVisible() && GetOwnedEffectBlendMode(visual) == BlendMode::None) {
             visual->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
         }
     });
+    // 本体が非表示なら、残っている攻撃の実体は描けても顔やコアの表示は出さない。
     if (!GetIsVisible()) return;
     if (coreFramePart_) coreFramePart_->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
     if (corePart_) corePart_->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
+    // 被弾表情の期間だけ専用の目を優先し、通常の目は重ねない。
     if (hurtEyesPart_ && IsHurtFaceActive()) {
         hurtEyesPart_->DrawForCamera(camera, pointLightResource, spotLightResource, previewBufferIndex);
     } else {
@@ -227,7 +236,7 @@ void EnemyPrismSlime::DrawForCamera(Camera* camera, ID3D12Resource* pointLightRe
     }
 }
 
-void EnemyPrismSlime::DrawOwnedTransparentVisualsForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+void EnemyPrismSlime::DrawOwnedTransparentVisualsForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource,
                                                             ID3D12Resource* spotLightResource, int previewBufferIndex) {
     if (!camera || !GetIsRenderVisible()) return;
     ForEachOwnedEffect([&](engine::Object3D* visual) {
@@ -416,6 +425,7 @@ void EnemyPrismSlime::UpdateElementPhase() {
 
 // 再配置・攻撃中の更新を優先し、待機中は次の技の射程へ移動します。
 void EnemyPrismSlime::UpdateBehavior(float deltaTime, const engine::Vector3& direction, float distance, engine::Vector3& velocity) {
+    // 攻撃後に開始した再配置を先に完了させ、新しい技や専用移動を選ばない。
     if (attackState_ == AttackState::Reposition) {
         UpdateReposition(deltaTime, velocity);
         return;
@@ -431,6 +441,7 @@ void EnemyPrismSlime::UpdateBehavior(float deltaTime, const engine::Vector3& dir
         return;
     }
 
+    // 追跡に使う標的と調整値が無ければ、鉛直速度だけを維持して徘徊する。
     if (!GetTarget() || !GetParameters().has_value()) {
         const float verticalVelocity = velocity.y;
         velocity = CalculateWanderVelocity(deltaTime, 0.55f, 0.52f);
@@ -445,6 +456,7 @@ void EnemyPrismSlime::UpdateBehavior(float deltaTime, const engine::Vector3& dir
         return;
     }
 
+    // 固定技のプレビューを優先し、通常戦では属性別の巡回から射程の合う技を選ぶ。
     const AttackKind debugAttack = ResolveDebugAttack();
     const AttackKind plannedAttack = debugAttack != AttackKind::None ? debugAttack : ResolveAutomaticAttack(distance);
     const EnemyAttackDefinition& plannedDefinition = plannedAttack == AttackKind::FireFan
@@ -480,6 +492,7 @@ void EnemyPrismSlime::UpdateBehavior(float deltaTime, const engine::Vector3& dir
     style.cooldown = farAway ? 0.48f : 0.62f;
     style.arcHeight = farAway ? std::clamp(GetParameters()->jumpPower * 0.055f, 1.0f, 1.55f) : 0.0f;
 
+    // 候補の着地点は闘技場の範囲に収め、移動を組めなければ再試行を少し待つ。
     const engine::Vector3 current = GetTranslate();
     engine::Vector3 destination = current + movement * stepDistance;
     const engine::Vector3 arenaCenter = IsEncounterControlled() ? encounterBasePosition_ : current;
@@ -492,6 +505,7 @@ void EnemyPrismSlime::UpdateBehavior(float deltaTime, const engine::Vector3& dir
 
 void EnemyPrismSlime::UpdateLocomotion(float deltaTime, const engine::Vector3& targetDirection,
                                       engine::Vector3& velocity) {
+    // 専用移動が位置を決めたフレームだけ、座標と接地状態を直接適用する。
     const BossGroundLocomotion::Frame frame = locomotion_.Advance(deltaTime);
     if (!frame.scripted) return;
 
@@ -502,6 +516,7 @@ void EnemyPrismSlime::UpdateLocomotion(float deltaTime, const engine::Vector3& t
     const bool landing = locomotion_.GetPhase() == BossGroundLocomotion::Phase::Landing;
     UpdateFacing(locomotion_.IsLeap() && !landing ? locomotion_.GetDirection() : targetDirection);
 
+    // 踏み切りと着地では足元の地面を求め、跳ねた本体の高さから土煙を離す。
     if (frame.takeoff || frame.landed) {
         const engine::Vector3 ground = CombatGroundQuery::FindGroundPoint(
             frame.position, this, {4.0f, 12.0f}, frame.position.y) + engine::Vector3{0.0f, 0.04f, 0.0f};
@@ -527,6 +542,7 @@ void EnemyPrismSlime::StartAttack(AttackKind kind, const engine::Vector3& direct
         return;
     }
 
+    // 攻撃状態を予兆へ切り替え、前のシーケンスを止めて経過秒数と一度きりの状態を初期化する。
     currentAttack_ = kind;
     attackState_ = AttackState::Windup;
     lockedDirection_ = NormalizePlanar(direction);
@@ -550,6 +566,7 @@ void EnemyPrismSlime::StartAttack(AttackKind kind, const engine::Vector3& direct
     } else if (kind == AttackKind::ThunderChain) {
         PrepareThunderPoints();
     } else if (kind == AttackKind::WindWave) {
+        // 風の中心を射程内に決め、三つの渦を闘技場内の地面に分散させる。
         const float distanceToCircle = std::clamp(lockedTargetDistance_, 3.2f, (std::max)(3.2f, attack.maxRange));
         windSpellOrigin_ = FindGroundPoint(GetWorldPosition() + lockedDirection_ * distanceToCircle);
         windTornadoAge_ = 0.0f;
@@ -590,6 +607,7 @@ void EnemyPrismSlime::StartAttack(AttackKind kind, const engine::Vector3& direct
         }
     }
 
+    // 共通の青い詠唱陣を起点に、技に応じて発生する素材と色を差し替える。
     BossChantStyle chantStyle;
     chantStyle.sigilEffectPath = kPrismChantSigilEffect;
     chantStyle.motePreset = kPrismSpellMotesPreset;
@@ -633,6 +651,7 @@ void EnemyPrismSlime::StartAttack(AttackKind kind, const engine::Vector3& direct
         chantVisual_.reset();
     }
 
+    // 実戦のときだけ巡回順と最後の技を進め、プレビューの繰り返しには影響させない。
     if (debugPreviewAttackId_.empty()) {
         lastAutomaticAttack_ = kind;
         ++attackCycleIndex_;
@@ -661,13 +680,13 @@ void EnemyPrismSlime::UpdateAttack(float deltaTime, const engine::Vector3& direc
         }
 
         UpdateFacing(lockedDirection_);
-        UpdateWindup(deltaTime);
+        UpdateAttackPattern(AttackState::Windup, deltaTime);
         return;
     }
 
     if (attackState_ == AttackState::Active) {
         UpdateFacing(lockedDirection_);
-        UpdateActive(deltaTime);
+        UpdateAttackPattern(AttackState::Active, deltaTime);
         return;
     }
 
@@ -681,247 +700,240 @@ void EnemyPrismSlime::UpdateAttack(float deltaTime, const engine::Vector3& direc
     }
 }
 
-void EnemyPrismSlime::UpdateWindup(float deltaTime) {
-    // 予備動作の進行度で粒子の頻度と予告形状を変え、発動前の情報をプレイヤーへ示す。
+void EnemyPrismSlime::UpdateAttackPattern(AttackState phase, float deltaTime) {
+    // このフレームの段階を引数で受け取り、技の処理が終わってから次の段階へ移る。
+    const bool windup = phase == AttackState::Windup;
     const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
+    // 現在の段階と粒子の残り時間を減らし、発生間隔だけは予兆が終わってから数える。
     attackTimer_ = (std::max)(0.0f, attackTimer_ - deltaTime);
     effectTimer_ -= deltaTime;
-    const float progress = 1.0f - std::clamp(attackTimer_ / attackStateDuration_, 0.0f, 1.0f);
-    const engine::Vector3 center = GetTranslate();
-
-    switch (currentAttack_) {
-    case AttackKind::PrismSpikes: {
-        if (effectTimer_ <= 0.0f) {
-            const char* windupPreset = attack.windupVfx.empty() ? kPrismSpikeWarningPreset : attack.windupVfx.c_str();
-            EmitPreset(windupPreset, prismSpellCenter_ + engine::Vector3{0.0f, 0.08f, 0.0f});
-            const float orbit = idleTimer_ * (2.2f + progress * 2.6f);
-            EmitPreset(kPrismSpellMotesPreset,
-                       prismSpellCenter_ + engine::Vector3{std::cos(orbit) * 1.65f, 0.12f, std::sin(orbit) * 1.65f});
-            EmitPreset(kPrismChargePreset, GetWorldPosition() + engine::Vector3{0.0f, baseScale_.y * 0.50f, 0.0f});
-            effectTimer_ += 0.15f - progress * 0.035f;
-        }
-
-        break;
+    if (!windup) {
+        actionTimer_ -= deltaTime;
     }
 
-    case AttackKind::CrystalLanceVolley: {
-        const float predictedDistance =
-            std::clamp(lockedTargetDistance_ + attack.radius, attack.minRange, attack.maxRange);
-        ShowAttackTelegraphLaneFan(center, lockedDirection_, predictedDistance, attack.radius * 1.20f,
-                                   kCrystalLanceCount, 1.08f, -0.060f, progress, {0.50f, 0.78f, 1.0f, 0.72f});
-        if (effectTimer_ <= 0.0f) {
-            EmitPreset(kPrismChargePreset, GetWorldPosition() + engine::Vector3{0.0f, baseScale_.y * 0.66f, 0.0f});
-            effectTimer_ += 0.10f - progress * 0.03f;
-        }
+    // 予兆の進行率は開始0・終了1。発生中の判定には使わない。
+    const float progress = windup ? 1.0f - std::clamp(attackTimer_ / attackStateDuration_, 0.0f, 1.0f) : 0.0f;
+    const engine::Vector3 center = windup ? GetTranslate() : engine::Vector3{};
 
-        break;
-    }
-
-    case AttackKind::FireFan: {
-        if (effectTimer_ <= 0.0f) {
-            const engine::Vector3 corePosition = GetWorldPosition() + engine::Vector3{0.0f, baseScale_.y * 0.48f, 0.0f};
-            EmitDirectedPreset(kFireCastPreset, corePosition, lockedDirection_, 0.72f + progress * 0.55f);
-            effectTimer_ += 0.085f;
-        }
-
-        break;
-    }
-
-    case AttackKind::ThunderChain:
-        if (effectTimer_ <= 0.0f) {
-            EmitPreset(kThunderChargePreset, GetWorldPosition() + engine::Vector3{0.0f, baseScale_.y * 0.58f, 0.0f});
-            effectTimer_ += 0.065f - progress * 0.025f;
-        }
-
-        break;
-
-    case AttackKind::WindWave:
-        if (effectTimer_ <= 0.0f) {
-            EmitDirectedPreset(kWindChargePreset, GetWorldPosition() + engine::Vector3{0.0f, baseScale_.y * 0.42f, 0.0f},
-                               lockedDirection_ * -1.0f + engine::Vector3{0.0f, 0.16f, 0.0f}, 0.85f + progress * 0.70f);
-            effectTimer_ += 0.07f;
-        }
-
-        break;
-
-    case AttackKind::SlimeSummon:
-        if (effectTimer_ <= 0.0f) {
-            EmitPreset(kPrismChargePreset, GetWorldPosition() + engine::Vector3{0.0f, baseScale_.y * 0.52f, 0.0f});
-            effectTimer_ += 0.12f - progress * 0.035f;
-        }
-
-        break;
-
-    default:
-        break;
-    }
-
-    if (!warningTriggered_ && attackTimer_ <= attack.warningLeadTime) {
-        // 技ごとの属性色は予告が始まる一回だけ通知し、毎フレームの重複発火を防ぐ。
-        engine::Vector4 cueColor = {0.52f, 0.96f, 1.0f, 1.0f};
-        if (currentAttack_ == AttackKind::FireFan)
-            cueColor = {1.0f, 0.28f, 0.05f, 1.0f};
-        if (currentAttack_ == AttackKind::ThunderChain)
-            cueColor = {1.0f, 0.92f, 0.12f, 1.0f};
-        if (currentAttack_ == AttackKind::WindWave)
-            cueColor = {0.58f, 1.0f, 0.86f, 1.0f};
-        if (currentAttack_ == AttackKind::SlimeSummon)
-            cueColor = {0.96f, 0.58f, 1.0f, 1.0f};
-        if (currentAttack_ == AttackKind::CrystalLanceVolley)
-            cueColor = {0.58f, 0.82f, 1.0f, 1.0f};
-        TriggerAttackTelegraphCue(cueColor);
-        warningTriggered_ = true;
-    }
-
-    if (attackTimer_ <= 0.0f) {
-        attackState_ = AttackState::Active;
-        attackStateDuration_ = (std::max)(0.08f, attack.activeDuration);
-
-        if (currentAttack_ == AttackKind::FireFan && attack.sequence.enabled) {
-            // この接続先では詠唱完了を時刻0とします。予備動作の長さを変えても発射間隔は変わりません。
-            attackStateDuration_ = (std::max)(attackStateDuration_, attack.sequence.duration);
-            attackSequence_.Start(attack, MakeSequenceContext());
-        }
-
-        attackTimer_ = attackStateDuration_;
-        effectTimer_ = 0.0f;
-        actionTimer_ = 0.0f;
-        actionIndex_ = 0;
-
-        if (currentAttack_ == AttackKind::WindWave) {
-            windTornadoAge_ = 0.0f;
-
-            for (std::size_t index = 0; index < windVortices_.size(); ++index) {
-                WindVortexVisual& vortex = windVortices_[index];
-                vortex.position = vortex.origin;
-                vortex.driftTimer = 0.0f;
-                EmitPreset(kWindImpactPreset, vortex.origin + engine::Vector3{0.0f, 0.12f, 0.0f});
-
-                if (MeshEffectManager* effects = MeshEffectManager::GetInstance()) {
-                    const float radius = attack.radius * (index == 0 ? 1.0f : 0.72f);
-                    effects->SpawnEffectAt(kWindRingEffect, vortex.origin + engine::Vector3{0.0f, 0.06f, 0.0f},
-                                           {0.0f, 0.0f, 0.0f}, {radius, 1.0f, radius});
-                }
-            }
-        }
-
-        HideAttackTelegraph();
-    }
-}
-
-void EnemyPrismSlime::UpdateActive(float deltaTime) {
-    // 技ごとの発生タイミングを進め、実行時間が尽きたら共通の回復状態へ移す。
-    const EnemyAttackDefinition& attack = GetCurrentAttackDefinition();
-    attackTimer_ = (std::max)(0.0f, attackTimer_ - deltaTime);
-    effectTimer_ -= deltaTime;
-    actionTimer_ -= deltaTime;
-
+    // 同じ技の予兆と実行を並べ、表示した範囲と実際に発生する攻撃を照合できるようにする。
     switch (currentAttack_) {
     case AttackKind::PrismSpikes:
-        while (actionIndex_ < static_cast<int>(prismSpikePositions_.size()) && actionTimer_ <= 0.0f) {
-            SpawnNextPrismSpike();
-            ++actionIndex_;
-            actionTimer_ += kPrismSpikeInterval;
+        // 魔法陣の中心を粒子で示し、実行中は準備済みの地点に結晶を順に出す。
+        if (windup) {
+            if (effectTimer_ <= 0.0f) {
+                const char* windupPreset = attack.windupVfx.empty() ? kPrismSpikeWarningPreset : attack.windupVfx.c_str();
+                EmitPreset(windupPreset, prismSpellCenter_ + engine::Vector3{0.0f, 0.08f, 0.0f});
+                const float orbit = idleTimer_ * (2.2f + progress * 2.6f);
+                EmitPreset(kPrismSpellMotesPreset,
+                           prismSpellCenter_ + engine::Vector3{std::cos(orbit) * 1.65f, 0.12f, std::sin(orbit) * 1.65f});
+                EmitPreset(kPrismChargePreset, GetWorldPosition() + engine::Vector3{0.0f, baseScale_.y * 0.50f, 0.0f});
+                effectTimer_ += 0.15f - progress * 0.035f;
+            }
+        } else {
+            while (actionIndex_ < static_cast<int>(prismSpikePositions_.size()) && actionTimer_ <= 0.0f) {
+                SpawnNextPrismSpike();
+                ++actionIndex_;
+                actionTimer_ += kPrismSpikeInterval;
+            }
         }
-
         break;
 
     case AttackKind::CrystalLanceVolley:
-        while (actionIndex_ < static_cast<int>(crystalLanceVisuals_.size()) && actionTimer_ <= 0.0f) {
-            LaunchNextCrystalLance();
-            ++actionIndex_;
-            actionTimer_ += kCrystalLanceInterval;
+        // 槍の射線を扇状に予告し、準備した槍を発射時刻ごとに送り出す。
+        if (windup) {
+            const float predictedDistance =
+                std::clamp(lockedTargetDistance_ + attack.radius, attack.minRange, attack.maxRange);
+            ShowAttackTelegraphLaneFan(center, lockedDirection_, predictedDistance, attack.radius * 1.20f,
+                                       kCrystalLanceCount, 1.08f, -0.060f, progress, {0.50f, 0.78f, 1.0f, 0.72f});
+            if (effectTimer_ <= 0.0f) {
+                EmitPreset(kPrismChargePreset, GetWorldPosition() + engine::Vector3{0.0f, baseScale_.y * 0.66f, 0.0f});
+                effectTimer_ += 0.10f - progress * 0.03f;
+            }
+        } else {
+            while (actionIndex_ < static_cast<int>(crystalLanceVisuals_.size()) && actionTimer_ <= 0.0f) {
+                LaunchNextCrystalLance();
+                ++actionIndex_;
+                actionTimer_ += kCrystalLanceInterval;
+            }
         }
-
         break;
 
     case AttackKind::FireFan:
-        if (attack.sequence.enabled) {
-            attackSequence_.Update(deltaTime, MakeSequenceContext());
-            break;
-        }
+        // 炎の詠唱後、設定済みなら攻撃シーケンスで、無効なら固定間隔の処理で弾を出す。
+        if (windup) {
+            if (effectTimer_ <= 0.0f) {
+                const engine::Vector3 corePosition = GetWorldPosition() + engine::Vector3{0.0f, baseScale_.y * 0.48f, 0.0f};
+                EmitDirectedPreset(kFireCastPreset, corePosition, lockedDirection_, 0.72f + progress * 0.55f);
+                effectTimer_ += 0.085f;
+            }
+        } else {
+            if (attack.sequence.enabled) {
+                attackSequence_.Update(deltaTime, MakeSequenceContext());
+                break;
+            }
 
-        while (actionIndex_ < kFireFanProjectileCount && actionTimer_ <= 0.0f) {
-            FireNextFanProjectile();
-            ++actionIndex_;
-            actionTimer_ += kFireFanInterval;
+            while (actionIndex_ < kFireFanProjectileCount && actionTimer_ <= 0.0f) {
+                FireNextFanProjectile();
+                ++actionIndex_;
+                actionTimer_ += kFireFanInterval;
+            }
         }
-
         break;
 
     case AttackKind::ThunderChain:
-        while (actionIndex_ < static_cast<int>(thunderStrikePositions_.size()) && actionTimer_ <= 0.0f) {
-            StrikeNextThunderPoint();
-            ++actionIndex_;
-            actionTimer_ += kThunderStrikeInterval;
+        // 本体の蓄電を見せてから、用意した位置へ順に雷を落とす。
+        if (windup) {
+            if (effectTimer_ <= 0.0f) {
+                EmitPreset(kThunderChargePreset, GetWorldPosition() + engine::Vector3{0.0f, baseScale_.y * 0.58f, 0.0f});
+                effectTimer_ += 0.065f - progress * 0.025f;
+            }
+        } else {
+            while (actionIndex_ < static_cast<int>(thunderStrikePositions_.size()) && actionTimer_ <= 0.0f) {
+                StrikeNextThunderPoint();
+                ++actionIndex_;
+                actionTimer_ += kThunderStrikeInterval;
+            }
         }
-
         break;
 
     case AttackKind::WindWave:
-        windTornadoAge_ += deltaTime;
-
-        for (std::size_t index = 0; index < windVortices_.size(); ++index) {
-            WindVortexVisual& vortex = windVortices_[index];
-            if (windTornadoAge_ <= 0.16f + static_cast<float>(index) * 0.15f ||
-                windTornadoAge_ >= attack.activeDuration - 0.18f)
-                continue;
-            vortex.driftTimer -= deltaTime;
-
-            if (vortex.driftTimer <= 0.0f) {
-                const float angle = NextSummonRandom01(windRandomState_) * kPi * 2.0f;
-                vortex.direction = {std::sin(angle), 0.0f, std::cos(angle)};
-                vortex.driftTimer += 0.26f;
+        // 風を集める予兆を出し、発動後は渦の位置と押し出し判定を更新する。
+        if (windup) {
+            if (effectTimer_ <= 0.0f) {
+                EmitDirectedPreset(kWindChargePreset, GetWorldPosition() + engine::Vector3{0.0f, baseScale_.y * 0.42f, 0.0f},
+                                   lockedDirection_ * -1.0f + engine::Vector3{0.0f, 0.16f, 0.0f}, 0.85f + progress * 0.70f);
+                effectTimer_ += 0.07f;
             }
+        } else {
+            // 発動開始からの時間を基準に、渦ごとに移動を始める時刻をずらす。
+            windTornadoAge_ += deltaTime;
 
-            engine::Vector3 candidate = vortex.position + vortex.direction * (deltaTime * 2.3f);
-            engine::Vector3 fromOrigin = candidate - vortex.origin;
-            fromOrigin.y = 0.0f;
-            const float drift = engine::Math::Length(fromOrigin);
-            if (drift > 1.35f)
-                candidate = vortex.origin + fromOrigin * (1.35f / drift);
-            vortex.position = FindGroundPoint(candidate);
-        }
-
-        if (effectTimer_ <= 0.0f) {
             for (std::size_t index = 0; index < windVortices_.size(); ++index) {
-                if (windTornadoAge_ < 0.16f + static_cast<float>(index) * 0.15f)
+                WindVortexVisual& vortex = windVortices_[index];
+                if (windTornadoAge_ <= 0.16f + static_cast<float>(index) * 0.15f ||
+                    windTornadoAge_ >= attack.activeDuration - 0.18f)
                     continue;
-                const float orbit = windTornadoAge_ * 12.0f + static_cast<float>(index) * 2.1f;
-                const WindVortexVisual& vortex = windVortices_[index];
-                const float radius = index == 0 ? 1.6f : 1.1f;
-                const engine::Vector3 origin =
-                    vortex.position + engine::Vector3{std::cos(orbit) * radius, 0.35f + std::fmod(windTornadoAge_ * 3.2f, 3.8f),
-                                              std::sin(orbit) * radius};
-                EmitDirectedPreset(kWindStreamPreset, origin, engine::Vector3{-std::sin(orbit), 0.75f, std::cos(orbit)},
-                                   index == 0 ? 1.15f : 0.92f);
-                EmitPreset(kWindDustPreset, vortex.position + engine::Vector3{0.0f, 0.12f, 0.0f});
+                vortex.driftTimer -= deltaTime;
+
+                if (vortex.driftTimer <= 0.0f) {
+                    const float angle = NextSummonRandom01(windRandomState_) * kPi * 2.0f;
+                    vortex.direction = {std::sin(angle), 0.0f, std::cos(angle)};
+                    vortex.driftTimer += 0.26f;
+                }
+
+                // 渦は初期位置を中心とした範囲内で漂わせ、高さは候補位置の地面へ合わせる。
+                engine::Vector3 candidate = vortex.position + vortex.direction * (deltaTime * 2.3f);
+                engine::Vector3 fromOrigin = candidate - vortex.origin;
+                fromOrigin.y = 0.0f;
+                const float drift = engine::Math::Length(fromOrigin);
+                if (drift > 1.35f)
+                    candidate = vortex.origin + fromOrigin * (1.35f / drift);
+                vortex.position = FindGroundPoint(candidate);
             }
 
-            effectTimer_ += 0.09f;
-        }
+            if (effectTimer_ <= 0.0f) {
+                // 粒子は移動開始時刻を過ぎた渦にだけ出し、更新後の中心に合わせる。
+                for (std::size_t index = 0; index < windVortices_.size(); ++index) {
+                    if (windTornadoAge_ < 0.16f + static_cast<float>(index) * 0.15f)
+                        continue;
+                    const float orbit = windTornadoAge_ * 12.0f + static_cast<float>(index) * 2.1f;
+                    const WindVortexVisual& vortex = windVortices_[index];
+                    const float radius = index == 0 ? 1.6f : 1.1f;
+                    const engine::Vector3 origin =
+                        vortex.position + engine::Vector3{std::cos(orbit) * radius, 0.35f + std::fmod(windTornadoAge_ * 3.2f, 3.8f),
+                                                  std::sin(orbit) * radius};
+                    EmitDirectedPreset(kWindStreamPreset, origin, engine::Vector3{-std::sin(orbit), 0.75f, std::cos(orbit)},
+                                       index == 0 ? 1.15f : 0.92f);
+                    EmitPreset(kWindDustPreset, vortex.position + engine::Vector3{0.0f, 0.12f, 0.0f});
+                }
 
-        if (actionTimer_ <= 0.0f && windTornadoAge_ >= 0.16f) {
-            ApplyWindTornado();
-            actionTimer_ = kWindPushInterval;
-        }
+                effectTimer_ += 0.09f;
+            }
 
+            // 押し出しは先頭の渦が動き始める時刻から、表示用粒子とは別の間隔で適用する。
+            if (actionTimer_ <= 0.0f && windTornadoAge_ >= 0.16f) {
+                ApplyWindTornado();
+                actionTimer_ = kWindPushInterval;
+            }
+        }
         break;
 
     case AttackKind::SlimeSummon:
-        while (actionIndex_ < static_cast<int>(summonPortalVisuals_.size()) && actionTimer_ <= 0.0f) {
-            SpawnNextSummonedSlime();
-            ++actionIndex_;
-            actionTimer_ += kSummonInterval;
+        // 溜め粒子の後、既に用意したポータルからスライムを順に出す。
+        if (windup) {
+            if (effectTimer_ <= 0.0f) {
+                EmitPreset(kPrismChargePreset, GetWorldPosition() + engine::Vector3{0.0f, baseScale_.y * 0.52f, 0.0f});
+                effectTimer_ += 0.12f - progress * 0.035f;
+            }
+        } else {
+            while (actionIndex_ < static_cast<int>(summonPortalVisuals_.size()) && actionTimer_ <= 0.0f) {
+                SpawnNextSummonedSlime();
+                ++actionIndex_;
+                actionTimer_ += kSummonInterval;
+            }
         }
-
         break;
 
     default:
         break;
     }
 
-    if (attackTimer_ <= 0.0f) {
+    if (windup) {
+        if (!warningTriggered_ && attackTimer_ <= attack.warningLeadTime) {
+            // 技ごとの属性色は予告が始まる一回だけ通知し、毎フレームの重複発火を防ぐ。
+            engine::Vector4 cueColor = {0.52f, 0.96f, 1.0f, 1.0f};
+            if (currentAttack_ == AttackKind::FireFan)
+                cueColor = {1.0f, 0.28f, 0.05f, 1.0f};
+            if (currentAttack_ == AttackKind::ThunderChain)
+                cueColor = {1.0f, 0.92f, 0.12f, 1.0f};
+            if (currentAttack_ == AttackKind::WindWave)
+                cueColor = {0.58f, 1.0f, 0.86f, 1.0f};
+            if (currentAttack_ == AttackKind::SlimeSummon)
+                cueColor = {0.96f, 0.58f, 1.0f, 1.0f};
+            if (currentAttack_ == AttackKind::CrystalLanceVolley)
+                cueColor = {0.58f, 0.82f, 1.0f, 1.0f};
+            TriggerAttackTelegraphCue(cueColor);
+            warningTriggered_ = true;
+        }
+
+        // 予兆を描いたフレームの最後で実行へ切り替え、各技の発生時刻を初期化する。
+        if (attackTimer_ <= 0.0f) {
+            attackState_ = AttackState::Active;
+            attackStateDuration_ = (std::max)(0.08f, attack.activeDuration);
+
+            if (currentAttack_ == AttackKind::FireFan && attack.sequence.enabled) {
+                // この接続先では詠唱完了を時刻0とします。予備動作の長さを変えても発射間隔は変わりません。
+                attackStateDuration_ = (std::max)(attackStateDuration_, attack.sequence.duration);
+                attackSequence_.Start(attack, MakeSequenceContext());
+            }
+
+            attackTimer_ = attackStateDuration_;
+            effectTimer_ = 0.0f;
+            actionTimer_ = 0.0f;
+            actionIndex_ = 0;
+
+            // 渦の漂流を初期位置から始め、同じ位置に発動時のリングを出す。
+            if (currentAttack_ == AttackKind::WindWave) {
+                windTornadoAge_ = 0.0f;
+
+                for (std::size_t index = 0; index < windVortices_.size(); ++index) {
+                    WindVortexVisual& vortex = windVortices_[index];
+                    vortex.position = vortex.origin;
+                    vortex.driftTimer = 0.0f;
+                    EmitPreset(kWindImpactPreset, vortex.origin + engine::Vector3{0.0f, 0.12f, 0.0f});
+
+                    if (MeshEffectManager* effects = MeshEffectManager::GetInstance()) {
+                        const float radius = attack.radius * (index == 0 ? 1.0f : 0.72f);
+                        effects->SpawnEffectAt(kWindRingEffect, vortex.origin + engine::Vector3{0.0f, 0.06f, 0.0f},
+                                               {0.0f, 0.0f, 0.0f}, {radius, 1.0f, radius});
+                    }
+                }
+            }
+
+            HideAttackTelegraph();
+        }
+    } else if (attackTimer_ <= 0.0f) {
+        // 最後の発射や押し出しを処理してから、硬直へ進む。
         BeginRecovery();
     }
 }
@@ -945,6 +957,7 @@ void EnemyPrismSlime::FinishAttack() {
         summonPortalVisuals_.clear();
     }
 
+    // 設置型の表示で、この技の詠唱や発動中だけ必要だった部品を解放する。
     crystalCircle_.reset();
     crystalCircleGlow_.reset();
     prismSpikeSector_.reset();
@@ -961,6 +974,7 @@ void EnemyPrismSlime::FinishAttack() {
             effect.reset();
     }
 
+    // 残っている詠唱を閉じて技を未選択に戻し、再配置に引き渡す。
     chantVisual_.reset();
     currentAttack_ = AttackKind::None;
     attackTimer_ = 0.0f;
@@ -1305,6 +1319,7 @@ void EnemyPrismSlime::UpdatePhaseAppearance() {
 }
 
 void EnemyPrismSlime::ApplySlimeAnimation(float deltaTime) {
+    // 配置倍率を基準に、地上移動・技・硬直の見た目を順に決める。
     SlimeBounceAnimator::Params params;
     params.speedForFullBounce = 3.2f;
     params.idleAmplitude = 0.035f;
@@ -1317,6 +1332,7 @@ void EnemyPrismSlime::ApplySlimeAnimation(float deltaTime) {
     engine::Vector3 targetScale = SlimeBounceAnimator::MakeScale(baseScale_, GetVelocity(), idleTimer_, IsGrounded(), params);
     engine::Vector3 targetRotation = {0.0f, GetRotation().y, 0.0f};
 
+    // 専用移動では踏み切り前に圧縮し、跳躍中に伸び、着地後に圧縮から戻す。
     if (attackState_ == AttackState::Idle && locomotion_.IsActive()) {
         const float progress = locomotion_.GetProgress();
         if (locomotion_.GetPhase() == BossGroundLocomotion::Phase::Windup) {
@@ -1347,6 +1363,7 @@ void EnemyPrismSlime::ApplySlimeAnimation(float deltaTime) {
                        baseScale_.z * (1.0f + breath * 0.5f)};
     }
 
+    // 通常の移動姿勢へ技の予備動作を上書きし、晶槍だけは力を溜めながら上へ伸びる。
     if (attackState_ == AttackState::Windup) {
         const float progress = SmoothStep01(1.0f - attackTimer_ / (std::max)(0.01f, attackStateDuration_));
         const float tremble = std::sin(progress * kPi * 12.0f) * 0.018f * progress;
@@ -1367,10 +1384,12 @@ void EnemyPrismSlime::ApplySlimeAnimation(float deltaTime) {
         const float progress = 1.0f - attackTimer_ / (std::max)(0.01f, attackStateDuration_);
         const float pulse = std::sin(progress * kPi * 5.0f);
 
+        // 実行中は棘の連続隆起に合わせ、低く横に広げた姿勢で脈動する。
         if (currentAttack_ == AttackKind::PrismSpikes) {
             targetScale = {baseScale_.x * (1.28f + pulse * 0.06f), baseScale_.y * 0.74f,
                            baseScale_.z * (1.28f - pulse * 0.04f)};
         } else if (currentAttack_ == AttackKind::CrystalLanceVolley) {
+            // 晶槍の斉射は槍の本数に応じた反動と前後の傾きで見せる。
             const float recoil = std::sin(progress * kPi * static_cast<float>(kCrystalLanceCount));
             targetScale = {
                 baseScale_.x * (1.12f + std::abs(recoil) * 0.055f),
@@ -1384,6 +1403,7 @@ void EnemyPrismSlime::ApplySlimeAnimation(float deltaTime) {
                            baseScale_.z * (1.22f - pulse * 0.06f)};
             targetRotation.x = -0.08f + pulse * 0.025f;
         } else if (currentAttack_ == AttackKind::ThunderChain) {
+            // 連続落雷には炎の連射より速い震えを使い、横向きの傾きも加える。
             const float jitter = std::sin(progress * kPi * 18.0f) * 0.045f;
             targetScale = {baseScale_.x * (1.14f + jitter), baseScale_.y * (0.82f - std::abs(jitter) * 0.4f),
                            baseScale_.z * (1.14f - jitter)};
@@ -1423,6 +1443,7 @@ void EnemyPrismSlime::ApplySlimeAnimation(float deltaTime) {
                                              4.0f, 0.055f, 0.075f);
     }
 
+    // 最後に被弾の姿勢を重ね、現在姿勢から補間して段階の境目の跳ねを抑える。
     ApplyDamageReactionPose(targetScale, targetRotation);
     const float rate = 1.0f - std::exp(-deltaTime * 11.0f);
     const engine::Vector3 currentScale = GetScale();
@@ -1473,7 +1494,7 @@ void EnemyPrismSlime::SyncCollisionRadius() {
     // コライダーは配置時の基準スケールへ固定します。
     const engine::Vector3 collisionScale = hasBaseScale_ ? baseScale_ : GetScale();
 
-    if (Collider* collider = GetCollider()) {
+    if (engine::Collider* collider = GetCollider()) {
         collider->SetScaleOverride(collisionScale);
     }
 

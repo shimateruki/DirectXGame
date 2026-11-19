@@ -28,9 +28,10 @@ class EnemyBomb : public BaseEnemy {
     // プレイヤーの爆弾が敵に当たったら即座に爆発し、通常の接触は基底クラスへ渡す。
     bool OnCollision(engine::Object3D* other) override;
 
-    // 運搬時の移動状態を切り替え、自爆能力を実行する。
+    // 拾い上げると点火し、運搬解除時は投擲用の接触設定へ切り替えます。
     void SetCarried(bool isCarried) override;
 
+    // 吸収による自爆では、プレイヤーを被弾状態へ移してから爆発させます。
     void ExecuteAbility(class Player* player) override;
 
     // 導火線を指定秒数から開始し、点滅と膨縮の演出も先頭へ戻す。
@@ -47,7 +48,7 @@ class EnemyBomb : public BaseEnemy {
     void ApplyManagedScale(const engine::Vector3& scale) override;
 
   private:
-    // プレイヤー追跡と導火線点火後の警告演出をそれぞれ更新する。
+    // 検知範囲内で追跡し、点火距離まで入ると導火線を開始します。
     void UpdateChase(float deltaTime);
 
     // 空中の水平速度は保ち、接地時の減速はUpdateBombPhysicsで扱う。

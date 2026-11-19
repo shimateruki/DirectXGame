@@ -9,6 +9,7 @@ engine::Vector3 MoveStrategy2D::CalculateVelocity(Player* player) {
 
     engine::InputManager* inputManager = player->GetInputManager();
 
+    // 入力がまだ使えない場合は、横移動を要求しない。
     if (!inputManager) {
         return move;
     }
@@ -18,6 +19,7 @@ engine::Vector3 MoveStrategy2D::CalculateVelocity(Player* player) {
         move.x = -moveSpeed;
     }
 
+    // 左右同時押しでは後に評価する右入力が優先される。
     if (inputManager->IsKeyPressed(DIK_D)) {
         move.x = moveSpeed;
     }

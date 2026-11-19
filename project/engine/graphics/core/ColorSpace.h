@@ -33,6 +33,7 @@ private:
 /// <summary>sRGB の単一チャンネルを線形値へ変換します。</summary>
 inline float SRGBToLinearChannel(float value) {
     value = (std::max)(value, 0.0f);
+    // sRGBの暗部は直線、それより明るい部分はべき乗の式で線形値へ戻します。負値だけを0へ丸めています。
     return value <= 0.04045f
         ? value / 12.92f
         : std::pow((value + 0.055f) / 1.055f, 2.4f);

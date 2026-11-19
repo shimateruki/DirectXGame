@@ -35,6 +35,7 @@ void PlayerGateReturnAnimation::Start(Player* player, const Route& route) {
         return;
     }
 
+    // 演出の姿勢を直接適用できるよう、開始時に入力・速度・当たり判定を止めます。
     player->SetIsVisible(true);
     player->SetIsControlActive(false);
     player->SetVelocity({0.0f, 0.0f, 0.0f});
@@ -120,6 +121,7 @@ void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime) 
         return;
     }
 
+    // 最初の接地と一度目の跳ねが終わる位置を、帰還先と同じ地面高さにそろえます。
     engine::Vector3 landing = Lerp(route_.gateCenter, route_.end, 0.38f);
     landing.y = route_.end.y;
     engine::Vector3 firstBounceEnd = Lerp(landing, route_.end, 0.55f);
@@ -130,6 +132,7 @@ void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime) 
     float pitch = 0.0f;
     float roll = 0.0f;
 
+    // ゲートを抜けてから地面に届くまで、水平の曲線移動と鉛直の落下を別に求めます。
     if (normalizedTime < kLandingPhaseEnd) {
         const float phaseT = Clamp01(normalizedTime / kLandingPhaseEnd);
         const float moveT = EaseOutCubic(phaseT);
@@ -168,6 +171,7 @@ void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime) 
                  route_.baseScale.z * (1.0f + launchSquash * 0.24f - airborneStretch * 0.05f + landingSquash * 0.26f)};
         pitch = -route_.direction.z * std::sin(phaseT * std::numbers::pi_v<float>) * 0.18f;
         roll = route_.direction.x * std::sin(phaseT * std::numbers::pi_v<float>) * 0.16f;
+    // 最初の接地後は大きく弾み、終盤に縮めて次の接地を見せます。
     } else if (normalizedTime < kFirstBounceEnd) {
         const float phaseT = Clamp01((normalizedTime - kLandingPhaseEnd) / (kFirstBounceEnd - kLandingPhaseEnd));
         const float moveT = EaseInOutCubic(phaseT);
@@ -182,6 +186,7 @@ void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime) 
         pitch = -route_.direction.z * std::sin(phaseT * std::numbers::pi_v<float>) * 0.12f;
         roll = route_.direction.x * std::sin(phaseT * std::numbers::pi_v<float>) * 0.10f;
     } else {
+        // 最後は小さく弾みながら終点に近づき、基準姿勢に戻します。
         const float phaseT = Clamp01((normalizedTime - kFirstBounceEnd) / (1.0f - kFirstBounceEnd));
         const float moveT = EaseInOutCubic(phaseT);
         position = Lerp(firstBounceEnd, route_.end, moveT);
@@ -197,6 +202,7 @@ void PlayerGateReturnAnimation::ApplyPose(Player* player, float normalizedTime) 
         roll = route_.direction.x * std::sin(phaseT * std::numbers::pi_v<float>) * 0.05f;
     }
 
+    // 通常移動を止めたまま演出で決めた位置・向き・形状を反映し、行列を確定します。
     player->SetIsVisible(true);
     player->SetIsControlActive(false);
     player->SetVelocity({0.0f, 0.0f, 0.0f});
@@ -225,6 +231,7 @@ void PlayerGateReturnAnimation::ApplyFinishedPose(Player* player, bool restoreCo
         player->SetIsControlActive(savedControlActive_);
     }
 
+    // 中断でも途中の位置を残さず終点へ置き、横倒しになった演出角を消してから行列を確定します。
     player->SetTranslate(route_.end);
     player->SetScale(route_.baseScale);
     player->SetEulerX(0.0f);

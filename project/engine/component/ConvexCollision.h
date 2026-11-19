@@ -33,8 +33,10 @@ inline std::vector<Face> Build(const std::vector<V>& input) {
         if (std::none_of(points.begin(), points.end(), [&](const V& q) { return Dot(p-q,p-q)<1e-10f; }))
             points.push_back(p);
     }
+    // 重複頂点を除いた後で四面体を作れる点数がなければ、体積を持つ凸包を作れない。
     if (points.size()<4)
         return {};
+    // 基準点、そこから最遠の点、二点を結ぶ直線から最遠の点の順に、初期三角形の頂点を選ぶ。
     size_t a=0,b=0,c=0,d=0;
     float best=0;
     for (size_t i=1;i<points.size();++i) {
@@ -55,6 +57,7 @@ inline std::vector<Face> Build(const std::vector<V>& input) {
     }
     if(best<1e-12f)
         return {};
+    // 三角形の平面から法線方向に最も離れた点を四つ目の頂点にして、平面の退化を避ける。
     const V n=Normal({points[a],points[b],points[c]});
     best=0;
     for(size_t i=0;i<points.size();++i) {
@@ -117,6 +120,7 @@ inline V Closest(const V& p,const Face& f) {
     const float d3=Dot(ab,bp),d4=Dot(ac,bp);
     if(d3>=0 && d4<=d3)
         return b;
+    // AとBを結ぶ辺の外側へ射影される場合は、その辺の上で最近点を補間する。
     const float vc=d1*d4-d3*d2;
     if(vc<=0 && d1>=0 && d3<=0)
         return a+ab*(d1/(d1-d3));
@@ -124,12 +128,15 @@ inline V Closest(const V& p,const Face& f) {
     const float d5=Dot(ab,cp),d6=Dot(ac,cp);
     if(d6>=0 && d5<=d6)
         return c;
+    // AとCを結ぶ辺でも同じ判定を行い、該当すればその辺へ制限する。
     const float vb=d5*d2-d1*d6;
     if(vb<=0 && d2>=0 && d6<=0)
         return a+ac*(d2/(d2-d6));
+    // 残るBとCを結ぶ辺を確認してから、三角形の内部へ進む。
     const float va=d3*d6-d5*d4;
     if(va<=0 && d4-d3>=0 && d5-d6>=0)
         return b+(c-b)*((d4-d3)/((d4-d3)+(d5-d6)));
+    // 辺や頂点が最近点となる場合を除いた後、三角形内の重みを正規化して位置を補間する。
     const float inverse=1.0f/(va+vb+vc);
     return a+ab*(vb*inverse)+ac*(vc*inverse);
 }
@@ -149,6 +156,7 @@ inline bool Ray(const std::vector<Face>& hull,const V& start,const V& direction,
                 return false;
             continue;
         }
+        // 平面までの符号付き距離を法線方向の速度で割る。負の速度は入射、正は退出の境界を決める。
         const float t=-signedDistance/speed;
         if(speed<0) {
             if(t>enter){
@@ -163,6 +171,7 @@ inline bool Ray(const std::vector<Face>& hull,const V& start,const V& direction,
         if(enter>exit)
             return false;
     }
+    // 始点が凸包内なら最初に出る面、外なら最初に入る面を接触として返す。
     distance=inside?exit:enter;
     normal=inside?exitNormal:enterNormal;
     return distance>=0 && distance<=limit && Dot(normal,normal)>0.5f;
@@ -190,10 +199,12 @@ inline bool Sphere(const std::vector<Face>& hull,const V& center,float radius,fl
         }
     }
     if(inside){
+        // 球が内部にある場合は最寄りの面までの距離に半径を足し、球全体が外へ出る量を返す。
         depth=radius-plane;
         normal=planeNormal;
         return true;
     }
+    // 球の中心が凸包外なら、表面の最近点へ届く場合だけ半径との差を押し戻し量にする。
     const float distance=std::sqrt(nearest);
     if(distance>=radius)
         return false;
@@ -227,6 +238,7 @@ inline bool Polyhedra(const std::vector<V>& pointsA, const std::vector<V>& norma
             minB = (std::min)(minB, value);
             maxB = (std::max)(maxB, value);
         }
+        // 二つの投影を正と負のどちらへ動かすと離れるか調べ、全軸のうち最小の移動量と向きを残す。
         const float positive = maxA - minB, negative = maxB - minA;
         if (positive <= 0 || negative <= 0)
             return false;
@@ -267,6 +279,7 @@ inline bool Box(const std::vector<V>& points, const std::vector<V>& normals, con
             maximum=(std::max)(maximum,value);
         }
         const float middle=Dot(center,axis);
+        // それぞれの箱の軸を判定軸へ射影し、半寸法で重みを付けて中心からの幅を得る。
         const float extent=std::abs(Dot(boxAxes[0],axis))*halfSize.x+
                            std::abs(Dot(boxAxes[1],axis))*halfSize.y+
                            std::abs(Dot(boxAxes[2],axis))*halfSize.z;

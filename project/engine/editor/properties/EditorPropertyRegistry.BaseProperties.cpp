@@ -67,6 +67,7 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
         [](engine::Object3D& object, const json& value) {
             if (!value.is_array() || value.size() < 3)
                 return false;
+            // 親がいる場合も入力はローカル座標。親の変換との合成は後続のワールド行列更新に任せる。
             object.SetTranslate({ value[0].get<float>(), value[1].get<float>(), value[2].get<float>() });
             object.UpdateLocalMatrix();
             object.UpdateWorldMatrix();
@@ -82,6 +83,7 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
         [](engine::Object3D& object, const json& value) {
             if (!value.is_array() || value.size() < 3)
                 return false;
+            // 保存値と Setter の角度はラジアン。度表示との変換は EditorPropertyDrawer が担当する。
             object.SetRotation({ value[0].get<float>(), value[1].get<float>(), value[2].get<float>() });
             object.UpdateLocalMatrix();
             object.UpdateWorldMatrix();
@@ -136,6 +138,7 @@ void EditorPropertyRegistry::RegisterBuiltInBaseProperties() {
         },
     });
 
+    // カメラと注視点の間に入ったときの透過方針。保存された番号を保つため選択肢は列挙値の順に並べる。
     EditorPropertyDescriptor occlusion{
         "rendering.cameraOcclusionMode", "視界確保（0:自動 / 1:透過 / 2:維持）", "Rendering", EditorPropertyType::Integer, CommonFlags(),
         [](const engine::Object3D& object) { return json(static_cast<int>(object.GetCameraOcclusionMode())); },

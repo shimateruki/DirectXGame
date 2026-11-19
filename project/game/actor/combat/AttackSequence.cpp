@@ -42,8 +42,10 @@ bool AttackSequence::Start(const EnemyAttackDefinition& definition, const Attack
 }
 
 void AttackSequence::Update(float deltaTime, const AttackSequenceContext& context) {
+    // 終了済みの攻撃や不正な経過時間では、イベントを進めない。
     if (!IsRunning() || !std::isfinite(deltaTime) || deltaTime < 0)
         return;
+    // 通過区間の始点を記録してから時計を進め、発火条件の判定とイベント実行を渡す。
     const float previous = clock_.GetElapsed();
     clock_.Update(deltaTime, [&](const std::string& condition) { return CheckCondition(condition, context); },
         [&](const AttackSequenceEvent& event) { Execute(event, context); });
@@ -51,6 +53,7 @@ void AttackSequence::Update(float deltaTime, const AttackSequenceContext& contex
     // 条件停止の前に通過した判定区間は処理し、停止時刻より後は処理しません。
     if (!clock_.WasStoppedByCondition() || clock_.GetElapsed() > previous)
         UpdateTracks(previous, context);
+    // 最後の判定を処理した後、継続中の姿勢やエフェクトを次の攻撃へ持ち越さないようにする。
     if (!IsRunning())
         ReleaseTrackEffects();
     // Editorのプレビューでも実行・省略・接触の内訳を同じ時計から読めるよう集計する。
@@ -132,6 +135,7 @@ void AttackSequence::UpdateTracks(float previous, const AttackSequenceContext& c
             continue;
         if (clock_.WasStoppedByCondition() && now <= track.begin)
             continue;
+        // 開始時刻を通過した最初の更新でだけ、トラック自身の条件と分岐元の結果を確認します。
         if (!state.entered) {
             state.entered = true;
             state.allowed = CheckCondition(track.condition, context);
@@ -148,6 +152,7 @@ void AttackSequence::UpdateTracks(float previous, const AttackSequenceContext& c
             continue;
         if (track.parentTrack >= 0 && !trackStates_[track.parentTrack].allowed)
             continue;
+        // 開始時の基準、追従中の術者、親トラックの順に使用する座標を決めます。
         auto origin = track.followOwner ? context : initialContext_;
 
         if (track.parentTrack >= 0) {
@@ -165,10 +170,12 @@ void AttackSequence::UpdateTracks(float previous, const AttackSequenceContext& c
             return origin.position + right * key.position[0] + engine::Vector3{0, key.position[1], 0} + forward * key.position[2];
         };
 
+        // 攻撃全体の時刻を各トラックの範囲に切り詰め、前回の位置と今回の位置を求めます。
         const float localTime = std::clamp(now - track.begin, 0.0f, track.end - track.begin);
         const auto key = track.Evaluate(localTime);
         state.frameStartPosition = positionAt(track.Evaluate(std::clamp(previous - track.begin, 0.0f, track.end - track.begin)));
 
+        // キーに従わないトラックは開始位置を一度決め、弾道設定と現在の標的を渡して移動状態を進めます。
         if (track.motion != "keyframed") {
             if (!state.motionInitialized) {
                 state.motion.position = positionAt(track.Evaluate(0));
@@ -183,6 +190,7 @@ void AttackSequence::UpdateTracks(float previous, const AttackSequenceContext& c
         state.worldForward = track.motion != "keyframed" ? state.motion.direction : forward;
 
         if (track.type == "body_animation") {
+            // 本体アニメーションはクリップの時刻を求め、開始と終了のブレンドを掛けた描画姿勢にします。
             if (now >= track.end || !bodyPose_)
                 continue;
             BodyAnimationClip::Sample sample;
@@ -198,6 +206,7 @@ void AttackSequence::UpdateTracks(float previous, const AttackSequenceContext& c
             const engine::Vector3 scale{1 + (sample.scale.x - 1) * weight, 1 + (sample.scale.y - 1) * weight, 1 + (sample.scale.z - 1) * weight};
             *bodyPose_ = engine::Math::Multiply(shear, engine::Math::MakeAffineMatrix(scale, sample.rotate * weight, sample.translate * weight));
         } else if (track.type == "mesh_vfx") {
+            // 継続するメッシュ演出は専用の発生枠を持ち、トラックが終わったらその枠だけ停止します。
             auto* effects = MeshEffectManager::GetInstance();
 
             if (now >= track.end) {
@@ -222,6 +231,7 @@ void AttackSequence::UpdateTracks(float previous, const AttackSequenceContext& c
                  key.rotation[1] + std::atan2(state.worldForward.x, state.worldForward.z), key.rotation[2]},
                 {key.scale[0], key.scale[1], key.scale[2]});
         } else if (track.type == "hitbox" && previous < track.end && now >= track.begin) {
+            // 攻撃判定は有効区間を通った更新だけ出し、術者の所属から攻撃相手を選びます。
             PhysicsQueryFilter filter;
             filter.mask = CollisionCategories::Get(context.playerOwned ? "enemy" : "player");
             filter.ignoredObject = context.owner;
@@ -229,6 +239,7 @@ void AttackSequence::UpdateTracks(float previous, const AttackSequenceContext& c
             auto oldKey = track.Evaluate(previousLocal);
             engine::Vector3 oldPosition = state.hasPreviousPosition ? state.previousPosition : positionAt(oldKey);
 
+            // 親が動いたフレームで判定が始まった場合にも、開始時刻に対応する親の位置を復元します。
             if (!state.hasPreviousPosition && track.parentTrack >= 0) {
                 const auto& parent = definition_.sequence.tracks[track.parentTrack];
                 const auto& parentState = trackStates_[track.parentTrack];
@@ -278,6 +289,7 @@ void AttackSequence::UpdateTracks(float previous, const AttackSequenceContext& c
                 oldPosition = position;
             }
 
+            // 次の掃引でこの位置を出発点にできるよう、今回確定した末尾の位置を残します。
             state.previousPosition = positionAt(key);
             state.hasPreviousPosition = true;
         }
@@ -341,6 +353,7 @@ void AttackSequence::Execute(const AttackSequenceEvent& event, const AttackSeque
         visual.impactDirected = false;
     }
 
+    // 発射・着弾の表示と状態異常は、同じ攻撃設定から弾の生成先へ渡します。
     visual.trailPreset = part.trail;
     visual.trailSecondaryPreset = part.secondaryTrail;
     visual.impactPreset = part.impact;
@@ -358,6 +371,7 @@ void AttackSequence::Execute(const AttackSequenceEvent& event, const AttackSeque
     // 同じ攻撃定義を敵とプレイヤーのコピー能力で共用できるよう、所有者で衝突先を切り替える。
     const auto mask = CollisionCategories::Get(context.playerOwned ? "enemy" : "player") | CollisionCategories::Get("ground");
 
+    // 複数弾は指定角度の中に等間隔で展開し、一発なら照準の中心へ飛ばします。
     for (int i = 0; i < event.count; ++i) {
         const float angle = event.count == 1 ? 0.0f : (static_cast<float>(i) / (event.count - 1) - 0.5f) * event.spreadDegrees * (std::numbers::pi_v<float> / 180.0f);
         const engine::Vector3 spread{direction.x * std::cos(angle) + direction.z * std::sin(angle), direction.y,

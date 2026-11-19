@@ -28,8 +28,11 @@ struct CinematicTransformTrack {
     bool enabled = true;
     bool muted = false; // 再生評価から一時的に除外するか。
     bool locked = false; // Editorでの変更を抑止するか。
+    // 開始時の姿勢に記録値を足し、拡縮は倍率として掛けます。アンカー基準の指定があればそちらを優先します。
     bool relative = false;
+    // 指定アンカーの位置とY回転を基準にします。対象とアンカーは親を持たないことが前提です。
     bool anchorRelative = false;
+    // クリップの終端を越えた後も最後の姿勢を使用します。falseなら開始前の姿勢へ戻します。
     bool holdLast = true;
     std::vector<CinematicTransformKey> keys;
 };
@@ -77,6 +80,7 @@ struct CinematicAnimationClipData {
 
     float startTime = 0.0f; // シーケンス先頭からの開始秒数。
     float duration = 1.0f; // トラック・クリップの長さ（秒）。
+    // 素材内の評価秒に掛ける倍率です。タイムラインに占める長さは duration が決めます。
     float playbackSpeed = 1.0f;
 
     float blendInDuration = 0.12f;
@@ -148,6 +152,9 @@ class CinematicSequence {
     /// <param name="filePath">保存先のファイルパス。</param>
     /// <returns>ファイルを開いて保存できた場合は true。</returns>
     bool Save(const std::filesystem::path& filePath) const;
+
+    // 保存内容をメモリ上で比較するため、同じJSONを文字列に変換する。
+    std::string ToJsonText(int indent = -1) const;
 
     /// <summary>JSON ファイルを読み込み、各トラックの時刻順を整えます。</summary>
     /// <param name="filePath">読み込むファイルパス。</param>

@@ -28,8 +28,8 @@ inline void AfterDraw(SceneManager* manager,const std::string& path) {
     static ULONGLONG start=GetTickCount64();
     static int phase=0,stage=0,frames=0,savedCount=0;
     static bool done=false;
-    static std::unique_ptr<Camera> camera;
-    static Camera* previousCamera=nullptr;
+    static std::unique_ptr<engine::Camera> camera;
+    static engine::Camera* previousCamera=nullptr;
     static engine::Object3D* silver=nullptr;
     static engine::Object3D* gold=nullptr;
     auto finish=[&](const std::string& message){log<<message<<std::endl;done=true;CameraManager::GetInstance()->SetActiveCamera(previousCamera);WinApp::CloseNow();};
@@ -83,8 +83,8 @@ inline void AfterDraw(SceneManager* manager,const std::string& path) {
                 object->SetRotation({(std::numbers::pi_v<float> * 0.5f),0,0});object->SetScale({0.05f,0.05f,0.05f});object->UpdateWorldMatrix(true);
             }
             previousCamera=CameraManager::GetInstance()->GetActiveCameraOverride();
-            camera=std::make_unique<Camera>();camera->Initialize();camera->SetFovY(0.65f);
-            Camera::CameraOverrideParams view;view.duration=0;view.fixedEyePos=center+engine::Vector3{0,3,-17};
+            camera=std::make_unique<engine::Camera>();camera->Initialize();camera->SetFovY(0.65f);
+            engine::Camera::CameraOverrideParams view;view.duration=0;view.fixedEyePos=center+engine::Vector3{0,3,-17};
             view.fixedTargetPos=center;view.trackTargetX=view.trackTargetY=view.trackTargetZ=false;
             camera->StartOverride(view);camera->Update();CameraManager::GetInstance()->SetActiveCamera(camera.get());
             log<<"PASS stage="<<stage+1<<" saved models, silver presets, fresh-save restore and authored collision preserved"<<std::endl;

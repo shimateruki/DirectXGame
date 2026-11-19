@@ -36,6 +36,7 @@ void NavAgentComponent::SetAgentRadius(float value) {
 }
 
 void NavAgentComponent::SetAgentHeight(float value) {
+    // 半径の2倍以上を確保する。高さが変わると障害物の収集範囲も変わるため再探索する。
     agentHeight_ = (std::clamp)(value, agentRadius_ * 2.0f, 20.0f);
     InvalidatePath();
 }
@@ -57,6 +58,7 @@ void NavAgentComponent::InvalidatePath() {
     currentPath_.clear();
     waypointIndex_ = 0;
     repathTimer_ = 0.0f;
+    // 目標の比較も無効にして、同じ位置を指定されても次回は経路を新しく作る。
     hasLastTarget_ = false;
     lastPathSucceeded_ = false;
 }
@@ -69,10 +71,12 @@ engine::Vector3 NavAgentComponent::CalculateDirection(
     if (!enabled_ || !owner)
         return NormalizePlanar(direct);
 
+    // 停止距離はワールド単位なので二乗して比較する。上下差だけでは移動を続けない。
     if (PlanarDistanceSquared(currentPosition, targetPosition) <= stoppingDistance_ * stoppingDistance_) {
         return { 0.0f, 0.0f, 0.0f };
     }
 
+    // 非負の経過秒だけ減らす。停止中はこのタイマーだけを理由に再探索しない。
     repathTimer_ -= (std::max)(0.0f, deltaTime);
 
     // 目標がセル幅の半分以上動いたら、再探索間隔を待たずに経路を更新する。
@@ -112,6 +116,7 @@ bool NavAgentComponent::RebuildPath(
         (std::max)(currentPosition.z, targetPosition.z) + padding,
     };
 
+    // 出発地点の高さを探索面とし、エージェントの身長分にかかる障害物を拾う。
     settings.planeY = currentPosition.y;
     settings.cellSize = cellSize_;
     settings.agentRadius = agentRadius_;
@@ -131,6 +136,7 @@ bool NavAgentComponent::RebuildPath(
     waypointIndex_ = 0;
     lastPathSucceeded_ = grid_.Build(settings, filter) &&
         grid_.FindPath(currentPosition, targetPosition, currentPath_);
+    // 成功・失敗に関わらず、今回の探索時刻と入力位置を次回の比較に残す。
     repathTimer_ = repathInterval_;
     lastTargetPosition_ = targetPosition;
     hasLastTarget_ = true;

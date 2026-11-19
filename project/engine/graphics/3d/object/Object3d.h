@@ -32,7 +32,7 @@ using json = nlohmann::json;
 
 class GhostRecorder;
 class SceneManager;
-class Camera;
+namespace engine { class Camera; }
 #include "GpuParticleEmitter.h"
 class EffectObject3D;
 
@@ -51,7 +51,9 @@ public:
     struct DecalSettings {
         bool enabled = false;
         engine::Vector2 size = { 2.0f, 2.0f };
+        // 投影面と重なって表示がちらつくのを避けるため、面の法線側へずらす距離。
         float depthOffset = 0.012f;
+        // 正値の場合だけ表示中の経過秒を進め、寿命に達した時点で非表示にする。
         float lifetime = 0.0f;
         float fadeIn = 0.0f;
         float fadeOut = 0.35f;
@@ -78,12 +80,12 @@ public:
     static constexpr std::string_view kNavAgentComponentType = NavAgentComponent::kTypeId;
 
     // 互換性維持のためエイリアスを作成
-    using TransformationMatrix = MeshRenderer::TransformationMatrix;
-    using DirectionalLight = MeshRenderer::DirectionalLight;
-    using CameraForGpu = MeshRenderer::CameraForGpu;
-    using Material = MeshRenderer::MaterialData;
-    using MaterialState = MeshRenderer::MaterialState;
-    using PortalClipSettings = MeshRenderer::PortalClipSettings;
+    using TransformationMatrix = engine::MeshRenderer::TransformationMatrix;
+    using DirectionalLight = engine::MeshRenderer::DirectionalLight;
+    using CameraForGpu = engine::MeshRenderer::CameraForGpu;
+    using Material = engine::MeshRenderer::MaterialData;
+    using MaterialState = engine::MeshRenderer::MaterialState;
+    using PortalClipSettings = engine::MeshRenderer::PortalClipSettings;
 
     // ゲームロジック用パラメータ
     // 関連：Object3D（この型を使う機能の本体）
@@ -215,7 +217,7 @@ public:
         }
     };
 
-    using ColliderConfig = ::ColliderConfig;
+    using ColliderConfig = engine::ColliderConfig;
 
 public:
     /// <summary>描画や衝突の実行基盤をInitializeで受け取る前の状態を作る。</summary>
@@ -244,10 +246,10 @@ public:
     virtual void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource);
 
     /// <summary>通常描画定数を上書きせず、指定カメラのプレビューに描画する。</summary>
-    virtual void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex = 0);
+    virtual void DrawForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex = 0);
 
     /// <summary>指定カメラのプレビューに特殊マテリアルを描画する。</summary>
-    virtual void DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle, int previewBufferIndex = 0);
+    virtual void DrawSpecialMaterialForCamera(engine::Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle, int previewBufferIndex = 0);
 
     /// <summary>現在の材質に対応する特殊描画を、深度と画面色を使う描画区間で行う。</summary>
     void DrawSpecialMaterial(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
@@ -265,7 +267,7 @@ public:
     void DrawLocalFog(uint32_t depthSrvHandle);
 
     /// <summary>ローカルフォグのGPUパラメータを編集用に取得する。</summary>
-    MeshRenderer::LocalFogData* GetLocalFogData();
+    engine::MeshRenderer::LocalFogData* GetLocalFogData();
 
     /// <summary>このオブジェクトの複製を作る。</summary>
     virtual std::unique_ptr<Object3D> Clone() const;
@@ -409,6 +411,7 @@ public:
     }
 
     /// <summary>オブジェクト階層に属さない外部アンカーを親行列として参照する。</summary>
+    // アンカーは借用する。この操作は親Objectや子一覧を変えず、次の行列計算で参照するTransformだけを差し替える。
     void SetTransformAnchor(const Transform* anchor) { transform_.parent = anchor; }
 
     /// <summary>Euler角を設定し、回転の主表現をEuler角へ切り替える。</summary>
@@ -427,16 +430,16 @@ public:
 
     // 以下のモデルとマテリアル操作はMeshRendererへ委譲する。
     /// <summary>描画マテリアルを扱うレンダラーを返す。</summary>
-    MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
+    engine::MeshRenderer* GetMeshRenderer() const { return meshRenderer_.get(); }
 
     /// <summary>既存のモデルを描画対象に設定する。</summary>
-    void SetModel(Model* model);
+    void SetModel(engine::Model* model);
 
     /// <summary>モデル名から描画対象を探して設定する。</summary>
     void SetModel(const std::string& modelName);
 
     /// <summary>現在描画しているモデルを返す。</summary>
-    Model* GetModel() const;
+    engine::Model* GetModel() const;
 
     /// <summary>現在のモデル名を返す。</summary>
     std::string GetModelName() const;
@@ -545,13 +548,13 @@ public:
     bool IsPrefabInstance() const { return prefabInstanceInfo_.IsLinked(); }
 
     /// <summary>このObjectが所有するColliderへの非所有参照を返す。</summary>
-    Collider* GetCollider() const { return collider_.get(); }
+    engine::Collider* GetCollider() const { return collider_.get(); }
 
     /// <summary>衝突形状と判定設定をまとめて変更する。</summary>
-    void SetColliderConfig(const ColliderConfig& config);
+    void SetColliderConfig(const engine::ColliderConfig& config);
 
     /// <summary>現在の衝突判定設定を返す。</summary>
-    const ColliderConfig& GetColliderConfig() const;
+    const engine::ColliderConfig& GetColliderConfig() const;
 
     /// <summary>衝突形状の種類を設定する。</summary>
     void SetColliderType(ColliderType type);
@@ -591,10 +594,10 @@ public:
     bool LoadTerrainCollisionFromFile(const std::string& path);
 
     /// <summary>地形の衝突データと参照元パスを設定する。</summary>
-    void SetTerrainCollisionData(const TerrainCollisionData& data, const std::string& path = "");
+    void SetTerrainCollisionData(const engine::TerrainCollisionData& data, const std::string& path = "");
 
     /// <summary>地形の衝突データを返す。未設定ならnullptr。</summary>
-    const TerrainCollisionData* GetTerrainCollisionData() const;
+    const engine::TerrainCollisionData* GetTerrainCollisionData() const;
 
     /// <summary>地形衝突データの参照元パスを設定・取得する。データの読込は行わない。</summary>
     void SetTerrainCollisionPath(const std::string& path) { terrainCollisionPath_ = path; }
@@ -645,6 +648,7 @@ public:
     virtual void OnTriggerExit(const CollisionEvent& event) { (void)event; }
 
     /// <summary>静的Objectとして扱う設定を取得・変更する。</summary>
+    // 静的判定用の分類だけを切り替える。既に登録されている衝突グリッドはこの関数では更新しない。
     void SetStatic(bool isStatic) { isStatic_ = isStatic; }
 
     bool IsStatic() const { return isStatic_; }
@@ -665,6 +669,7 @@ public:
     /// <summary>指定項目だけを更新する。全パラメータのコピーやゲーム固有の補正は行わない。</summary>
     template<class Value>
     Value SetParameter(Value EntityParameter::* member, std::type_identity_t<Value> value) {
+        // 設定済みのパラメータが前提。未設定から編集を始める呼び出し元は先に ResetParameters() などで作成する。
         param_.value().*member = std::move(value);
         return param_.value().*member;
     }
@@ -726,6 +731,7 @@ public:
             editorHiddenReasonMask_ |= reasonMask;
         }
         else {
+            // 指定した非表示理由だけを取り除き、他のエディター操作で付いた理由は残す。
             editorHiddenReasonMask_ &= ~reasonMask;
         }
     }
@@ -746,6 +752,7 @@ public:
 
     /// <summary>視界を遮った際の透過方針を指定する。プレイヤーと敵本体の保護は解除しない。</summary>
     void SetCameraOcclusionMode(CameraOcclusionMode mode) {
+        // 整数から復元した値が定義外なら、旧データと同じ自動判定へ戻す。
         cameraOcclusionMode_ = mode >= CameraOcclusionMode::Automatic && mode <= CameraOcclusionMode::KeepVisible
             ? mode : CameraOcclusionMode::Automatic;
     }
@@ -1050,6 +1057,7 @@ public:
     /// <summary>環境マップの使用状態をレンダラーへ設定・取得する。</summary>
     void SetEnableEnvMap(bool enable) { if (meshRenderer_) meshRenderer_->SetEnableEnvMap(enable); }
 
+    // 描画器の初期化前は反射ありを既定として返す。
     bool GetEnableEnvMap() const { return meshRenderer_ ? meshRenderer_->GetEnableEnvMap() : true; }
 
     /// <summary>ライティング計算の有効状態を返す。レンダラー未初期化時はfalse。</summary>
@@ -1088,32 +1096,14 @@ public:
     /// <summary>レーザーマテリアルで描画する。</summary>
     void DrawLaser(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
 
-    /// <summary>スライムゲルの特殊マテリアルで描画する。</summary>
-    void DrawSlimeGel(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
-
     /// <summary>衝撃波の特殊マテリアルで描画する。</summary>
     void DrawShockwave(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
-
-    /// <summary>液体接触の特殊マテリアルで描画する。</summary>
-    void DrawLiquidContact(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
-
-    /// <summary>ダメージ亀裂の特殊マテリアルで描画する。</summary>
-    void DrawDamageCrack(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
-
-    /// <summary>上昇気流の特殊マテリアルで描画する。</summary>
-    void DrawUpdraft(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
 
     /// <summary>スタン拘束の特殊マテリアルで描画する。</summary>
     void DrawStunBind(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
 
     /// <summary>王冠解放の特殊マテリアルで描画する。</summary>
     void DrawCrownUnlock(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
-
-    /// <summary>毒胞子の特殊マテリアルで描画する。</summary>
-    void DrawPoisonSpore(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
-
-    /// <summary>雲の特殊マテリアルで描画する。</summary>
-    void DrawCloud(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
 
     /// <summary>ゲートポータルの特殊マテリアルで描画する。</summary>
     void DrawGatePortal(uint32_t depthSrvHandle, uint32_t grabSrvHandle);
@@ -1132,7 +1122,7 @@ public:
 
     /// <summary>指定カメラのプレビューへ、派生クラス所有の特殊材質演出を描く拡張点。</summary>
     virtual void DrawOwnedSpecialMaterialVisualsForCamera(
-        Camera* camera,
+        engine::Camera* camera,
         uint32_t depthSrvHandle,
         uint32_t grabSrvHandle,
         int previewBufferIndex = 0) {
@@ -1150,7 +1140,7 @@ public:
 
     /// <summary>指定カメラの半透明パスで、派生クラスが所有する表示物を描く。</summary>
     virtual void DrawOwnedTransparentVisualsForCamera(
-        Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource,
+        engine::Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource,
         int previewBufferIndex = 0) {
         (void)camera;
         (void)pointLightResource;
@@ -1254,14 +1244,14 @@ private:
     bool animatorBodyPoseApplied_ = false;
 
     /// <summary>Animator Controllerの状態時刻と遷移を進める。</summary>
-    bool UpdateAnimatorController(float deltaTime, Model* model);
+    bool UpdateAnimatorController(float deltaTime, engine::Model* model);
 
     /// <summary>評価済みのAnimator姿勢をモデルへ反映する。</summary>
-    bool ApplyAnimatorControllerPose(Model* model, bool forceModelUpdate);
+    bool ApplyAnimatorControllerPose(engine::Model* model, bool forceModelUpdate);
 
     // 当たり判定と描画の実体をObject3dが所有する。
-    std::unique_ptr<Collider> collider_;
-    std::unique_ptr<MeshRenderer> meshRenderer_;
+    std::unique_ptr<engine::Collider> collider_;
+    std::unique_ptr<engine::MeshRenderer> meshRenderer_;
 
     // 地形用の衝突メッシュを読み込む元ファイル。
     std::string terrainCollisionPath_;

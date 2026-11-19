@@ -94,8 +94,10 @@ bool ProjectWorldToGameView(const engine::Vector3& worldPos, const engine::Matri
 		return false;
 	}
 
+	// NDC の -1～1 を表示領域のピクセルへ移す。ImGui の Y は下向きなので符号を反転する。
 	outScreen.x = area.screenX + (ndc.x + 1.0f) * 0.5f * area.width;
 	outScreen.y = area.screenY + (1.0f - ndc.y) * 0.5f * area.height;
+	// 境界ちょうどで補助表示が途切れないよう、領域の外側も 32 ピクセルまでは描画候補に残す。
 	return outScreen.x >= area.screenX - 32.0f && outScreen.x <= area.screenX + area.width + 32.0f &&
 		   outScreen.y >= area.screenY - 32.0f && outScreen.y <= area.screenY + area.height + 32.0f;
 }
@@ -129,7 +131,7 @@ void DrawTextWithOutline(ImDrawList* drawList, const ImVec2& pos, ImU32 color, c
 }
 
 // カメラ方向からワールド軸を求め、Game Viewの方位ギズモへ描画します。
-void DrawSceneDirectionGizmo(const GameViewArea& area, Camera* camera) {
+void DrawSceneDirectionGizmo(const GameViewArea& area, engine::Camera* camera) {
 	if (!camera || area.width <= 1.0f || area.height <= 1.0f) {
 		return;
 	}
@@ -162,6 +164,7 @@ void DrawSceneDirectionGizmo(const GameViewArea& area, Camera* camera) {
 	const engine::Matrix4x4& view = camera->GetViewMatrix();
 
 	for (const AxisInfo& axis : axes) {
+		// 軸にカメラの回転だけを反映する。表示長はピクセルで固定し、カメラの移動と距離では変えない。
 		const engine::Vector3 viewDir = math.TransformNormal(axis.worldAxis, view);
 		const ImVec2 screenDir = Normalize2D(ImVec2(viewDir.x, -viewDir.y));
 		const bool nearlyFacingCamera = Length2D(screenDir) <= 0.0001f;
@@ -179,7 +182,7 @@ void DrawSceneDirectionGizmo(const GameViewArea& area, Camera* camera) {
 }
 
 // 選択Objectの向きをGame View上に投影して表示します。
-void DrawSelectedObjectOrientation(const GameViewArea& area, Camera* camera, engine::Object3D* selectedObject) {
+void DrawSelectedObjectOrientation(const GameViewArea& area, engine::Camera* camera, engine::Object3D* selectedObject) {
 	if (!camera || !selectedObject || area.width <= 1.0f || area.height <= 1.0f) {
 		return;
 	}
@@ -219,6 +222,7 @@ void DrawSelectedObjectOrientation(const GameViewArea& area, Camera* camera, eng
 
 	for (const LocalAxisInfo& axis : axes) {
 		engine::Vector3 worldDirection = math.TransformNormal(axis.localAxis, world);
+		// ワールド行列のスケール成分を方向の長さから除き、矢印の長さは別途決めた共通値でそろえる。
 		worldDirection = math.Normalize(worldDirection);
 		const engine::Vector3 endpoint = AddScaled(origin, worldDirection, axisLength * axis.lengthScale);
 

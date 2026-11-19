@@ -8,7 +8,7 @@
 // 主な入口：Initialize / Update
 class PlayerClone : public Character {
   public:
-    // positionは初期位置、velocityは投擲速度。Characterの移動と寿命タイマーを準備する。
+    // positionは初期位置、velocityは投擲速度。Characterの物理設定を適用する。寿命の初期値は生成時のメンバー初期値を使う。
     void Initialize(engine::Object3DCommon* common, const engine::Vector3& position, const engine::Vector3& velocity);
 
     // deltaTimeは秒。物理移動を進めながら寿命を減らす。

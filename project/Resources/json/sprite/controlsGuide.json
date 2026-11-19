@@ -86,11 +86,23 @@
     "common/white.png",
     "ui/control_guide/book/video_frame_rounded.png",
     "ui/control_guide/book/guide_select_footer.png",
-    "ui/control_guide/book/normal/guide_title.png"
+    "ui/control_guide/book/normal/guide_title.png",
+    "ui/control_guide/book/cards/intro.png",
+    "ui/control_guide/book/cards/portrait.png",
+    "ui/control_guide/book/cards/detail.png",
+    "ui/control_guide/book/cards/condition.png",
+    "ui/control_guide/book/cards/row.png",
+    "ui/control_guide/book/cards/selected.png",
+    "ui/control_guide/video_posters/07-fire-ball.png",
+    "ui/control_guide/book/cards/input.png",
+    "ui/control_guide/video_posters/05-fire-breath.png",
+    "ui/control_guide/video_posters/06-fire-dash.png",
+    "ui/control_guide/book/cards/basic_row.png",
+    "ui/control_guide/book/cards/basic_input.png"
   ],
   "designResolution": [
-    1920.0,
-    1080.0
+    1920,
+    1080
   ],
   "scaleToWindow": true,
   "sprites": [
@@ -98,24 +110,24 @@
       "name": "controls_guide_background",
       "texture": "ui/control_guide/pause_fullscreen_background.png",
       "position": [
-        960.0,
-        540.0
+        960,
+        540
       ],
       "size": [
-        1920.0,
-        1080.0
+        1920,
+        1080
       ],
       "anchor": [
         0.5,
         0.5
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1
     },
     {
       "name": "controls_guide_left_arrow",
@@ -133,12 +145,12 @@
         0.5
       ],
       "color": [
-        1.0,
+        1,
         0.96,
         0.72,
-        1.0
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1
     },
     {
       "name": "controls_guide_right_arrow",
@@ -156,19 +168,19 @@
         0.5
       ],
       "color": [
-        1.0,
+        1,
         0.96,
         0.72,
-        1.0
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1
     },
     {
       "name": "controls_guide_page_dot_0",
       "texture": "ui/settings/settings_slider_knob.png",
       "position": [
-        1490,
-        990
+        941,
+        959
       ],
       "size": [
         22,
@@ -179,19 +191,19 @@
         0.5
       ],
       "color": [
-        1.0,
+        1,
         0.86,
         0.28,
-        1.0
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1
     },
     {
       "name": "controls_guide_page_dot_1",
       "texture": "ui/settings/settings_slider_knob.png",
       "position": [
-        1530,
-        990
+        979,
+        959
       ],
       "size": [
         22,
@@ -204,10 +216,10 @@
       "color": [
         0.65,
         0.9,
-        1.0,
+        1,
         0.72
       ],
-      "emissive": 1.0
+      "emissive": 1
     },
     {
       "name": "controls_guide_page_1_panel",
@@ -221,50 +233,266 @@
         1024
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1
+    },
+    {
+      "name": "controls_guide_page_1_book_intro_card",
+      "texture": "ui/control_guide/book/cards/intro.png",
+      "position": [
+        348,
+        703
+      ],
+      "size": [
+        433,
+        130
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1,
+      "bookElement": true,
+      "bookSlot": "static_intro_card",
+      "bookScroll": false,
+      "bookRow": -1
+    },
+    {
+      "name": "controls_guide_page_1_book_portrait_badge",
+      "texture": "ui/control_guide/book/cards/portrait.png",
+      "position": [
+        360,
+        718
+      ],
+      "size": [
+        103,
+        103
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1,
+      "bookElement": true,
+      "bookSlot": "static_portrait_badge",
+      "bookScroll": false,
+      "bookRow": -1
+    },
+    {
+      "name": "controls_guide_page_1_book_intro",
+      "texture": "ui/control_guide/book/normal/intro.png",
+      "position": [
+        473,
+        741
+      ],
+      "size": [
+        298,
+        54
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1,
+      "bookElement": true,
+      "bookSlot": "intro",
+      "bookScroll": false,
+      "bookRow": -1
+    },
+    {
+      "name": "controls_guide_page_1_book_detail_card",
+      "texture": "ui/control_guide/book/cards/detail.png",
+      "position": [
+        839,
+        383
+      ],
+      "size": [
+        713,
+        300
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1,
+      "bookElement": true,
+      "bookSlot": "static_fallback_detail",
+      "bookScroll": false,
+      "bookRow": -1
+    },
+    {
+      "name": "controls_guide_page_1_book_condition_card",
+      "texture": "ui/control_guide/book/cards/condition.png",
+      "position": [
+        839,
+        329
+      ],
+      "size": [
+        430,
+        43
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1,
+      "bookElement": true,
+      "bookSlot": "static_condition_card",
+      "bookScroll": false,
+      "bookRow": -1
+    },
+    {
+      "name": "controls_guide_page_1_book_card_0",
+      "texture": "ui/control_guide/book/cards/row.png",
+      "position": [
+        348,
+        321
+      ],
+      "size": [
+        433,
+        89
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1,
+      "bookElement": true,
+      "bookSlot": "static_card",
+      "bookScroll": false,
+      "bookRow": 0
+    },
+    {
+      "name": "controls_guide_page_1_book_card_1",
+      "texture": "ui/control_guide/book/cards/row.png",
+      "position": [
+        348,
+        422
+      ],
+      "size": [
+        433,
+        89
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1,
+      "bookElement": true,
+      "bookSlot": "static_card",
+      "bookScroll": false,
+      "bookRow": 1
+    },
+    {
+      "name": "controls_guide_page_1_book_card_2",
+      "texture": "ui/control_guide/book/cards/row.png",
+      "position": [
+        348,
+        523
+      ],
+      "size": [
+        433,
+        89
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1,
+      "bookElement": true,
+      "bookSlot": "static_card",
+      "bookScroll": false,
+      "bookRow": 2
     },
     {
       "name": "controls_guide_page_1_portrait",
       "texture": "ui/control_guide/book/portraits/normal.png",
       "position": [
-        735,
-        30
+        351,
+        704
       ],
       "size": [
-        225,
-        225
+        120,
+        120
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1
     },
     {
       "name": "controls_guide_page_1_book_selection_0",
-      "texture": "ui/control_guide/book/move_selected_cyan.png",
+      "texture": "ui/control_guide/book/cards/selected.png",
       "position": [
-        355,
-        395
+        348,
+        321
       ],
       "size": [
-        470,
-        98
+        433,
+        89
       ],
       "anchor": [
         0,
@@ -280,24 +508,18 @@
       "bookElement": true,
       "bookSlot": "static_selection",
       "bookScroll": false,
-      "bookRow": 0,
-      "textureCrop": [
-        10,
-        150,
-        2152,
-        420
-      ]
+      "bookRow": 0
     },
     {
       "name": "controls_guide_page_1_book_selection_1",
-      "texture": "ui/control_guide/book/move_selected_cyan.png",
+      "texture": "ui/control_guide/book/cards/selected.png",
       "position": [
-        355,
-        510
+        348,
+        422
       ],
       "size": [
-        470,
-        98
+        433,
+        89
       ],
       "anchor": [
         0,
@@ -313,24 +535,18 @@
       "bookElement": true,
       "bookSlot": "static_selection",
       "bookScroll": false,
-      "bookRow": 1,
-      "textureCrop": [
-        10,
-        150,
-        2152,
-        420
-      ]
+      "bookRow": 1
     },
     {
       "name": "controls_guide_page_1_book_selection_2",
-      "texture": "ui/control_guide/book/move_selected_cyan.png",
+      "texture": "ui/control_guide/book/cards/selected.png",
       "position": [
-        355,
-        625
+        348,
+        523
       ],
       "size": [
-        470,
-        98
+        433,
+        89
       ],
       "anchor": [
         0,
@@ -346,36 +562,192 @@
       "bookElement": true,
       "bookSlot": "static_selection",
       "bookScroll": false,
-      "bookRow": 2,
-      "textureCrop": [
-        10,
-        150,
-        2152,
-        420
-      ]
+      "bookRow": 2
+    },
+    {
+      "name": "controls_guide_page_1_book_thumbnail_0",
+      "texture": "ui/control_guide/video_posters/07-fire-ball.png",
+      "position": [
+        360,
+        331
+      ],
+      "size": [
+        123,
+        69
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1,
+      "bookElement": true,
+      "bookSlot": "thumbnail_0",
+      "bookScroll": false,
+      "bookRow": 0
+    },
+    {
+      "name": "controls_guide_page_1_book_input_0",
+      "texture": "ui/control_guide/book/cards/input.png",
+      "position": [
+        729,
+        339
+      ],
+      "size": [
+        44,
+        53
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1,
+      "bookElement": true,
+      "bookSlot": "static_input",
+      "bookScroll": false,
+      "bookRow": 0
+    },
+    {
+      "name": "controls_guide_page_1_book_thumbnail_1",
+      "texture": "ui/control_guide/video_posters/05-fire-breath.png",
+      "position": [
+        360,
+        432
+      ],
+      "size": [
+        123,
+        69
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1,
+      "bookElement": true,
+      "bookSlot": "thumbnail_1",
+      "bookScroll": false,
+      "bookRow": 1
+    },
+    {
+      "name": "controls_guide_page_1_book_input_1",
+      "texture": "ui/control_guide/book/cards/input.png",
+      "position": [
+        729,
+        440
+      ],
+      "size": [
+        44,
+        53
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1,
+      "bookElement": true,
+      "bookSlot": "static_input",
+      "bookScroll": false,
+      "bookRow": 1
+    },
+    {
+      "name": "controls_guide_page_1_book_thumbnail_2",
+      "texture": "ui/control_guide/video_posters/06-fire-dash.png",
+      "position": [
+        360,
+        533
+      ],
+      "size": [
+        123,
+        69
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1,
+      "bookElement": true,
+      "bookSlot": "thumbnail_2",
+      "bookScroll": false,
+      "bookRow": 2
+    },
+    {
+      "name": "controls_guide_page_1_book_input_2",
+      "texture": "ui/control_guide/book/cards/input.png",
+      "position": [
+        729,
+        541
+      ],
+      "size": [
+        44,
+        53
+      ],
+      "anchor": [
+        0,
+        0
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1,
+      "bookElement": true,
+      "bookSlot": "static_input",
+      "bookScroll": false,
+      "bookRow": 2
     },
     {
       "name": "controls_guide_page_1_book_title",
       "texture": "ui/control_guide/book/normal/guide_title.png",
       "position": [
-        995,
-        118
+        701,
+        126
       ],
       "size": [
-        450,
-        82
+        785,
+        62
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0,
+      "emissive": 1,
       "bookElement": true,
       "bookSlot": "guide_title",
       "bookScroll": false,
@@ -385,24 +757,24 @@
       "name": "controls_guide_page_1_book_moves_heading",
       "texture": "ui/control_guide/book/guide_choose_heading.png",
       "position": [
-        375,
-        290
+        353,
+        264
       ],
       "size": [
-        360,
-        48
+        316,
+        42
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0,
+      "emissive": 1,
       "bookElement": true,
       "bookSlot": "",
       "bookScroll": false,
@@ -412,24 +784,24 @@
       "name": "controls_guide_page_1_book_move_0_glyph",
       "texture": "ui/input/keyboard/key_e.png",
       "position": [
-        420,
-        410
+        736,
+        345
       ],
       "size": [
-        60,
-        60
+        30,
+        41
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0,
+      "emissive": 1,
       "bookElement": true,
       "bookSlot": "glyph_0",
       "bookScroll": false,
@@ -439,24 +811,24 @@
       "name": "controls_guide_page_1_book_move_0_name",
       "texture": "ui/control_guide/book/normal/move_0_name.png",
       "position": [
-        500,
-        420
+        496,
+        348
       ],
       "size": [
-        330,
-        42
+        225,
+        34
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0,
+      "emissive": 1,
       "bookElement": true,
       "bookSlot": "move_0_name",
       "bookScroll": false,
@@ -466,24 +838,24 @@
       "name": "controls_guide_page_1_book_move_1_glyph",
       "texture": "ui/input/keyboard/key_e.png",
       "position": [
-        420,
-        525
+        736,
+        446
       ],
       "size": [
-        60,
-        60
+        30,
+        41
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0,
+      "emissive": 1,
       "bookElement": true,
       "bookSlot": "glyph_1",
       "bookScroll": false,
@@ -493,24 +865,24 @@
       "name": "controls_guide_page_1_book_move_1_name",
       "texture": "ui/control_guide/book/normal/move_1_name.png",
       "position": [
-        500,
-        535
+        496,
+        449
       ],
       "size": [
-        330,
-        42
+        225,
+        34
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0,
+      "emissive": 1,
       "bookElement": true,
       "bookSlot": "move_1_name",
       "bookScroll": false,
@@ -520,24 +892,24 @@
       "name": "controls_guide_page_1_book_move_2_glyph",
       "texture": "ui/input/keyboard/key_e.png",
       "position": [
-        420,
-        640
+        736,
+        547
       ],
       "size": [
-        60,
-        60
+        30,
+        41
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0,
+      "emissive": 1,
       "bookElement": true,
       "bookSlot": "glyph_2",
       "bookScroll": false,
@@ -547,24 +919,24 @@
       "name": "controls_guide_page_1_book_move_2_name",
       "texture": "ui/control_guide/book/normal/move_2_name.png",
       "position": [
-        500,
-        650
+        496,
+        550
       ],
       "size": [
-        330,
-        42
+        225,
+        34
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0,
+      "emissive": 1,
       "bookElement": true,
       "bookSlot": "move_2_name",
       "bookScroll": false,
@@ -582,532 +954,631 @@
         1024
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1
     },
     {
       "name": "controls_guide_page_0_detail_title",
       "texture": "ui/control_guide/book/basics/title.png",
       "position": [
-        912,
-        132
+        969.1363636363636,
+        124
       ],
       "size": [
-        720,
-        82
+        248.72727272727272,
+        60
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1,
+      "textureCrop": [
+        246,
+        13,
+        228,
+        55
+      ]
     },
     {
       "name": "controls_guide_page_0_detail_intro",
       "texture": "ui/control_guide/book/basics/intro.png",
       "position": [
         420,
-        252
+        271
       ],
       "size": [
-        900,
-        112
+        766.5360824742268,
+        94
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1,
+      "textureCrop": [
+        4,
+        7,
+        791,
+        97
+      ]
     },
     {
       "name": "controls_guide_page_0_detail_card_0",
-      "texture": "ui/control_guide/book/technique_row.png",
+      "texture": "ui/control_guide/book/cards/basic_row.png",
       "position": [
         420,
-        390
+        376
       ],
       "size": [
         1100,
-        150
+        145
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0,
-      "textureCrop": [
+      "emissive": 1
+    },
+    {
+      "name": "controls_guide_page_0_detail_input_0",
+      "texture": "ui/control_guide/book/cards/basic_input.png",
+      "position": [
+        445,
+        397
+      ],
+      "size": [
+        142,
+        103
+      ],
+      "anchor": [
         0,
-        125,
-        2172,
-        460
-      ]
+        0
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1
     },
     {
       "name": "controls_guide_page_0_action_0",
       "texture": "ui/input/combo/combo_wasd.png",
       "position": [
-        448,
-        420
+        451,
+        408
       ],
       "size": [
-        136,
-        102
+        130,
+        80
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1
     },
     {
       "name": "controls_guide_page_0_detail_name_0",
       "texture": "ui/control_guide/book/basics/move_0_name.png",
       "position": [
-        600,
-        396
+        614,
+        391
       ],
       "size": [
-        900,
-        50
+        84.84848484848484,
+        40
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1,
+      "textureCrop": [
+        4,
+        8,
+        70,
+        33
+      ]
     },
     {
       "name": "controls_guide_page_0_detail_condition_0",
       "texture": "ui/control_guide/book/basics/move_0_condition.png",
       "position": [
-        600,
-        442
+        614,
+        434
       ],
       "size": [
-        950,
-        42
+        860,
+        34
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1
     },
     {
       "name": "controls_guide_page_0_detail_description_0",
       "texture": "ui/control_guide/book/basics/move_0_description.png",
       "position": [
-        600,
-        486
+        614,
+        471
       ],
       "size": [
-        900,
-        39.6
+        665,
+        31
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1,
+      "textureCrop": [
+        4,
+        6,
+        665,
+        31
+      ]
     },
     {
       "name": "controls_guide_page_0_detail_card_1",
-      "texture": "ui/control_guide/book/technique_row.png",
+      "texture": "ui/control_guide/book/cards/basic_row.png",
       "position": [
         420,
-        550
+        533
       ],
       "size": [
         1100,
-        150
+        145
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0,
-      "textureCrop": [
+      "emissive": 1
+    },
+    {
+      "name": "controls_guide_page_0_detail_input_1",
+      "texture": "ui/control_guide/book/cards/basic_input.png",
+      "position": [
+        445,
+        554
+      ],
+      "size": [
+        142,
+        103
+      ],
+      "anchor": [
         0,
-        125,
-        2172,
-        460
-      ]
+        0
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1
     },
     {
       "name": "controls_guide_page_0_action_1",
       "texture": "ui/input/keyboard/key_space.png",
       "position": [
-        443.5,
-        594
+        451,
+        565
       ],
       "size": [
-        145,
-        64
+        130,
+        80
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1
     },
     {
       "name": "controls_guide_page_0_detail_name_1",
       "texture": "ui/control_guide/book/basics/move_1_name.png",
       "position": [
-        600,
-        556
+        614,
+        548
       ],
       "size": [
-        900,
-        50
+        175,
+        40
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1,
+      "textureCrop": [
+        4,
+        9,
+        140,
+        32
+      ]
     },
     {
       "name": "controls_guide_page_0_detail_condition_1",
       "texture": "ui/control_guide/book/basics/move_1_condition.png",
       "position": [
-        600,
-        602
+        614,
+        591
       ],
       "size": [
-        950,
-        42
+        860,
+        34
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1
     },
     {
       "name": "controls_guide_page_0_detail_description_1",
       "texture": "ui/control_guide/book/basics/move_1_description.png",
       "position": [
-        600,
-        646
+        614,
+        628
       ],
       "size": [
-        900,
-        39.6
+        634,
+        31
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1,
+      "textureCrop": [
+        4,
+        6,
+        634,
+        31
+      ]
     },
     {
       "name": "controls_guide_page_0_detail_card_2",
-      "texture": "ui/control_guide/book/technique_row.png",
+      "texture": "ui/control_guide/book/cards/basic_row.png",
       "position": [
         420,
-        710
+        690
       ],
       "size": [
         1100,
-        150
+        145
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0,
-      "textureCrop": [
+      "emissive": 1
+    },
+    {
+      "name": "controls_guide_page_0_detail_input_2",
+      "texture": "ui/control_guide/book/cards/basic_input.png",
+      "position": [
+        445,
+        711
+      ],
+      "size": [
+        142,
+        103
+      ],
+      "anchor": [
         0,
-        125,
-        2172,
-        460
-      ]
+        0
+      ],
+      "color": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "emissive": 1
     },
     {
       "name": "controls_guide_page_0_action_2",
       "texture": "ui/input/mouse/mouse_move.png",
       "position": [
-        470,
-        740
+        451,
+        722
       ],
       "size": [
-        92,
-        92
+        130,
+        80
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1
     },
     {
       "name": "controls_guide_page_0_detail_name_2",
       "texture": "ui/control_guide/book/basics/move_2_name.png",
       "position": [
-        600,
-        716
+        614,
+        705
       ],
       "size": [
-        900,
-        50
+        133.33333333333334,
+        40
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1,
+      "textureCrop": [
+        4,
+        10,
+        100,
+        30
+      ]
     },
     {
       "name": "controls_guide_page_0_detail_condition_2",
       "texture": "ui/control_guide/book/basics/move_2_condition.png",
       "position": [
-        600,
-        762
+        614,
+        748
       ],
       "size": [
-        950,
-        42
+        860,
+        34
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1
     },
     {
       "name": "controls_guide_page_0_detail_description_2",
       "texture": "ui/control_guide/book/basics/move_2_description.png",
       "position": [
-        600,
-        806
+        614,
+        785
       ],
       "size": [
-        900,
-        39.6
+        722.3,
+        31
       ],
       "anchor": [
-        0.0,
-        0.0
+        0,
+        0
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0
+      "emissive": 1,
+      "textureCrop": [
+        4,
+        7,
+        699,
+        30
+      ]
     },
     {
       "name": "controls_guide_footer_close_frame",
       "texture": "ui/control_guide/footer_close_frame.png",
       "position": [
-        245,
-        980
+        491.5,
+        959
       ],
       "size": [
-        440,
-        86
+        287,
+        56.1
       ],
       "anchor": [
         0.5,
         0.5
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0,
+      "emissive": 1,
       "parentName": ""
     },
     {
       "name": "controls_guide_footer_close_text",
       "texture": "generated/text/pause_guide/footer_close_keyboard.png",
       "position": [
-        245,
-        980
+        491.5,
+        959
       ],
       "size": [
-        370,
-        57
+        245,
+        37.75
       ],
       "anchor": [
         0.5,
         0.5
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0,
+      "emissive": 1,
       "parentName": ""
     },
     {
       "name": "controls_guide_footer_confirm_frame",
       "texture": "ui/control_guide/footer_confirm_frame.png",
       "position": [
-        1675,
-        980
+        1410,
+        959
       ],
       "size": [
-        440,
-        86
+        287,
+        56.1
       ],
       "anchor": [
         0.5,
         0.5
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0,
+      "emissive": 1,
       "parentName": ""
     },
     {
       "name": "controls_guide_footer_confirm_text",
       "texture": "generated/text/pause_guide/footer_confirm_keyboard.png",
       "position": [
-        1675,
-        980
+        1410,
+        959
       ],
       "size": [
-        370,
-        57
+        245,
+        37.75
       ],
       "anchor": [
         0.5,
         0.5
       ],
       "color": [
-        1.0,
-        1.0,
-        1.0,
-        1.0
+        1,
+        1,
+        1,
+        1
       ],
-      "emissive": 1.0,
+      "emissive": 1,
       "parentName": ""
     },
     {
       "name": "controls_guide_page_1_book_selected_0_name",
       "texture": "ui/control_guide/book/normal/move_0_name.png",
       "position": [
-        885,
-        270
+        839,
+        272
       ],
       "size": [
-        500,
-        63
+        713,
+        49
       ],
       "anchor": [
         0,
@@ -1129,12 +1600,12 @@
       "name": "controls_guide_page_1_book_selected_0_condition",
       "texture": "ui/control_guide/book/normal/move_0_condition.png",
       "position": [
-        950,
-        338
+        888,
+        331
       ],
       "size": [
-        420,
-        42
+        370,
+        34
       ],
       "anchor": [
         0,
@@ -1156,12 +1627,12 @@
       "name": "controls_guide_page_1_book_selected_0_description",
       "texture": "ui/control_guide/book/normal/move_0_description.png",
       "position": [
-        885,
-        792
+        869,
+        798
       ],
       "size": [
-        660,
-        72.44
+        653,
+        72
       ],
       "anchor": [
         0,
@@ -1183,12 +1654,12 @@
       "name": "controls_guide_page_1_book_selected_0_glyph",
       "texture": "ui/input/keyboard/key_e.png",
       "position": [
-        885,
-        336
+        848,
+        334
       ],
       "size": [
-        54,
-        46
+        29,
+        29
       ],
       "anchor": [
         0,
@@ -1210,12 +1681,12 @@
       "name": "controls_guide_page_1_book_selected_1_name",
       "texture": "ui/control_guide/book/normal/move_1_name.png",
       "position": [
-        885,
-        270
+        839,
+        272
       ],
       "size": [
-        500,
-        63
+        713,
+        49
       ],
       "anchor": [
         0,
@@ -1237,12 +1708,12 @@
       "name": "controls_guide_page_1_book_selected_1_condition",
       "texture": "ui/control_guide/book/normal/move_1_condition.png",
       "position": [
-        950,
-        338
+        888,
+        331
       ],
       "size": [
-        420,
-        42
+        370,
+        34
       ],
       "anchor": [
         0,
@@ -1264,12 +1735,12 @@
       "name": "controls_guide_page_1_book_selected_1_description",
       "texture": "ui/control_guide/book/normal/move_1_description.png",
       "position": [
-        885,
-        792
+        869,
+        798
       ],
       "size": [
-        660,
-        72.44
+        653,
+        72
       ],
       "anchor": [
         0,
@@ -1291,12 +1762,12 @@
       "name": "controls_guide_page_1_book_selected_1_glyph",
       "texture": "ui/input/keyboard/key_e.png",
       "position": [
-        885,
-        336
+        848,
+        334
       ],
       "size": [
-        54,
-        46
+        29,
+        29
       ],
       "anchor": [
         0,
@@ -1318,12 +1789,12 @@
       "name": "controls_guide_page_1_book_selected_2_name",
       "texture": "ui/control_guide/book/normal/move_2_name.png",
       "position": [
-        885,
-        270
+        839,
+        272
       ],
       "size": [
-        500,
-        63
+        713,
+        49
       ],
       "anchor": [
         0,
@@ -1345,12 +1816,12 @@
       "name": "controls_guide_page_1_book_selected_2_condition",
       "texture": "ui/control_guide/book/normal/move_2_condition.png",
       "position": [
-        950,
-        338
+        888,
+        331
       ],
       "size": [
-        420,
-        42
+        370,
+        34
       ],
       "anchor": [
         0,
@@ -1372,12 +1843,12 @@
       "name": "controls_guide_page_1_book_selected_2_description",
       "texture": "ui/control_guide/book/normal/move_2_description.png",
       "position": [
-        885,
-        792
+        869,
+        798
       ],
       "size": [
-        660,
-        72.44
+        653,
+        72
       ],
       "anchor": [
         0,
@@ -1399,12 +1870,12 @@
       "name": "controls_guide_page_1_book_selected_2_glyph",
       "texture": "ui/input/keyboard/key_e.png",
       "position": [
-        885,
-        336
+        848,
+        334
       ],
       "size": [
-        54,
-        46
+        29,
+        29
       ],
       "anchor": [
         0,
@@ -1426,12 +1897,12 @@
       "name": "controls_guide_page_1_book_navigation_hint",
       "texture": "ui/control_guide/book/guide_select_hint.png",
       "position": [
-        400,
-        790
+        353,
+        628
       ],
       "size": [
-        410,
-        48
+        349,
+        40.9
       ],
       "anchor": [
         0,
@@ -1450,42 +1921,15 @@
       "bookRow": -1
     },
     {
-      "name": "controls_guide_page_1_book_fallback_intro",
-      "texture": "ui/control_guide/book/normal/intro.png",
-      "position": [
-        885,
-        450
-      ],
-      "size": [
-        660,
-        88
-      ],
-      "anchor": [
-        0,
-        0
-      ],
-      "color": [
-        1,
-        1,
-        1,
-        1
-      ],
-      "emissive": 1,
-      "bookElement": true,
-      "bookSlot": "fallback_intro",
-      "bookScroll": false,
-      "bookRow": -1
-    },
-    {
       "name": "controls_guide_page_1_book_fallback_traits",
       "texture": "ui/control_guide/book/normal/traits.png",
       "position": [
-        885,
-        590
+        875,
+        528
       ],
       "size": [
-        660,
-        80.67
+        641,
+        78
       ],
       "anchor": [
         0,
@@ -1504,42 +1948,15 @@
       "bookRow": -1
     },
     {
-      "name": "controls_guide_page_1_book_divider",
-      "texture": "common/white.png",
-      "position": [
-        842,
-        295
-      ],
-      "size": [
-        2,
-        535
-      ],
-      "anchor": [
-        0,
-        0
-      ],
-      "color": [
-        0.65,
-        0.47,
-        0.19,
-        0.45
-      ],
-      "emissive": 1,
-      "bookElement": true,
-      "bookSlot": "static_divider",
-      "bookScroll": false,
-      "bookRow": -1
-    },
-    {
       "name": "controls_guide_page_1_book_video_frame",
       "texture": "ui/control_guide/book/video_frame_rounded.png",
       "position": [
-        885,
-        396
+        839,
+        383
       ],
       "size": [
-        660,
-        371.25
+        713,
+        401.0625
       ],
       "anchor": [
         0,
@@ -1562,60 +1979,6 @@
         1640,
         909
       ]
-    },
-    {
-      "name": "controls_guide_page_1_book_select_footer_frame",
-      "texture": "ui/control_guide/footer_close_frame.png",
-      "position": [
-        960,
-        980
-      ],
-      "size": [
-        440,
-        86
-      ],
-      "anchor": [
-        0.5,
-        0.5
-      ],
-      "color": [
-        1,
-        1,
-        1,
-        1
-      ],
-      "emissive": 1,
-      "bookElement": true,
-      "bookSlot": "static_footer_frame",
-      "bookScroll": false,
-      "bookRow": -1
-    },
-    {
-      "name": "controls_guide_page_1_book_select_footer_text",
-      "texture": "ui/control_guide/book/guide_select_footer.png",
-      "position": [
-        960,
-        980
-      ],
-      "size": [
-        390,
-        50
-      ],
-      "anchor": [
-        0.5,
-        0.5
-      ],
-      "color": [
-        1,
-        1,
-        1,
-        1
-      ],
-      "emissive": 1,
-      "bookElement": true,
-      "bookSlot": "static_footer_text",
-      "bookScroll": false,
-      "bookRow": -1
     }
   ],
   "abilityBook": {
@@ -1629,12 +1992,12 @@
     "dataPath": "Resources/json/ui/abilityGuideBook.json",
     "movePreview": {
       "position": [
-        885,
-        396
+        839,
+        383
       ],
       "size": [
-        660,
-        371.25
+        713,
+        401.0625
       ]
     }
   }

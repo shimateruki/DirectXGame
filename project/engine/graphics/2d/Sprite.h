@@ -7,7 +7,7 @@
 #include <vector>
 #include <wrl.h>
 
-class DirectXCommon;
+namespace engine { class DirectXCommon; }
 
 namespace engine {
 
@@ -16,9 +16,7 @@ namespace engine {
 // 主な入口：Initialize / Update / Draw / SetParent
 class Sprite {
 public:
-    // 担当：ローカル姿勢と親子関係から、ローカル・ワールド行列を計算する。
-    // 関連：Object3D / Collider（姿勢を参照）、Math（行列計算）
-    // 主な入口：UpdateMatrix
+    // 拡縮・回転・平行移動を保持するデータ型。Spriteの更新は位置と回転を個別のフィールドから組み立てます。
     struct Transform {
         engine::Vector3 scale;
         engine::Vector3 rotate;
@@ -154,6 +152,7 @@ public:
 
     /// <summary>描画に使用する読み込み済みテクスチャのハンドルを切り替える。</summary>
     void SetTextureHandle(uint32_t textureHandle) {
+        // 連番画像の切替などで表示位置・寸法・切り出し範囲を維持できるよう、ハンドルだけを保存します。
         textureHandle_ = textureHandle;
         /* AdjustTextureSize(); */
     }
@@ -242,10 +241,11 @@ public:
 
 private:
     engine::SpriteCommon* common_ = nullptr; // 共有Sprite描画基盤。借用参照。
-    DirectXCommon* dxCommon_ = nullptr; // 共有DirectX基盤。借用参照。
+    engine::DirectXCommon* dxCommon_ = nullptr; // 共有DirectX基盤。借用参照。
     uint32_t textureHandle_ = 0;
 
     // 画面上の基本変換。
+    // 親Spriteのローカル座標で保持するアンカーの位置。親がなければ画面のピクセル座標です。
     engine::Vector2 position_ = engine::Vector2::ZERO;
     float rotation_ = 0.0f; // 画面内の回転角（ラジアン）。
     engine::Vector2 size_ = { 100.0f, 100.0f }; // 画面上の大きさ（ピクセル）。
@@ -275,6 +275,7 @@ private:
     // GPUリソース。
     Microsoft::WRL::ComPtr<ID3D12Resource> vertexResource_ = nullptr;
     D3D12_VERTEX_BUFFER_VIEW vertexBufferView_{};
+    // vertexResource_ のMap先。毎フレームの四隅とUVの更新に使います。
     VertexData* vertexData_ = nullptr;
 
     Microsoft::WRL::ComPtr<ID3D12Resource> indexResource_ = nullptr;

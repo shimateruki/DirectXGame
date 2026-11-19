@@ -38,16 +38,19 @@ struct AttackMotionState {
     void Advance(const AttackSequenceTrack& track, float time, engine::Vector3 target, bool hasTarget) {
         if (time < elapsed)
             return; // 巻き戻しはインスタンスの再生成で行います。
+        // 発射待ちの間は位置を動かさず、最後に確認した標的の方向へ照準を更新します。
         if (!launched && hasTarget)
             direction = Normalize(target - position, direction);
         if (time >= track.launchDelay)
             launched = true;
         float cursor = (std::max)(elapsed, track.launchDelay);
+        // フレームが長くても追尾区間を最大1/120秒ずつ進め、追尾終了の時刻でも刻みを切ります。
         while (cursor < time) {
             float step = (std::min)(1.0f / 120.0f, time - cursor);
             const float trackingEnd = track.launchDelay + track.homingDuration;
             if (cursor < trackingEnd)
                 step = (std::min)(step, trackingEnd - cursor);
+            // 追尾設定が有効な間だけ、目標との差を一刻みに回せる角度まで縮めます。
             if (track.motion == "homing" && cursor < trackingEnd && hasTarget) {
                 const auto desired = Normalize(target - position, direction);
                 const float dot = std::clamp(direction.x * desired.x + direction.y * desired.y + direction.z * desired.z, -1.0f, 1.0f);
@@ -63,6 +66,7 @@ struct AttackMotionState {
                     direction = Normalize(direction * std::cos(turn) + tangent * std::sin(turn), direction);
                 }
             }
+            // 発射した後は現在の向きへ移動し、追尾終了後は最後の向きで直進します。
             position = position + direction * (track.moveSpeed * step);
             cursor += step;
         }
@@ -73,15 +77,18 @@ struct AttackMotionState {
 // 描画・弾生成から座標計算を分離し、本編とテストで同じ発射式を検証できるようにします。
 inline AttackSequenceEmission ResolveAttackSequenceEmission(const AttackSequenceEvent& event,
     const AttackSequenceContext& context, float minSpeed, float maxSpeed) {
+    // 入力方向がほぼゼロの場合も、予備の方向から弾の進路を作れるようにする。
     auto normalize = [](engine::Vector3 value, engine::Vector3 fallback) {
         const float length = engine::Math::Length(value);
         return length > 0.0001f ? value * (1.0f / length) : fallback;
     };
+    // イベントの角度は度で持ち、ヨー回転を計算する時にラジアンへ変換する。
     const float angle = event.yawDegrees * (std::numbers::pi_v<float> / 180.0f);
     auto rotate = [angle](engine::Vector3 value) {
         return engine::Vector3{value.x * std::cos(angle) + value.z * std::sin(angle), value.y,
             value.z * std::cos(angle) - value.x * std::sin(angle)};
     };
+    // 水平の前方を基準にイベントの角度を足し、発生位置を前・右・上の各軸から組み立てる。
     const engine::Vector3 baseForward = normalize({context.forward.x, 0, context.forward.z}, {0, 0, 1});
     const engine::Vector3 forward = rotate(baseForward);
     const engine::Vector3 right{forward.z, 0, -forward.x};
@@ -89,9 +96,11 @@ inline AttackSequenceEmission ResolveAttackSequenceEmission(const AttackSequence
     result.position = context.position + right * (event.right + context.ownerSize.x * event.sizeRight)
         + engine::Vector3{0, event.up + context.ownerSize.y * event.sizeUp, 0}
         + forward * (event.forward + context.ownerSize.z * event.sizeForward);
+    // 照準ありなら弾の発生点から対象の高さへ向ける。対象がいなければ発射者の向きを使う。
     result.direction = event.aimAtTarget && context.hasTarget
         ? rotate(normalize(context.targetPosition + engine::Vector3{0, event.targetHeight, 0} - result.position, baseForward))
         : forward;
+    // 距離で変わる速度には上下限を設け、それ以外は設定された最大速度にする。
     result.speed = event.distanceSpeedScale > 0 && context.hasTarget
         ? std::clamp(context.targetDistance * event.distanceSpeedScale + event.distanceSpeedBias, minSpeed, maxSpeed)
         : maxSpeed;

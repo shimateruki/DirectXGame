@@ -59,6 +59,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
             StopBreathMotion(player);
             return;
         }
+        // 入力を止めている間も発射シーケンスの時計は進め、指定時刻の弾を放つ。
         if (fireballSequence_.IsRunning())
             fireballSequence_.Update(deltaTime, MakeSequenceContext(player));
         breathVisible_ = false;
@@ -80,6 +81,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
             return;
         }
 
+        // 突進・火球の硬直がないフレームだけ、押下の継続に応じてブレスを開始または停止する。
         if (!primaryHeld_) {
             StopBreathMotion(player);
             return;
@@ -94,6 +96,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Idle, direction);
         UpdateBreathVisuals(player, origin, direction, deltaTime);
 
+        // 粒子は短い間隔で追加し、ダメージは別の長い間隔で通知する。
         if (breathEffectTimer_ <= 0.0f) {
             EmitDirectedPreset("shared/fire_slime_breath", origin, direction, 1.0f);
             EmitDirectedPreset("shared/fire_slime_breath_embers", origin, direction, 0.85f);
@@ -146,7 +149,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         return headVisual_ != nullptr || (breathVisible_ && !breathVisuals_.empty());
     }
 
-    void DrawOwnedVisuals(Player& player, uint32_t depth, uint32_t grab, Camera* camera, int bufferIndex) override {
+    void DrawOwnedVisuals(Player& player, uint32_t depth, uint32_t grab, engine::Camera* camera, int bufferIndex) override {
         // 死亡・演出ロック中は能力固有の見た目を描かず、通常カメラを補助的に使う。
         if (player.IsDead() || player.IsCinematicLocked())
             return;
@@ -266,6 +269,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         fallback.maxRange = 8.0f;
         fallback.radius = 1.4f;
         const auto& attack = FindAttackOrFallback(GetProfile(), "flame_breath", fallback);
+        // 表示の長さと太さは当たり判定側と同じ下限を使い、射線上へ七つの炎を配置する。
         const float range = std::max(attack.maxRange, 4.0f);
         const float radius = std::max(attack.radius, 1.0f);
         breathVisible_ = true;
@@ -310,6 +314,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         StopBreathMotion(player);
         if (!fireballSequence_.Start(*selected, MakeSequenceContext(player)))
             return;
+        // 開始できた技について、専用の本体トラックがあるか調べる。
         const bool authoredBody = std::any_of(selected->sequence.tracks.begin(), selected->sequence.tracks.end(),
             [](const auto& track) { return track.enabled && track.type == "body_animation"; });
 
@@ -339,6 +344,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         StopBreathMotion(player);
         dashDirection_ = NormalizePlanar(player.GetLockOnAttackDirection());
         player.PlaySlimeAbilityMotion("player_ability_fire_dash", false, 1.0f, 0.025f, 0.055f);
+        // 突進の時計と命中履歴を初期化し、直前の攻撃状態を持ち越さない。
         dashActive_ = true;
         dashTimer_ = 0.44f;
         dashCooldown_ = 1.05f;
@@ -353,6 +359,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
                           position + engine::Vector3{0.0f, 0.60f, 0.0f},
                           {0.0f, std::atan2(dashDirection_.x, dashDirection_.z), 0.0f});
         EmitPreset("player/copy/fire/player_fire_blaze_burst", position + engine::Vector3{0.0f, 0.42f, 0.0f});
+        // 自動移動に切り替え、短い無敵と専用姿勢を開始する。
         player.SetVelocity(
             {dashDirection_.x * 38.0f, std::max(player.GetVelocity().y, 0.0f), dashDirection_.z * 38.0f});
         player.SetMoveYaw(std::atan2(dashDirection_.x, dashDirection_.z));
@@ -379,6 +386,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
         player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::BlazeDash);
         DamageDash(player);
 
+        // 移動の後方に火の軌跡を残し、放出する粒子も進行方向と逆へ向ける。
         if (dashEffectTimer_ <= 0.0f) {
             const engine::Vector3 trail = player.GetWorldPosition() - dashDirection_ * 0.72f + engine::Vector3{0.0f, 0.12f, 0.0f};
             SpawnScopedEffect(effectScope_, "Resources/json/effect/player/copy/fire/effect_player_fire_blaze_trail.json", trail,
@@ -389,6 +397,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
             dashEffectTimer_ = 0.055f;
         }
 
+        // 床の炎は着地している間だけ別の周期で出す。
         if (player.IsGrounded() && dashGroundWakeTimer_ <= 0.0f) {
             const engine::Vector3 wake = player.GetWorldPosition() - dashDirection_ * 0.42f + engine::Vector3{0.0f, 0.04f, 0.0f};
             SpawnScopedEffect(effectScope_, "Resources/json/effect/player/copy/fire/effect_player_fire_blaze_ground_wake.json", wake,
@@ -396,6 +405,7 @@ class FireSlimeCopyAbility final : public ICopyAbilitySession {
             dashGroundWakeTimer_ = 0.10f;
         }
 
+        // 持続時間終了で操作を返し、加速したまま走り続けないよう残速度を減らす。
         if (dashTimer_ <= 0.0f) {
             StopDashEffects();
             dashActive_ = false;

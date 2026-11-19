@@ -5,15 +5,31 @@
 #include "InputManager.h"
 #include "KeyConfig.h"
 #include "imgui.h"
+#include "IconsFontAwesome5.h"
 #include "json.hpp"
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 
 namespace {
 constexpr const char* kPath = "Saved/Editor/editor_tools.json";
+// メニューと設定画面で分類名と表示順を共有する。
+struct VisibilitySection {
+    EditorToolSettings::VisibilityGroup group;
+    const char* label;
+};
+using VisibilityGroup = EditorToolSettings::VisibilityGroup;
+constexpr VisibilitySection kVisibilitySections[] = {
+    {VisibilityGroup::CollisionEvents, ICON_FA_SHIELD_ALT " 衝突・イベント"},
+    {VisibilityGroup::SceneEditing, ICON_FA_CUBE " シーン編集"},
+    {VisibilityGroup::Camera, ICON_FA_VIDEO " カメラ"},
+    {VisibilityGroup::AnimationEffects, ICON_FA_FILM " アニメーション・演出"},
+    {VisibilityGroup::Diagnostics, ICON_FA_CHART_BAR " 診断"},
+};
+
 const std::vector<int>& Keys() {
     // 操作設定で選べるキーコードを一度だけ構築し、予約コードを候補から除く。
     static const std::vector<int> keys = [] {
@@ -49,20 +65,23 @@ void EditorToolSettings::Clear() {
 
 void EditorToolSettings::AddTool(const std::string& id, const std::string& name,
     const std::string& category, std::function<void()> open, std::function<bool()> available) {
+    // 編集対象一覧と実行用コマンドには同じ ID を渡す。終了時はこの設定を登録元としてまとめて解除する。
     tools_.push_back({id, name, category});
     EditorCommandRegistry::GetInstance()->Register({id, name, category, "",
         "エディターを開く", {name, category}, std::move(available), std::move(open), this});
 }
 
-void EditorToolSettings::AddVisibility(const std::string& id, const std::string& name, bool* value) {
+void EditorToolSettings::AddVisibility(VisibilityGroup group, const std::string& id, const std::string& name, bool* value) {
     if (value)
-        visibility_.push_back({id, name, value});
+        visibility_.push_back({group, id, name, value});
 }
 
-void EditorToolSettings::AddVisibility(const std::string& id, const std::string& name) {
-    AddVisibility(id, name, &ownedVisibility_.try_emplace(id, true).first->second);
+void EditorToolSettings::AddVisibility(VisibilityGroup group, const std::string& id, const std::string& name) {
+    // 登録時に借りるフラグのアドレスを保てるよう、設定側で管理する値は std::map に置く。
+    AddVisibility(group, id, name, &ownedVisibility_.try_emplace(id, true).first->second);
 }
 
+// 一時非表示は個別設定より優先する。登録のない補助表示は通常時に有効として扱う。
 bool EditorToolSettings::IsVisible(const std::string& id) const {
     if (hidden_)
         return false;
@@ -103,6 +122,7 @@ std::string EditorToolSettings::Conflict(const Tool& tool) const {
 void EditorToolSettings::RefreshCommand(const Tool& tool) {
     auto* registry = EditorCommandRegistry::GetInstance();
 
+    // 登録元と実行関数を維持し、検索・メニューで使うキー表記だけを更新する。競合中は表示欄を空にする。
     if (const auto* existing = registry->Find(tool.id)) {
         auto command = *existing;
         command.shortcut = tool.key && Conflict(tool).empty() ? Label(tool) : "";
@@ -198,6 +218,7 @@ void EditorToolSettings::RestoreHidden() {
     hidden_ = false;
 }
 
+// 一時的に隠す前の状態を先に復元し、その後で全項目の常用設定を一括変更する。
 void EditorToolSettings::SetAllVisible(bool visible) {
     RestoreHidden();
 
@@ -211,6 +232,7 @@ void EditorToolSettings::HandleShortcuts(bool editing) {
     if (!editing || open_ || io.WantTextInput || io.WantCaptureKeyboard || ImGui::IsAnyItemActive() ||
         ImGui::IsPopupOpen(nullptr, ImGuiPopupFlags_AnyPopupId | ImGuiPopupFlags_AnyPopupLevel) ||
         ImGui::IsMouseDown(0) || ImGui::IsMouseDown(1) || ImGui::IsMouseDown(2)) return;
+    // キーを押したフレームで修飾キーも完全一致した操作だけを候補にする。
     for (const auto& tool : tools_) {
         if (tool.key && io.KeyCtrl == tool.ctrl && io.KeyShift == tool.shift && io.KeyAlt == tool.alt &&
             engine::InputManager::GetInstance()->IsKeyTriggered(static_cast<BYTE>(tool.key)) && Conflict(tool).empty()) {
@@ -261,8 +283,16 @@ void EditorToolSettings::DrawVisibilityMenu() {
     ImGui::TextDisabled("有効なツール・選択対象の補助表示に適用");
     ImGui::BeginDisabled(hidden_);
 
-    for (auto& value : visibility_)
-        ImGui::MenuItem(value.name.c_str(), nullptr, value.value);
+    for (const auto& section : kVisibilitySections) {
+        if (!ImGui::BeginMenu(section.label))
+            continue;
+
+        for (auto& value : visibility_) {
+            if (value.group == section.group)
+                ImGui::MenuItem(value.name.c_str(), nullptr, value.value);
+        }
+        ImGui::EndMenu();
+    }
     ImGui::EndDisabled();
     ImGui::Separator();
     if (ImGui::MenuItem("表示設定を保存"))
@@ -363,6 +393,7 @@ void EditorToolSettings::DrawWindow() {
                     changed |= ImGui::Checkbox("##shift", &tool.shift);
                     ImGui::TableSetColumnIndex(4);
                     changed |= ImGui::Checkbox("##alt", &tool.alt);
+                    // 一件の変更で他の割当の競合も増減するため、コマンドに表示する全ツールのキー表記を更新する。
                     if (changed)
                         for (const auto& value : tools_)
                             RefreshCommand(value);
@@ -389,9 +420,20 @@ void EditorToolSettings::DrawWindow() {
             ImGui::TextWrapped("実際のライト・攻撃・当たり判定は無効にしません。個別エディターと共通の表示設定です。");
             ImGui::BeginDisabled(hidden_);
 
-            for (auto& value : visibility_)
-                if (!filter_[0] || value.name.find(filter_) != std::string::npos)
+            for (const auto& section : kVisibilitySections) {
+                const bool showGroup = !filter_[0] || std::string_view(section.label).find(filter_) != std::string_view::npos;
+                bool showHeading = true;
+                for (auto& value : visibility_) {
+                    if (value.group != section.group || (!showGroup && value.name.find(filter_) == std::string::npos))
+                        continue;
+
+                    if (showHeading) {
+                        ImGui::SeparatorText(section.label);
+                        showHeading = false;
+                    }
                     ImGui::Checkbox(value.name.c_str(), value.value);
+                }
+            }
             ImGui::EndDisabled();
             if (hidden_ && ImGui::Button("一時非表示を元に戻す"))
                 RestoreHidden();

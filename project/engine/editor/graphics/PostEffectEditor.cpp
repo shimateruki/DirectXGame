@@ -28,8 +28,9 @@ void PostEffectEditor::DrawImGui() {
 
     if (ImGui::Checkbox("リニアワークフローを使用", &linearWorkflow)) {
         engine::ColorSpace::WorkflowSettings::GetInstance().SetLinearWorkflowEnabled(linearWorkflow);
-        LightManager::GetInstance()->ApplySceneClearColor();
+        engine::LightManager::GetInstance()->ApplySceneClearColor();
 
+        // リニアへ切り替えた直後にトーンマッピングが無効なら、HDR 合成値を表示へ変換するモードを選ぶ。
         if (linearWorkflow && params->enableToneMapping == 0) {
             params->enableToneMapping = 1;
         }
@@ -76,6 +77,7 @@ void PostEffectEditor::DrawImGui() {
     ImGui::DragFloat(" Temperature", &params->colorTemperature, 0.01f, -1.0f, 1.0f);
     ImGui::DragFloat(" Tint", &params->colorTint, 0.01f, -1.0f, 1.0f);
 
+    // 色調と周辺減光だけをまとめて差し替える。Bloom の設定やファイル上の保存値はこのボタンでは変更しない。
     if (ImGui::Button("Soft Adventure Preset")) {
         params->enableToneMapping = 2;
         params->lutIntensity = 0.28f;
@@ -139,6 +141,7 @@ void PostEffectEditor::DrawImGui() {
     ImGui::Spacing();
     ImGui::Text(ICON_FA_VIDEO " Action Camera Effects");
     ImGui::DragFloat(ICON_FA_EXPAND_ARROWS_ALT " Radial Blur (集中線の強さ)", &params->radialIntensity, 0.01f, 0.0f, 1.0f);
+    // 中心は画像上の正規化座標。0.5、0.5 で画面中央になり、解像度を変えても比率を保つ。
     ImGui::DragFloat(" Radial Center X", &params->radialCenterX, 0.01f, 0.0f, 1.0f);
     ImGui::DragFloat(" Radial Center Y", &params->radialCenterY, 0.01f, 0.0f, 1.0f);
     ImGui::DragInt(" Radial Blur Samples (サンプリング数)", &params->radialBlurSamples, 0.1f, 1, 64);
@@ -193,6 +196,7 @@ void PostEffectEditor::DrawImGui() {
     
     ImGui::Spacing();
 
+    // Fade 本体の 1.5 秒の遷移を使って試写する。保存操作で調整値を書き出す処理とは独立している。
     if (ImGui::Button("Start Fade In")) {
         Fade::GetInstance()->StartFadeIn(1.5f);
     }
@@ -214,6 +218,7 @@ void PostEffectEditor::DrawImGui() {
     
     ImGui::Spacing();
 
+    // 試写ボタンは Fade の既定中心（0.5、0.5）で 1 秒の開閉を始める。
     if (ImGui::Button("Start Iris In")) {
         Fade::GetInstance()->StartIrisIn(1.0f);
     }
@@ -331,7 +336,7 @@ void PostEffectEditor::LoadParams(const std::string& filename) {
             // 色空間の変更は背景クリア色にも影響するため、LightManager側へ再反映する。
             engine::ColorSpace::WorkflowSettings::GetInstance().SetLinearWorkflowEnabled(
                 j["linearWorkflowEnabled"].get<bool>());
-            LightManager::GetInstance()->ApplySceneClearColor();
+            engine::LightManager::GetInstance()->ApplySceneClearColor();
         }
 
         if (j.contains("threshold"))
@@ -398,6 +403,7 @@ void PostEffectEditor::LoadParams(const std::string& filename) {
             params->dissolveThreshold = j["dissolveThreshold"];
         if (j.contains("dissolveEdgeWidth"))
             params->dissolveEdgeWidth = j["dissolveEdgeWidth"];
+        // 色と中心は数値配列の保存順を維持する。既存の RGB と XY をそれぞれ同じ添字から戻す。
         if (j.contains("dissolveEdgeColor")) {
             params->dissolveEdgeColor.x = j["dissolveEdgeColor"][0];
             params->dissolveEdgeColor.y = j["dissolveEdgeColor"][1];
@@ -425,6 +431,6 @@ void PostEffectEditor::LoadParams(const std::string& filename) {
 
     }
     catch (...) {
-        // ロード失敗時のエラーハンドリング
+        // 読込失敗を呼び出し元へ通知しません。途中まで適用済みの設定もここでは巻き戻しません。
     }
 }

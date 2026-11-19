@@ -16,6 +16,8 @@
 #include <CollisionManager.h>
 #include "SceneManager.h"
 
+namespace engine {
+
 
 // 明示的に float にキャスト
 
@@ -69,6 +71,7 @@ engine::Vector3 GetCurrentObjectPosition(const engine::Object3D* object) {
 // 各サンプルで全地形の形状計算と文字列判定を繰り返さない。
 RaycastHit CameraSphereCast(const engine::Vector3& start, float radius,
     const engine::Vector3& direction, float distance, PhysicsQueryFilter filter) {
+    // 正規化済みの進行方向に移動距離を掛け、始点と終点を半径分だけ広げたAabbを作ります。
     const auto end = start + direction * distance;
     const engine::Vector3 low{(std::min)(start.x, end.x) - radius,
         (std::min)(start.y, end.y) - radius, (std::min)(start.z, end.z) - radius};
@@ -120,6 +123,7 @@ PhysicsQueryFilter MakeCameraObstacleFilter(engine::Object3D* subject) {
 
 float Camera::RecoverCollisionDistance(float previous, float safeDistance, float frameDeltaTime, float seconds) {
     if (previous < 0.0f || safeDistance <= previous) return safeDistance;
+    // カメラが壁へ近づく側は即座に縮め、安全距離へ離れる側だけ経過秒と復帰時定数で滑らかに戻します。
     const float alpha = 1.0f - std::exp(-std::clamp(frameDeltaTime, 0.0f, 0.1f) / (std::max)(seconds, 0.01f));
     return previous + (safeDistance - previous) * alpha;
 }
@@ -156,6 +160,7 @@ engine::Vector3 Camera::ResolveRelativeEye(const engine::Object3D& origin, const
     const engine::Vector3 forward = horizontal > 0.0001f
         ? engine::Vector3{ toward.x / horizontal, 0.0f, toward.z / horizontal }
         : engine::Vector3{ 0.0f, 0.0f, 1.0f };
+    // 基準から参照先への水平向きで前後・左右を決めます。高さオフセットはワールドのY軸に沿って足します。
     const engine::Vector3 right = { forward.z, 0.0f, -forward.x };
     return base + right * offset.x + engine::Vector3{ 0.0f, offset.y, 0.0f } + forward * offset.z;
 }
@@ -164,6 +169,7 @@ void Camera::UpdateProjectionMatrix() {
 
     static engine::Math math;
 
+    // 縦画角はラジアン、クリップ面はカメラからの距離です。横画角は縦画角と画面の縦横比から決まります。
     // 現在のパラメータを使ってプロジェクション行列を再計算
     projectionMatrix_ = math.MakePerspectiveFovMatrix(fovY_, aspectRatio_, nearClip_, farClip_);
     RefreshDerivedMatrices();
@@ -227,6 +233,7 @@ void Camera::ApplyReplayView(
     eye_ = eye;
     target_ = safeTarget;
     rotation_ = rotation;
+    // 保存フレームの画角を使う。クリップ面の前後関係だけは描画可能な範囲へ戻す。
     fovY_ = fovY;
     nearClip_ = (std::max)(nearClip, 0.001f);
     farClip_ = (std::max)(farClip, nearClip_ + 0.01f);
@@ -278,7 +285,7 @@ void Camera::Initialize() {
     isInputEnabled_ = true;
 
     // 定数バッファ作成
-    constBuffer_ = DirectXCommon::GetInstance()->CreateBufferResource(sizeof(CameraVP));
+    constBuffer_ = engine::DirectXCommon::GetInstance()->CreateBufferResource(sizeof(CameraVP));
     constBuffer_->Map(0, nullptr, reinterpret_cast<void**>(&constMap_));
 
     viewMatrix_ = math.MakeLookAtMatrix(eye_, target_, up_);
@@ -289,6 +296,7 @@ void Camera::Initialize() {
 
 void Camera::ConfigureGameplayStyle(GameplayStyle style, ObstacleResponse obstacles,
     float yawLimitDegrees, float pitchLimitDegrees, float returnResponse, float fov) {
+    // 設定された度数の角度と追従応答を検証します。モード変更時は前の追従・衝突履歴も破棄します。
     const auto finiteClamp = [](float v, float fallback, float lo, float hi) {
         return std::isfinite(v) ? std::clamp(v, lo, hi) : fallback;
     };
@@ -359,6 +367,7 @@ engine::Vector3 Camera::UpdateGuidedFocus(const engine::Vector3& subject, float 
     guidedPreviousSubject_ = subject;
     const float alpha = 1.0f - std::exp(-guidedFramingResponse_ * frameDeltaTime);
     // 画角と距離から画面内の余白を地面上の距離へ換算する。
+    // 距離×tan(縦画角/2)が画面の半分に相当し、横幅にはさらに画面の縦横比を掛けます。
     const float halfHeight = (std::max)(std::abs(aimDistance_),1.0f) * std::tan(std::clamp(fovY_,.1f,1.5f) * .5f);
     const float width = halfHeight * (std::max)(std::abs(aspectRatio_),.1f) * guidedDeadZoneWidth_;
     const float pitch = std::clamp(aimAngle_.x,20.0f,65.0f) * std::numbers::pi_v<float> / 180.0f;
@@ -372,6 +381,7 @@ engine::Vector3 Camera::UpdateGuidedFocus(const engine::Vector3& subject, float 
     guidedFocusAnchor_.y = subject.y;
     // 余白内の足踏みは先読みの向きにも伝えず、画面の小刻みな往復を抑える。
     movement = guidedFocusAnchor_ - previousAnchor; movement.y = 0;
+    // 基準点の変位を経過秒で割り、先読み方向の速度をワールド単位毎秒で推定します。
     auto velocity = frameDeltaTime > .00001f ? movement*(1.0f/frameDeltaTime) : engine::Vector3{};
     const float measuredSpeed = engine::Math::Length(velocity);
     if (measuredSpeed > 20) velocity = velocity*(20.0f/measuredSpeed);
@@ -382,6 +392,179 @@ engine::Vector3 Camera::UpdateGuidedFocus(const engine::Vector3& subject, float 
     const auto desiredLead = guidedLastDirection_ * (guidedLookAhead_*(.5f+.5f*std::clamp(speed/6.0f,0.0f,1.0f)));
     guidedLeadOffset_ = guidedLeadOffset_ + (desiredLead-guidedLeadOffset_)*alpha;
     return guidedFocusAnchor_ + guidedLeadOffset_;
+}
+
+void Camera::BossFramingSettings::Validate() {
+    auto valid = [](float v, float fallback, float lo, float hi) {
+        return std::clamp(std::isfinite(v) ? v : fallback, lo, hi);
+    };
+    minDistance = valid(minDistance, 22, 8, 60);
+    maxDistance = valid(maxDistance, 40, minDistance, 80);
+    height = valid(height, 2.2f, 0, 10);
+    pitch = valid(pitch, 25, 20, 50);
+    fov = valid(fov, .75f, .45f, 1.1f);
+    targetWeight = valid(targetWeight, .35f, 0, .5f);
+    turnSpeed = valid(turnSpeed, 60, 10, 120);
+    response = valid(response, 2.5f, .5f, 8);
+}
+
+void Camera::ConfigureBossFraming(const BossFramingSettings& settings, const engine::Object3D* boss) {
+    bossFraming_ = settings;
+    bossFraming_.Validate();
+    // 対象が外れたら前の回避経路を無効にする。対象ありなら衝突形状と見た目の両方を画角に収める。
+    const bool active = boss && bossFraming_.enabled;
+    if (!active) { bossFramingInitialized_ = false; bossHasSafeEye_ = false; }
+    bossFramingActive_ = active;
+    if (active) {
+        bossPosition_ = boss->GetWorldPosition();
+        const auto bounds = boss->GetAabb();
+        const auto visual = boss->GetModelWorldAabb();
+        bossBoundsMin_ = {(std::min)(bounds.min.x, visual.min.x), (std::min)(bounds.min.y, visual.min.y), (std::min)(bounds.min.z, visual.min.z)};
+        bossBoundsMax_ = {(std::max)(bounds.max.x, visual.max.x), (std::max)(bounds.max.y, visual.max.y), (std::max)(bounds.max.z, visual.max.z)};
+    }
+}
+
+void Camera::UpdateBossFraming(const engine::Vector3& player, float dt,
+    engine::Vector3& focus, engine::Vector3& eye) {
+    const float radians = std::numbers::pi_v<float> / 180.0f;
+    auto toBoss = bossPosition_ - player;
+    toBoss.y = 0;
+    const float separation = engine::Math::Length(toBoss);
+    if (!bossFramingInitialized_) {
+        // 演出の出口の向きから旋回を始め、切替時に背面へ飛ばない。
+        const auto forward = target_ - eye_;
+        bossYaw_ = std::atan2(forward.x, forward.z);
+        bossDistance_ = bossFraming_.minDistance;
+        bossViewYaw_ = bossYaw_; bossAvoidanceYaw_ = bossYaw_;
+        bossAvoidanceActive_ = false; bossAvoidanceBlend_ = 0.0f; bossClearTime_ = 0.0f;
+        bossHasSafeEye_ = false;
+        bossFramingInitialized_ = true;
+    }
+    const float alpha = 1.0f - std::exp(-bossFraming_.response * dt);
+    // 近距離の交差と小さな左右移動では旋回せず、追従方向の反転を抑える。
+    if (separation > 4.0f) {
+        const float desiredYaw = std::atan2(toBoss.x, toBoss.z);
+        float delta = std::remainder(desiredYaw - bossYaw_, 2.0f * std::numbers::pi_v<float>);
+        const float deadZone = 8.0f * radians;
+        delta -= std::clamp(delta, -deadZone, deadZone);
+        const float limit = bossFraming_.turnSpeed * radians * dt;
+        bossYaw_ = std::remainder(bossYaw_ + std::clamp(delta * alpha, -limit, limit),
+            2.0f * std::numbers::pi_v<float>);
+    }
+    // 遠いボスへ注視点まで連れ去られないよう、プレイヤーからの移動量を制限する。
+    const float offset = (std::min)(separation * bossFraming_.targetWeight, 4.0f);
+    focus = player + engine::Vector3{0, bossFraming_.height, 0};
+    if (separation > .001f) focus = focus + toBoss * (offset / separation);
+    const float pitch = bossFraming_.pitch * radians + guidedLookOffset_.y;
+    const float normalYaw = bossYaw_ + guidedLookOffset_.x;
+    const auto normalFocus = focus;
+    // 最終的な押し戻しと同じ高さから判定し、回避候補だけが壁を見落とす差をなくす。
+    const auto rayStart = player + engine::Vector3{0, aimHeight_, 0};
+    const auto middle = player + engine::Vector3{0, bossFraming_.height, 0} + toBoss * .5f;
+    const auto directionFor = [pitch](float angle) {
+        return engine::Vector3{std::sin(angle)*std::cos(pitch), -std::sin(pitch), std::cos(angle)*std::cos(pitch)};
+    };
+    auto filter = MakeCameraObstacleFilter(followObject_);
+    filter.refineSphereCastHit = true;
+    const auto clearance = [&](const engine::Vector3& candidate) {
+        const auto ray = candidate - rayStart;
+        const float length = engine::Math::Length(ray);
+        if (length < .01f) return 0.0f;
+        const auto hit = CameraSphereCast(rayStart, visibilitySettings_.collisionRadius,
+            ray * (1.0f / length), length, filter);
+        return hit.isHit ? hit.distance / length : 1.0f;
+    };
+    const auto dot = [](const engine::Vector3& a, const engine::Vector3& b) { return a.x*b.x+a.y*b.y+a.z*b.z; };
+    const float tanY = std::tan(bossFraming_.fov * .5f) * .8f;
+    const float tanX = tanY * (std::max)(aspectRatio_, .1f);
+    // 視点の前後・左右・上下へ頂点を投影し、プレイヤーとボス全体が余白内に入る距離の最大値を探します。
+    const auto fitDistance = [&](float angle, const engine::Vector3& center) {
+        const auto forward = directionFor(angle);
+        const engine::Vector3 right{std::cos(angle), 0, -std::sin(angle)};
+        const engine::Vector3 up{std::sin(angle)*std::sin(pitch), std::cos(pitch), std::cos(angle)*std::sin(pitch)};
+        float required = bossFraming_.minDistance;
+        const auto fit = [&](const engine::Vector3& point) {
+            const auto relative = point - center;
+            const float vertical = dot(relative, up);
+            required = (std::max)(required, (std::max)(std::abs(dot(relative,right))/tanX,
+                std::abs(vertical)/(tanY*(vertical > 0 ? .75f : 1.0f))) - dot(relative,forward));
+        };
+        fit(player); fit(player + engine::Vector3{0, 3, 0});
+        for (int corner = 0; corner < 8; ++corner)
+            fit({(corner&1)?bossBoundsMax_.x:bossBoundsMin_.x,
+                (corner&2)?bossBoundsMax_.y:bossBoundsMin_.y,
+                (corner&4)?bossBoundsMax_.z:bossBoundsMin_.z});
+        return required;
+    };
+    if (obstacleResponse_ == ObstacleResponse::ShortenDistance) {
+        const auto normalEye = normalFocus - directionFor(normalYaw)*bossDistance_;
+        const bool normalClear = clearance(normalEye) >= .98f;
+        if (bossAvoidanceActive_) {
+            // 一瞬だけ壁が外れたフレームでは解除せず、安全な状態が続いてから戻す。
+            bossClearTime_ = normalClear ? bossClearTime_ + dt : 0.0f;
+            if (bossClearTime_ >= .6f) bossAvoidanceActive_ = false;
+        }
+        // 選択済みの方向が安全な間は保持し、候補の点数差による左右の往復を防ぐ。
+        const bool heldClear = bossAvoidanceActive_ &&
+            clearance(middle - directionFor(bossAvoidanceYaw_)*bossFraming_.maxDistance) >= .95f;
+        const float heldOverflow = bossAvoidanceActive_ ?
+            (std::max)(0.0f, fitDistance(bossAvoidanceYaw_, middle)-bossFraming_.maxDistance) : 0.0f;
+        // 移動したボスが大きく見切れる場合も見直すが、微小な構図差では方向を変えない。
+        const bool needsFraming = bossAvoidanceActive_ && heldClear && heldOverflow > 2.0f;
+        if ((!bossAvoidanceActive_ && !normalClear) || (bossAvoidanceActive_ && !heldClear) || needsFraming) {
+            float bestScore = -1.0e30f;
+            bool found = false;
+            float selected = bossAvoidanceYaw_;
+            for (float side : {0.0f, -30.0f, 30.0f, -60.0f, 60.0f, -90.0f, 90.0f, -120.0f, 120.0f, -150.0f, 150.0f, 180.0f}) {
+                const float candidateYaw = normalYaw + side*radians;
+                const auto candidate = middle - directionFor(candidateYaw)*bossFraming_.maxDistance;
+                if (clearance(candidate) < .95f) continue;
+                const float overflow = (std::max)(0.0f, fitDistance(candidateYaw, middle)-bossFraming_.maxDistance);
+                if (needsFraming && overflow >= heldOverflow-1.0f) continue;
+                const float shortest = std::remainder(candidateYaw-bossViewYaw_, 2.0f*std::numbers::pi_v<float>);
+                // 終点だけでなく旋回途中も検査し、壁を横切る近道より安全な回り込みを選ぶ。
+                for (const float arc : {shortest, shortest + (shortest >= 0 ? -1.0f : 1.0f)*2.0f*std::numbers::pi_v<float>}) {
+                    // 候補の旋回経路を最大15度刻みで調べ、途中に現れる障害物も評価します。
+                    const int steps = (std::max)(1, static_cast<int>(std::ceil(std::abs(arc)/(15.0f*radians))));
+                    float worstClearance = 1.0f;
+                    for (int step = 1; step <= steps; ++step) {
+                        const float angle = bossViewYaw_ + arc*static_cast<float>(step)/steps;
+                        worstClearance = (std::min)(worstClearance,
+                            clearance(middle-directionFor(angle)*bossFraming_.maxDistance));
+                    }
+                    // 見切れを少し減らすためだけの大旋回は避け、現在の安全な視点を優先する。
+                    if (needsFraming && (std::abs(arc) > 90.0f*radians || worstClearance < .95f)) continue;
+                    // 見切れる距離、回転角、経路で最も障害物に近づいた量の三つを罰点にします。
+                    const float score = -overflow*10.0f - std::abs(arc)*5.0f - (1.0f-worstClearance)*200.0f;
+                    if (score > bestScore) {bestScore=score;selected=bossViewYaw_+arc;found=true;}
+                }
+            }
+            if (found) {bossAvoidanceYaw_=selected;bossAvoidanceActive_=true;bossClearTime_=0.0f;}
+        }
+    } else {
+        bossAvoidanceActive_ = false;
+        bossClearTime_ = 0.0f;
+    }
+    // 回避先へ直接配置せず、通常追従と同じ速度上限で旋回する。解除時もこの経路で戻る。
+    const float desiredYaw = bossAvoidanceActive_ ? bossAvoidanceYaw_ : normalYaw;
+    const float delta = bossAvoidanceActive_ ? desiredYaw-bossViewYaw_ :
+        std::remainder(desiredYaw-bossViewYaw_, 2.0f*std::numbers::pi_v<float>);
+    const float turnLimit = bossFraming_.turnSpeed*radians*dt;
+    bossViewYaw_ += std::clamp(delta*alpha, -turnLimit, turnLimit);
+    const float desiredBlend = bossAvoidanceActive_ ? 1.0f : 0.0f;
+    bossAvoidanceBlend_ += std::clamp((desiredBlend-bossAvoidanceBlend_)*alpha, -.8f*dt, .8f*dt);
+    focus = normalFocus + (middle-normalFocus)*bossAvoidanceBlend_;
+    const float required = fitDistance(bossViewYaw_, focus);
+    const float desiredDistance = std::clamp((std::max)(required,
+        bossFraming_.minDistance+(bossFraming_.maxDistance-bossFraming_.minDistance)*bossAvoidanceBlend_),
+        bossFraming_.minDistance,bossFraming_.maxDistance);
+    if (std::abs(desiredDistance-bossDistance_) > .5f)
+        bossDistance_ += (desiredDistance-bossDistance_)*alpha;
+    bossDistance_ = std::clamp(bossDistance_,bossFraming_.minDistance,bossFraming_.maxDistance);
+    rotation_ = {pitch,bossViewYaw_,0};
+    eye = focus-directionFor(bossViewYaw_)*bossDistance_;
+
+
 }
 
 void Camera::Update(float deltaTime) {
@@ -439,7 +622,10 @@ void Camera::Update(float deltaTime) {
         engine::Vector3 desiredEye = eye_;
         float toRad = std::numbers::pi_v<float> / 180.0f;
 
-        switch (followMode_) {
+        if (bossFramingActive_) {
+            guidedFocusInitialized_ = false;
+            UpdateBossFraming(playerPos, frameDelta, targetPos, desiredEye);
+        } else switch (followMode_) {
         case FollowMode::LockOn:
         {
             if (targetObject_) {
@@ -515,6 +701,7 @@ void Camera::Update(float deltaTime) {
             break;
         }
 
+        // 入力で更新した三軸の姿勢を後方オフセットへ掛け、注視点の周囲で視点を回します。
         case FollowMode::Aimable:
         {
             engine::Matrix4x4 rotateMat = math.MakeRotateZMatrix(rotation_.z) * math.MakeRotateXMatrix(rotation_.x) * math.MakeRotateYMatrix(rotation_.y);
@@ -524,6 +711,7 @@ void Camera::Update(float deltaTime) {
             break;
         }
 
+        // 固定の俯角と現在のヨーを使い、注視点から指定距離に視点を置きます。
         case FollowMode::Fixed:
         {
             float currentY = rotation_.y;
@@ -536,6 +724,7 @@ void Camera::Update(float deltaTime) {
             break;
         }
 
+        // 視点を対象のオフセット位置に置き、入力角度の前方向を注視します。
         case FollowMode::FirstPerson:
         {
             desiredEye = playerPos + firstPersonOffset_;
@@ -545,6 +734,7 @@ void Camera::Update(float deltaTime) {
             break;
         }
 
+        // 水平面の円周上を更新一回ごとの角度で回り、高さは軌道中心からの固定値を足します。
         case FollowMode::Orbit:
         {
             orbitAngle_ += orbitSpeed_;
@@ -554,6 +744,7 @@ void Camera::Update(float deltaTime) {
             break;
         }
 
+        // 追従対象の位置を使わず、保存した位置とラジアン角から注視点を作ります。
         case FollowMode::FixedPoint:
         {
             desiredEye = fixedPointPos_;
@@ -664,6 +855,7 @@ void Camera::Update(float deltaTime) {
                 float groundLimitY = playerPos.y + 0.5f;
 
                 if (targetEye.y < groundLimitY && direction.y < -0.001f) {
+                    // レイ上で足元の高さへ達する距離を、垂直方向の差と方向Y成分から求めます。
                     float distToGround = (groundLimitY - rayStartPos.y) / direction.y;
 
                     if (distToGround > 0.1f && distToGround < finalDist) {
@@ -683,6 +875,63 @@ void Camera::Update(float deltaTime) {
             }
         }
 
+        // 壁の押し戻し先へ瞬間移動せず、前の安全な視点から到達できる区間だけ移動する。
+        // 終点の衝突判定は上の既存処理を使い、移動途中の壁はここで追加検査する。
+        if (bossFramingActive_ && !isAiming && !isEyeFrozen_ &&
+            obstacleResponse_ == ObstacleResponse::ShortenDistance) {
+            if (bossHasSafeEye_) {
+                const auto movement = eye_ - bossPreviousSafeEye_;
+                const float length = math.Length(movement);
+                if (length > .001f) {
+                    const auto direction = movement*(1.0f/length);
+                    const float maxSpeed = bossFraming_.maxDistance*bossFraming_.turnSpeed*
+                        std::numbers::pi_v<float>/180.0f + 10.0f;
+                    float travel = (std::min)(length, maxSpeed*frameDelta);
+                    auto filter = MakeCameraObstacleFilter(followObject_);
+                    filter.refineSphereCastHit = true;
+                    if (travel > .001f) {
+                        const auto hit = CameraSphereCast(bossPreviousSafeEye_, visibilitySettings_.collisionRadius,
+                            direction, travel, filter);
+                        if (hit.isHit) travel = (std::max)(0.0f, hit.distance-.05f);
+                    }
+                    eye_ = bossPreviousSafeEye_ + direction*travel;
+                }
+            }
+            bossPreviousSafeEye_ = eye_;
+            bossHasSafeEye_ = true;
+        } else {
+            bossHasSafeEye_ = false;
+        }
+
+        // 壁で視点だけ押し戻された場合も、自機が画面下端へ落ちないよう注視点を補正する。
+        // 補間の内部状態は変えず、演出Overrideを重ねる前の通常構図にだけ適用する。
+        if (bossFramingActive_ && !isAiming) {
+            const auto playerCenter = followObject_->GetWorldPosition() + engine::Vector3{0, 1.5f, 0};
+            const auto originalFocus = target_;
+            const auto dot = [](const engine::Vector3& a, const engine::Vector3& b) { return a.x*b.x+a.y*b.y+a.z*b.z; };
+            const auto fitsPlayer = [&](float blend) {
+                const auto forward = math.Normalize(lerpVec3(originalFocus, playerCenter, blend) - eye_);
+                const float horizontal = std::sqrt(forward.x*forward.x + forward.z*forward.z);
+                if (horizontal < .001f) return true;
+                const engine::Vector3 right{forward.z/horizontal, 0, -forward.x/horizontal};
+                const engine::Vector3 up{forward.y*right.z, forward.z*right.x-forward.x*right.z, -forward.y*right.x};
+                const auto relative = playerCenter - eye_;
+                const float depth = dot(relative, forward);
+                const float halfHeight = depth * std::tan(fovY_*.5f);
+                return depth > .01f && std::abs(dot(relative, right)) <= halfHeight*aspectRatio_*.8f &&
+                    std::abs(dot(relative, up)) <= halfHeight*.65f;
+            };
+            if (!fitsPlayer(0.0f)) {
+                float lo = 0.0f, hi = 1.0f;
+                // 元の注視点をなるべく残すため、対象が収まる補間率の下限を二分探索します。
+                for (int step = 0; step < 12; ++step) {
+                    const float mid = (lo + hi)*.5f;
+                    if (fitsPlayer(mid)) hi = mid; else lo = mid;
+                }
+                target_ = lerpVec3(originalFocus, playerCenter, hi);
+            }
+        }
+
         // カメラがプレイヤーに近付いたときは本体と子オブジェクトの透明度を揃える。
         engine::Vector3 playerPosForDist = followObject_->GetWorldPosition();
         playerPosForDist.y += aimHeight_ * 0.5f;
@@ -690,12 +939,13 @@ void Camera::Update(float deltaTime) {
         engine::Vector3 toPlayer = playerPosForDist - eye_;
         float camToPlayerDist = math.Length(toPlayer);
 
+        // 対象の中心までの距離が1なら完全に透過し、3.5まで離れると通常の不透明さに戻ります。
         float alpha = 1.0f;
 
         if (camToPlayerDist < 3.5f) {
             alpha = std::max(0.0f, (camToPlayerDist - 1.0f) / 2.5f);
         }
-        if (followMode_ == FollowMode::LockOn) {
+        if (followMode_ == FollowMode::LockOn || bossFramingActive_) {
             // 壁際で視点が押し戻されても、操作中のプレイヤーを見失わない透明度を保つ。
             alpha = (std::max)(alpha, 0.7f);
         }
@@ -926,6 +1176,7 @@ void Camera::Update(float deltaTime) {
     for (ShakeLayer& layer : shakeLayers_) {
         const float progress = std::clamp(layer.elapsed / layer.duration, 0.0f, 1.0f);
         const float envelope = (1.0f - progress) * (1.0f - progress);
+        // 秒数×毎秒の振動回数で周期数を求め、2π倍して三角関数の位相へ変換します。
         const float phase = layer.elapsed * layer.frequency * 2.0f * std::numbers::pi_v<float>;
         const float amplitude = layer.amplitude * envelope;
         mixedShakeOffset.x += std::sin(phase * 1.13f) * amplitude * layer.axisWeight.x;
@@ -1172,5 +1423,8 @@ void Camera::EndOverride(float duration) {
     overrideParams_.trackTargetZ = false;
     overrideFollowInitialized_ = false;
 
+    // 現在の切替量を新しい退場時間の時計へ換算し、終了処理で減少させる初期値にします。
     overrideTimer_ = overrideWeight_ * overrideDuration_;
 }
+
+} // namespace engine

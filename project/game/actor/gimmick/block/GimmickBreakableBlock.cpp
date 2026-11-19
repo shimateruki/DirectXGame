@@ -12,6 +12,7 @@
 void GimmickBreakableBlock::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
     BaseGimmick::Initialize(common, modelName);
 
+    // 専用ブロックのテクスチャと材質はモデルに対応する場合だけ上書きします。
     if (modelName == "Stages/bomb_break_block") {
         SetTexture("Resources/3DModel/Stages/bomb_break_block/bomb_break_block_albedo.png");
         SetEnableNormalMap(true);
@@ -39,10 +40,11 @@ void GimmickBreakableBlock::Initialize(engine::Object3DCommon* common, const std
     // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
     using Self = GimmickBreakableBlock;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "破壊ブロック",
-        "プレイヤーの爆風で破壊できます。衝撃による破壊だけをactionModeで追加指定します。");
+        "爆風や体当たりで壊れる条件を指定します。");
     using Parameter = engine::Object3D::EntityParameter;
-    properties.Parameter("追加の破壊条件", "actionMode", &Parameter::actionMode, 0.0f, 7.0f,
-        nullptr, {"爆風のみ", "汎用衝撃でも破壊", "ピンクのバウンド落下でも破壊"}, {.values = {0, 6, 7}});
+    properties.Parameter("破壊条件", "actionMode", &Parameter::actionMode, 0.0f, static_cast<float>(kDashPanelOnly),
+        nullptr, {"爆風のみ", "汎用衝撃でも破壊", "ピンクのバウンド落下でも破壊", "ダッシュパネル加速中のみ"},
+        {.values = {0, 6, 7, kDashPanelOnly}});
 }
 
 void GimmickBreakableBlock::Update(float deltaTime) {
@@ -61,6 +63,12 @@ void GimmickBreakableBlock::Update(float deltaTime) {
 bool GimmickBreakableBlock::OnCollision(engine::Object3D* other) {
     if (isBroken_)
         return false;
+
+    // 専用モードは爆風を無視し、プレイヤー本体の衝突でのみ破壊を判定します。
+    const auto& parameters = GetParameters();
+    if (parameters && parameters->actionMode == kDashPanelOnly) {
+        return BaseGimmick::OnCollision(other);
+    }
 
     const uint32_t attribute = other->GetCollisionAttribute();
     const auto* bomb = dynamic_cast<const EnemyBomb*>(other);
@@ -84,16 +92,25 @@ bool GimmickBreakableBlock::TryBreakByPlayerImpact(const Player* player) {
         return false;
     }
 
+    // 配置時の破壊条件ごとにプレイヤーのどの技を有効とするか判定します。爆風は OnCollision() が確認します。
     const int actionMode = GetParameters()->actionMode;
 
-    if (actionMode == 7) {
+    if (actionMode == kDashPanelOnly) {
+        // パネルの加速状態を確認し、通常の移動や別の技による衝突は受け付けません。
+        if (!player->IsDashPanelBoostActive()) {
+            return false;
+        }
+    } else if (actionMode == 7) {
+        // ピンクのバウンドで地面へ向かう衝撃だけを受け付けます。
         if (!player->IsPinkBounceSlamImpactActive()) {
             return false;
         }
     } else if (actionMode == 6) {
+        // プレイヤー側が汎用の破壊フラグを有効にしている間だけ受け付けます。
         if (!player->IsImpactBreakActive()) {
             return false;
         }
+    // ほかの設定ではプレイヤー本体に当たっても足場のまま扱います。
     } else {
         return false;
     }
@@ -118,6 +135,7 @@ void GimmickBreakableBlock::Break() {
     if (GetMaterialType() == 10 || GetModelName() == "Stages/star_garden_glass_panel") {
         const bool isGiantGate = GetModelName() == "Stages/star_garden_giant_gate";
 
+        // 巨大な門だけは破片の着地高さをモデルの下端に合わせます。
         if (isGiantGate) {
             const Aabb bounds = GetModelWorldAabb();
             const float groundY = std::isfinite(bounds.min.y) ? bounds.min.y : myPos.y - 4.2f;
@@ -131,6 +149,7 @@ void GimmickBreakableBlock::Break() {
             GpuParticleManager::GetInstance()->Emit("shared/hit_bomb_flash_core", myPos);
         }
 
+        // ガラスの演出が終わったら戻り、石ブロック用の爆発を重ねません。
         return;
     }
 

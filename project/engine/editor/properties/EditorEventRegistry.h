@@ -82,6 +82,7 @@ public:
             if (selected == choices->end() || static_cast<int>(object.GetEventType()) == selected->value)
                 return false;
 
+            // 種類が実際に変わったときだけ初期化を呼ぶ。同じ種類を入力し直して個別調整を作り直すことは避ける。
             object.SetEventType(static_cast<decltype(object.GetEventType())>(selected->value));
             if (selected->initialize)
                 selected->initialize(object);

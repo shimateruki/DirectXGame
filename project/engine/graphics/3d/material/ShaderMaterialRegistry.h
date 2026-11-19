@@ -108,6 +108,7 @@ private:
                 value.pixelShader = shaderName;
                 if (value.displayName.empty())
                     value.displayName = value.id;
+                // 同じIDを複数読んだ場合、すでに登録した定義を残して後から読んだファイルを診断に記録します。
                 if (!definitions_.emplace(value.id, value).second)
                     errors_.push_back(it->path().generic_string() + ": 材質IDが重複: " + value.id);
             } catch (const std::exception& error) {

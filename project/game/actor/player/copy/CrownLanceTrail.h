@@ -16,10 +16,12 @@ public:
             return;
         mesh_ = std::make_unique<EffectObject3D>();
         mesh_->Initialize(common);
+        // 材質を取得できない場合は表示物を破棄し、残像だけを省略します。
         if (!mesh_->GetMaterialData()) {
             mesh_.reset();
             return;
         }
+        // 帯は表示専用にし、槍が決めた回転を使って判定とは独立させます。
         mesh_->SetModel("Effects/crown_lance_trail");
         mesh_->SetColliderType(ColliderType::None);
         mesh_->SetQuaternionMaster(true);
@@ -35,6 +37,7 @@ public:
                 bool full, float fade, float deltaTime) {
         if (!mesh_)
             return;
+        // 発射直後は実際に進んだ距離で長さを制限し、最大長を超えたら槍の後方だけを残します。
         const float weight = full ? 1.35f : 1.0f;
         const float length = (std::min)(engine::Math::Length(root - start_), style.trailLength * weight)
                            * (1.0f - fade);
@@ -44,6 +47,7 @@ public:
         mesh_->SetTranslate(root);
         const float width = style.trailWidth * weight * (1.0f - 0.65f * fade);
         mesh_->SetScale({width, length, width});
+        // 帯の変形は移動から求め、流れるノイズと消え方は専用材質へ渡します。
         auto& material = *mesh_->GetMaterialData();
         material.time += deltaTime;
         material.distortionStrength = style.trailNoise;
@@ -52,9 +56,10 @@ public:
         mesh_->UpdateWorldMatrix(true);
     }
 
-    void Draw(ID3D12Resource* point, ID3D12Resource* spot, Camera* camera, int bufferIndex) {
+    void Draw(ID3D12Resource* point, ID3D12Resource* spot, engine::Camera* camera, int bufferIndex) {
         if (!mesh_ || !mesh_->GetIsVisible())
             return;
+        // カメラが渡された描画先には専用の行列を使い、省略時は現在の描画カメラを取り直します。
         if (camera) {
             mesh_->DrawForCamera(camera, point, spot, bufferIndex);
         } else {

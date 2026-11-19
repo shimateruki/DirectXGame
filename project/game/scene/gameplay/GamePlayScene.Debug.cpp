@@ -67,6 +67,10 @@ void GamePlayScene::DrawImGui() {
 #ifdef USE_IMGUI
     // ステージ切替、プレイヤー状態、各ボスの演出確認をこのSceneのデバッグ面へ集める。
     ImGui::Text(ICON_FA_INFO_CIRCLE " Scene: GamePlay");
+    if (ImGui::CollapsingHeader("ダッシュパネルの疾走線")) {
+        ImGui::SliderFloat("最大不透明度", &dashSpeedLineMaxAlpha_, 0.0f, 1.0f);
+        ImGui::SliderFloat("画面に対するサイズ", &dashSpeedLineScale_, 0.85f, 1.25f);
+    }
     ImGui::Separator();
 
     if (ImGui::CollapsingHeader(ICON_FA_MAP " Stage Selection", ImGuiTreeNodeFlags_DefaultOpen)) {
@@ -398,6 +402,7 @@ void GamePlayScene::ApplyDebugPlayerMorph(const char* enemyType) {
         return;
     }
 
+    // プレイヤーが倒れているか演出に操作を預けている間は、現在の変身を触らず中止します。
     if (player_->IsDead() || player_->IsCinematicLocked()) {
         DebugConsole::GetInstance()->AddLog("Debug morph skipped: player is unavailable.");
         return;
@@ -413,12 +418,14 @@ void GamePlayScene::ApplyDebugPlayerMorph(const char* enemyType) {
         return;
     }
 
+    // 能力設定を供給する敵はシーンに登録せず、表示と当たり判定も無効にします。
     source->SetTarget(player_);
     source->SetTranslate(player_->GetWorldPosition());
     source->SetIsVisible(false);
     source->SetCollisionAttribute(0);
     source->SetCollisionMask(0);
 
+    // Playerへ渡す前に変身元の所有権をシーンへ移し、変身が不成立なら破棄します。
     BaseEnemy* sourcePointer = source.get();
     debugPlayerMorphSource_ = std::move(source);
     player_->DebugForceEnemyMorph(sourcePointer);
@@ -459,6 +466,7 @@ void GamePlayScene::QueueDebugTeleport(DebugTeleportDestination destination) {
 }
 
 void GamePlayScene::ProcessPendingDebugTeleport() {
+    // 要求は一度取り出して消し、失敗した場合も次のフレームで繰り返しません。
     const DebugTeleportDestination destination = pendingDebugTeleportDestination_;
     pendingDebugTeleportDestination_ = DebugTeleportDestination::None;
 
@@ -481,6 +489,7 @@ void GamePlayScene::ProcessPendingDebugTeleport() {
     stageEntryRuntimeWasPlaying_ = true;
     stageEntryPresentationRetryTimer_ = 0.0f;
 
+    // 選択された検証地点ごとに、着地点と顔を向ける目標を実際の配置名で渡します。
     switch (destination) {
     case DebugTeleportDestination::PrismArena:
         TeleportPlayerToDebugTarget(kDebugPrismArenaAnchorName, {18.0f, 0.0f, 5.0f}, kDebugPrismSlimeName, "中ボス前");
@@ -511,6 +520,7 @@ engine::Object3D* GamePlayScene::FindDebugObjectByName(const char* objectName) c
         }
     }
 
+    // ルートの配置だけでは見つからない名前も扱うため、子オブジェクトを順に探索します。
     while (!objectsToVisit.empty()) {
         engine::Object3D* object = objectsToVisit.back();
         objectsToVisit.pop_back();
@@ -556,10 +566,12 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(const char* anchorName, const en
     engine::Vector3 destination = anchor->GetWorldPosition() + anchorOffset;
     const Aabb anchorBounds = anchor->GetAabb();
 
+    // 有効な当たり判定があれば、その上面に足元の余裕を足します。
     if (anchorBounds.max.y > anchorBounds.min.y) {
         destination.y = anchorBounds.max.y + kDebugTeleportPlayerFloorClearance;
     }
 
+    // 向けたい対象の水平位置を使い、見つからない場合や同位置では既定方向へ戻します。
     engine::Vector3 facingDirection = {1.0f, 0.0f, 0.0f};
 
     if (engine::Object3D* facingObject = FindDebugObjectByName(facingObjectName)) {
@@ -593,7 +605,8 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(const char* anchorName, const en
     player_->UpdateLocalMatrix();
     player_->UpdateWorldMatrix();
 
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    // 旧ロックオンとカメラ演出の重ね掛けを解除し、新しい位置を通常の三人称視点で表示します。
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
     if (lockOnSystem_) {
         lockOnSystem_->ResetLockOn(camera);
@@ -608,7 +621,7 @@ bool GamePlayScene::TeleportPlayerToDebugTarget(const char* anchorName, const en
         CameraManager::GetInstance()->SetActiveCamera(camera);
         camera->SetInputEnabled(true);
         camera->SetFollowTarget(player_);
-        camera->SetFollowMode(Camera::FollowMode::Aimable);
+        camera->SetFollowMode(engine::Camera::FollowMode::Aimable);
         camera->SetRotation({kDebugTeleportCameraPitch, std::atan2(facingDirection.x, facingDirection.z), 0.0f});
         camera->SnapToThirdPerson(kDebugTeleportCameraDistance, kDebugTeleportCameraHeight, kDebugTeleportCameraPitch);
         camera->Update(0.0f);

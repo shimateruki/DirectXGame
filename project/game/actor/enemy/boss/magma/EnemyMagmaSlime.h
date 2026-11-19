@@ -38,10 +38,10 @@ class EnemyMagmaSlime final : public BaseEnemy {
     void DrawOwnedTransparentVisuals(ID3D12Resource* pointLightResource,
                                      ID3D12Resource* spotLightResource) override;
 
-    void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+    void DrawForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource,
                        ID3D12Resource* spotLightResource, int previewBufferIndex = 0) override;
 
-    void DrawOwnedTransparentVisualsForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+    void DrawOwnedTransparentVisualsForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource,
                                               ID3D12Resource* spotLightResource,
                                               int previewBufferIndex = 0) override;
 
@@ -247,14 +247,11 @@ class EnemyMagmaSlime final : public BaseEnemy {
     /// <summary>予備動作、攻撃、硬直の更新先を切り替えます。</summary>
     void UpdateAttack(float deltaTime, const engine::Vector3& targetDirection, float targetDistance, engine::Vector3& velocity);
 
-    /// <summary>魔法陣や攻撃予告を更新します。</summary>
-    void UpdateWindup(float deltaTime, const engine::Vector3& targetDirection);
+    /// <summary>予兆または攻撃中の技を進め、残り時間が尽きたら次の段階へ移す。</summary>
+    void UpdateAttackPattern(AttackState phase, float deltaTime, float targetDistance, engine::Vector3& velocity);
 
     /// <summary>予備動作完了時に各技の攻撃本体を開始します。</summary>
     void BeginActive();
-
-    /// <summary>進行中の攻撃を更新し、終了時に硬直へ移します。</summary>
-    void UpdateActive(float deltaTime, float targetDistance, engine::Vector3& velocity);
 
     /// 攻撃後の硬直へ移る。
     void BeginRecovery();

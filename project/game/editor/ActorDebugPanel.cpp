@@ -73,6 +73,7 @@ void ActorDebugPanel::SetPlayerCopyMode(bool enabled) {
         crownMovieMode_ = false;
     }
 
+    // 既に同じモードなら通常の再構築は省き、切り替わった場合だけ選択中の技を読み直します。
     if (playerCopyMode_ == enabled)
         return;
     if (enabled_) {
@@ -126,6 +127,7 @@ StopPreview();
 void ActorDebugPanel::Update(float deltaTime) {
 if (const auto& save = EnemyAttackPreviewRegistry::GetStatusEditor().savePending) save();
 #ifdef USE_IMGUI
+    // 入力を終えた時点で基本値を反映し、配置の操作権を失った場合はプレビューも停止します。
     if (statusRefreshPending_ && !ImGui::IsAnyItemActive()) RefreshStatusPreview();
     if (placementPreview_ && !IsAuthoringViewportActive()) {
         StopPreview();
@@ -134,6 +136,7 @@ if (const auto& save = EnemyAttackPreviewRegistry::GetStatusEditor().savePending
 #endif
     BaseScene* currentScene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
 
+    // シーンが切り替わったフレームは、以前のシーンを前提にしたプレビューを進めません。
     if (previewScene_ != currentScene) {
         previewScene_ = currentScene; return;
     }
@@ -143,6 +146,7 @@ if (const auto& save = EnemyAttackPreviewRegistry::GetStatusEditor().savePending
         return;
     }
 
+    // 本編を開始した場合は、プレビューの一時演出と複製を処分します。
     if (sceneManager_->IsPlaying()) {
         enabled_ = false;
         ClearPreviewTransientState();
@@ -162,6 +166,7 @@ if (const auto& save = EnemyAttackPreviewRegistry::GetStatusEditor().savePending
 #endif
     }
 
+    // プレビュー一式を編集専用として扱い、通常の技確認だけダミーの姿勢を更新します。
     MarkPreviewFamilyEditorInternal();
     if (!crownMovieMode_)
         SyncTargetTransform();
@@ -170,6 +175,7 @@ if (const auto& save = EnemyAttackPreviewRegistry::GetStatusEditor().savePending
         CreatePreviewObjects();
     }
 
+    // 配置モードの停止中はギズモ用の姿勢だけを更新し、再生操作では通常の技確認へ戻します。
     if (placementPreview_) {
         if (playing_)
             RestartPreview(); // 通常の再生操作は保存済み攻撃の確認に戻ります。
@@ -178,14 +184,17 @@ if (const auto& save = EnemyAttackPreviewRegistry::GetStatusEditor().savePending
 }
 
 void ActorDebugPanel::BuildRuntime(bool requestCameraRecenter) {
+    // 敵のプレビューでは登録情報が生成元になるため、未登録の選択では開始しない。
     if (!crownMovieMode_ && !playerCopyMode_ && !GetPreviewDescriptor()) {
         enabled_ = false;
         return;
     }
+    // 描画の初期化が済んだ編集モードでだけ、確認用オブジェクトをシーンへ足す。
     if (!IsCurrentSceneReady() || sceneManager_->IsPlaying()) {
         return;
     }
 
+    // 王冠演出は GamePlayScene が再生対象を用意するため、ここで敵や標的を生成しない。
     if (crownMovieMode_) {
         previewScene_ = sceneManager_->GetCurrentScene();
         auto* game = dynamic_cast<GamePlayScene*>(previewScene_);
@@ -197,6 +206,7 @@ void ActorDebugPanel::BuildRuntime(bool requestCameraRecenter) {
         return;
     }
 
+    // プレビュー用の判定と生成先を、再生の開始時点で用意する。
     BaseScene* scene = sceneManager_->GetCurrentScene();
     previewScene_ = scene;
     previewRules_ = std::make_unique<GameRule>();
@@ -206,6 +216,7 @@ void ActorDebugPanel::BuildRuntime(bool requestCameraRecenter) {
 
     previewPlayer_ = nullptr;
 
+    // コピー操作やプレイヤー相手の動作を確認するときは、表示用の標的に実際の Player を使う。
     if (playerCopyMode_ || (usePlayerTarget_ && !IsGiantHookSplitPreview())) {
         auto player = std::make_unique<Player>();
         player->Initialize(
@@ -236,6 +247,7 @@ void ActorDebugPanel::BuildRuntime(bool requestCameraRecenter) {
         player->SetVelocity({ 0.0f, 0.0f, 0.0f });
         player->SetGrounded(true);
 
+        // 攻撃を受けるだけのプレイヤーは、重力で確認位置からずれないようにする。
         if (!playerCopyMode_) {
             player->SetGravity(0.0f);
             player->SetMaxFallSpeed(0.0f);
@@ -252,6 +264,7 @@ void ActorDebugPanel::BuildRuntime(bool requestCameraRecenter) {
         scene->AddObjectImmediate(std::move(player));
     }
     else {
+        // Player の挙動が不要な場合は、当たり判定を持たない目印を標的として置く。
         auto target = std::make_unique<engine::Object3D>();
         target->Initialize(scene->GetObject3DCommon());
         target->SetName(kPreviewTargetName);
@@ -272,6 +285,7 @@ void ActorDebugPanel::BuildRuntime(bool requestCameraRecenter) {
 
     SyncTargetTransform();
 
+    // コピーの確認ではプレイヤーを操作対象にし、敵攻撃用の生成経路には進まない。
     if (playerCopyMode_) {
         previewPlayer_->SetTranslate(ground);
         // 未コピー時はPlayerの基本モデルを使い、コピー開始時に能力本来の見た目へ切り替えます。
@@ -285,12 +299,14 @@ void ActorDebugPanel::BuildRuntime(bool requestCameraRecenter) {
         const auto* action = GetCopyAction();
         if (copy && action && !action->startsUncopied)
             previewPlayer_->ApplyStoredCopy(copy->type);
+        // 未保存の編集を確認するときは、コピー攻撃へ編集中の定義を渡す。
         if (useDraftProfile_)
             previewPlayer_->SetCopyPreviewProfile(draftProfile_);
         if (const auto* attack = GetSelectedAttackDefinition(); attack && attack->sequence.enabled && attack->sequence.binding == "player_special")
             previewPlayer_->SetCopyPreviewAttackId(attack->id);
         previewBaseScale_ = previewPlayer_->GetScale();
 
+        // 命中を見たい場合だけ耐久力の高い標的を追加し、同じ条件で繰り返し再生できるようにする。
         if (showTarget_) {
             auto dummy = EnemyFactory::GetInstance()->CreateEnemy("Slime", scene->GetObject3DCommon());
 
@@ -311,6 +327,7 @@ void ActorDebugPanel::BuildRuntime(bool requestCameraRecenter) {
             }
         }
 
+        // コピー操作を時刻ゼロからやり直せるように、押下と再生の記録を初期化する。
         elapsedTime_ = simulationAccumulator_ = 0;
         copyActionTriggered_ = false;
         previewSequenceCompleted_ = false;
@@ -320,8 +337,10 @@ void ActorDebugPanel::BuildRuntime(bool requestCameraRecenter) {
         return;
     }
 
+    // 敵攻撃は選択中の敵型をファクトリーで生成し、既に用意した標的へ紐づける。
     std::unique_ptr<BaseEnemy> enemy = EnemyFactory::GetInstance()->CreateEnemy(GetSelectedEnemyType(), scene->GetObject3DCommon());
 
+    // 敵を作れなかった場合は、先に追加した標的もプレビューの終了経路に渡す。
     if (!enemy) {
         RemovePreviewObjects();
         return;
@@ -333,6 +352,7 @@ void ActorDebugPanel::BuildRuntime(bool requestCameraRecenter) {
     previewEnemy_ = enemy.get();
     scene->AddObjectImmediate(std::move(enemy));
 
+    // 初期配置の確定後に時刻ゼロの記録を取り、コマ送りの基準にする。
     elapsedTime_ = 0.0f;
     simulationAccumulator_ = 0.0f;
     previewSequenceCompleted_ = false;
@@ -350,6 +370,7 @@ void ActorDebugPanel::ReleaseRuntime() {
     // Scene が所有する Object は削除要求へ渡し、先に衝突属性を無効化する。
     BaseScene* currentScene = sceneManager_ ? sceneManager_->GetCurrentScene() : nullptr;
 
+    // 継承・撃破ムービー用のシーン状態は、準備を行った元のシーン内でだけ復元します。
     if (crownMoviePrepared_ && currentScene && currentScene == previewScene_) {
         if (auto* game = dynamic_cast<GamePlayScene*>(currentScene))
             game->EndCrownMoviePreview();
@@ -374,6 +395,7 @@ void ActorDebugPanel::ReleaseRuntime() {
             }
         }
 
+        // 既にシーンから消えたポインターは参照せず、残っている複製を無効化してから削除要求を出します。
         for (engine::Object3D* object : removalTargets) {
             const bool present = std::any_of(currentScene->GetObjects().begin(), currentScene->GetObjects().end(),
                 [object](const auto& entry) { return entry.get() == object; });
@@ -387,6 +409,7 @@ void ActorDebugPanel::ReleaseRuntime() {
         }
     }
 
+    // 複製の参照に加え、再生時刻と計測履歴を消して次のプレビューへ持ち越しません。
     previewEnemy_ = nullptr;
     previewTarget_ = nullptr;
     previewPlayer_ = nullptr;
@@ -453,6 +476,7 @@ void ActorDebugPanel::SetEffectSimulationScale(float timeScale) {
 }
 
 void ActorDebugPanel::ApplyEffectPlaybackState() {
+    // プレビュー実行中だけ演出の時計を変更し、本編側の更新設定には触れません。
     if (!enabled_ || !sceneManager_ || sceneManager_->IsPlaying()) {
         return;
     }
@@ -463,6 +487,7 @@ void ActorDebugPanel::ApplyEffectPlaybackState() {
 }
 
 void ActorDebugPanel::StepSimulation(float deltaTime) {
+    // 王冠演出はシーンに時間を渡し、隔離された敵やコピー能力の更新を通さない。
     if (crownMovieMode_) {
         if (auto* game = dynamic_cast<GamePlayScene*>(previewScene_)) {
             SetEffectSimulationScale(1.0f);
@@ -481,6 +506,7 @@ void ActorDebugPanel::StepSimulation(float deltaTime) {
         return;
     }
 
+    // 通常プレビューは標的と役者が揃うまで待つ。演技終了後は、残った弾や演出の更新を許す。
     if (!previewTarget_ || (!HasPreviewActor() && !previewSequenceCompleted_)) {
         return;
     }
@@ -488,12 +514,14 @@ void ActorDebugPanel::StepSimulation(float deltaTime) {
     SetEffectSimulationScale(1.0f);
 
     engine::Vector3 ground = GetGroundPosition();
+    // コピーで移動した位置から足元の高さを取り直し、同じ床を使って接地を判定する。
     if (playerCopyMode_ && previewPlayer_) {
         ground.y = ResolveGroundHeight(previewPlayer_->GetWorldPosition(), ground.y);
         previewPlayer_->SetCopyPreviewGroundHeight(ground.y);
     }
     BaseEnemy* primaryEnemy = playerCopyMode_ ? nullptr : previewEnemy_;
 
+    // コピー側の敵は標的として置くため、敵固有AIを動かさず決めた距離に保つ。
     if (playerCopyMode_ && previewEnemy_) {
         previewEnemy_->BaseEnemy::Update(deltaTime);
         previewEnemy_->SetTranslate(ground + engine::Vector3{0,0,targetDistance_});
@@ -503,6 +531,7 @@ void ActorDebugPanel::StepSimulation(float deltaTime) {
     }
 
     if (primaryEnemy) {
+        // 被弾確認を有効にした場合だけ、指定時刻に標的から離れる方向へ一度ノックバックさせる。
         if (previewHitReaction_ && !previewHitTriggered_ && elapsedTime_ >= previewHitTime_) {
             engine::Vector3 knockback = primaryEnemy->GetWorldPosition() - previewTarget_->GetWorldPosition();
             knockback.y = 0.0f;
@@ -520,10 +549,12 @@ void ActorDebugPanel::StepSimulation(float deltaTime) {
             previewHitTriggered_ = true;
         }
 
+        // 敵の更新の前後で接地を整え、隔離環境でも技が通常の接地条件を参照できるようにする。
         MaintainGrounding(primaryEnemy, ground.y);
         primaryEnemy->Update(deltaTime);
         MaintainGrounding(primaryEnemy, ground.y);
 
+        // 敵固有の操作が必要な場合は、登録された処理にその固定フレームの入力を渡す。
         const auto* descriptor = GetPreviewDescriptor();
         if (descriptor && descriptor->updateInteraction &&
             descriptor->updateInteraction(*primaryEnemy, deltaTime, GetEnemyPreviewContext())) {
@@ -555,6 +586,7 @@ void ActorDebugPanel::StepSimulation(float deltaTime) {
         }
     }
 
+    // 敵の更新で生成した弾を先に進め、更新後の位置で命中を解決する。
     BulletManager::GetInstance()->Update(deltaTime);
 
     if (playerCopyMode_ && previewEnemy_) {
@@ -577,6 +609,7 @@ void ActorDebugPanel::StepSimulation(float deltaTime) {
         }
     }
 
+    // 敵攻撃の弾はコピー側の命中処理と分け、専用の標的との接触を解決する。
     if (!playerCopyMode_)
         ResolvePreviewProjectileHits();
 
@@ -603,6 +636,7 @@ void ActorDebugPanel::StepSimulation(float deltaTime) {
 
             previewPlayer_->SetGrounded(touchingPreviewGround);
 
+            // プレビューの経過時刻から初回押下と押し続けを組み立て、通常入力の代わりに渡す。
             PlayerCopyAbilityInput input{};
             const auto* action = GetCopyAction();
             const auto* copy = GetCopyDescriptor();
@@ -618,12 +652,14 @@ void ActorDebugPanel::StepSimulation(float deltaTime) {
             previewPlayer_->SetCopyPreviewInput(input);
         }
 
+        // コピー側だけ重力を使い、標的のプレイヤーは落下させずその場で反応を確認する。
         previewPlayer_->SetGravity(playerCopyMode_ ? 50.0f : 0.0f);
         previewPlayer_->SetMaxFallSpeed(playerCopyMode_ ? 60.0f : 0.0f);
         previewPlayer_->SetIsControlActive(false);
         previewPlayer_->Update(deltaTime);
         if (playerCopyMode_)
             previewPlayer_->StepCopyPreviewObjects(deltaTime, ground.y);
+        // 固定フレームの移動で床を通り抜けた分を戻し、次の入力判定へ接地状態を渡す。
         if (previewPlayer_->GetTranslate().y < ground.y) {
             engine::Vector3 playerPosition = previewPlayer_->GetTranslate();
             playerPosition.y = ground.y;
@@ -682,6 +718,7 @@ void ActorDebugPanel::StepSimulation(float deltaTime) {
         gpuParticles->UpdateEditorPreviewStep(deltaTime);
     }
 
+    // 更新がすべて終わった時点でプレビュー時刻と視点を確定し、タイムラインに記録する。
     elapsedTime_ += deltaTime;
     ApplySealBarrageMovieCamera();
     MarkPreviewFamilyEditorInternal();
@@ -696,9 +733,10 @@ void ActorDebugPanel::ApplySealBarrageMovieCamera() {
     const float movieTime = elapsedTime_ - 1.25f - CrownFinaleTuning::Get().sealCastTime;
     if (movieTime < 0.0f || movieTime >= CrownFinaleTuning::Get().sealBarrageMovieDuration)
         return;
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
     if (!camera)
         return;
+    // 編集側と実戦のカットを共通計算で求め、通常の追従を外して視点と画角を直接反映します。
     const auto& tuning = CrownFinaleTuning::Get();
     const CrownBarrageCameraPose pose = EvaluateCrownBarrageCamera(
         movieTime, previewEnemy_->GetWorldPosition(), previewTarget_->GetWorldPosition(), tuning);
@@ -713,6 +751,7 @@ void ActorDebugPanel::ApplySealBarrageMovieCamera() {
 }
 
 void ActorDebugPanel::ResolvePreviewProjectileHits() {
+    // プレイヤー役が不在か撃破済みなら、プレビュー弾の被弾を処理しません。
     if (!previewPlayer_ || previewPlayer_->IsDead()) {
         return;
     }
@@ -737,6 +776,7 @@ void ActorDebugPanel::ResolvePreviewProjectileHits() {
             continue;
         }
 
+        // 水平の弾速から押し出す向きを求め、停止した弾では標的との位置関係に置き換えます。
         engine::Vector3 hitDirection = bullet->GetVelocity();
         hitDirection.y = 0.0f;
 
@@ -751,6 +791,7 @@ void ActorDebugPanel::ResolvePreviewProjectileHits() {
 
         hitDirection = engine::Math::Normalize(hitDirection);
 
+        // 実戦と同じ通知に弾の威力・属性・状態異常を載せ、被弾後は弾を消費します。
         DamageEvent event;
         event.target = previewPlayer_;
         event.attacker = bullet;
@@ -768,6 +809,7 @@ void ActorDebugPanel::TriggerPreviewPlayerDamage() {
         return;
     }
 
+    // 攻撃側から標的へ向かう水平の向きを基準にし、重なっていれば既定の方向で試します。
     engine::Vector3 direction = previewPlayer_->GetTranslate() - previewEnemy_->GetTranslate();
     direction.y = 0.0f;
 
@@ -785,6 +827,7 @@ void ActorDebugPanel::TriggerPreviewPlayerDamage() {
     event.damageType = GetPreviewDamageType();
     event.statusEffect = GetPreviewStatusEffect();
 
+    // 技の局所座標で指定した吹き飛びをワールド速度へ変換し、未指定なら既存の確認用速度を使います。
     if (attack && engine::Math::Length(attack->knockbackVelocity) > 0.001f) {
         const engine::Vector3 right = { direction.z, 0.0f, -direction.x };
         event.knockbackVelocity =
@@ -792,10 +835,11 @@ void ActorDebugPanel::TriggerPreviewPlayerDamage() {
             engine::Vector3{ 0.0f, attack->knockbackVelocity.y, 0.0f } +
             direction * attack->knockbackVelocity.z;
     } else {
-        // Existing profiles keep the legacy preview knockback.
+        // 旧プロファイルのプレビュー用速度を維持します。
         event.knockbackVelocity = { direction.x * 9.5f, 4.2f, direction.z * 9.5f };
     }
 
+    // 実戦と同じ購読先で被弾を処理できるよう、無敵時間も含めたダメージ通知を送ります。
     event.invincibilityDuration = attack && attack->invincibilityDuration > 0.0f
         ? attack->invincibilityDuration
         : 1.0f;
@@ -842,6 +886,7 @@ void ActorDebugPanel::RecordTimelineSample() {
 
     TimelineSample sample;
     sample.time = elapsedTime_;
+    // 速度は上下も含む三次元の大きさ。高さはプレビューの基準地面を0として表示する。
     sample.speed = std::sqrt(
         velocity.x * velocity.x +
         velocity.y * velocity.y +
@@ -853,13 +898,15 @@ void ActorDebugPanel::RecordTimelineSample() {
         std::abs(previewBaseScale_.z) > 0.0001f ? std::abs(actor->GetScale().z / previewBaseScale_.z) : 1.0f
     };
 
-    if (const MeshRenderer* renderer = actor->GetMeshRenderer()) {
+    // 本体Transformに加え、描画だけの伸縮を掛けてから最も変形した軸を記録します。
+    if (const engine::MeshRenderer* renderer = actor->GetMeshRenderer()) {
         const engine::Vector3& visualScale = renderer->GetVisualScale();
         scaleMultiplier.x *= std::abs(visualScale.x);
         scaleMultiplier.y *= std::abs(visualScale.y);
         scaleMultiplier.z *= std::abs(visualScale.z);
     }
 
+    // 基準と同じ大きさを0とし、縮みと伸びのうち変化が最も大きい軸の割合を記録する。
     sample.deformation = (std::max)({
         std::abs(scaleMultiplier.x - 1.0f),
         std::abs(scaleMultiplier.y - 1.0f),
@@ -878,6 +925,7 @@ void ActorDebugPanel::RecordTimelineSample() {
     sample.debrisPieces = static_cast<float>(DebrisEffectManager::GetInstance()->GetActivePieceCount());
     sample.phase = GetCurrentPhaseName();
 
+    // 時刻差が固定刻みの4分の1未満なら同じ観測点として上書きし、グラフに点を重ねない。
     if (!timelineSamples_.empty() && std::abs(timelineSamples_.back().time - sample.time) < kFixedPreviewStep * 0.25f) {
         timelineSamples_.back() = std::move(sample);
     } else {
@@ -1029,8 +1077,10 @@ std::function<void(std::unique_ptr<BaseEnemy>)> ActorDebugPanel::MakePreviewSpaw
 }
 
 void ActorDebugPanel::AddPreviewSpawn(std::unique_ptr<BaseEnemy> enemy) {
+    // 停止済みの再生や切替前のシーンから届いた生成要求は、現在のシーンへ追加しません。
     if (!enemy || !spawnSession_ || !sceneManager_ || sceneManager_->GetCurrentScene() != previewScene_) return;
     PreparePreviewMetadata(*enemy, std::string(kPreviewNamePrefix) + "Spawned_" + std::to_string(spawnedPreviewObjects_.size()));
+    // 増援がさらに増援を出す場合も同じ隔離経路へつなぎ、削除処理で見つけられるよう参照を記録します。
     ConnectPreviewSpawns(*enemy);
     auto* raw = enemy.get();
     spawnedPreviewObjects_.push_back(raw);
@@ -1054,10 +1104,12 @@ void ActorDebugPanel::LoadSelectedProfile() {
         const auto* copy = GetCopyDescriptor();
         if (copy && !copy->FindAction(copyActionId_)) copyActionId_ = copy->actions.front().id;
     }
+    // 前回の実行時キャッシュを無効にし、この種類の保存済みデータを読みます。
     const std::string enemyType = GetSelectedEnemyType();
     EnemyAttackProfile::InvalidateCache(enemyType);
     const bool loaded = editableProfile_.LoadForEnemy(enemyType, &profileStatus_);
 
+    // コピー確認では、プレイヤー能力へ割り当てられた最初の共通攻撃を選びます。
     if (playerCopyMode_) {
         for (int i = 0; i < static_cast<int>(editableProfile_.attacks.size()); ++i) {
             if (editableProfile_.attacks[i].sequence.enabled && editableProfile_.attacks[i].sequence.binding == "player_special") {
@@ -1099,6 +1151,7 @@ void ActorDebugPanel::SaveSelectedProfile(bool restartPreview) {
         }
     }
 
+    // 技が外部シーケンスを参照する場合は、その素材も保存できたときだけプロフィールの保存へ進みます。
     if (const auto* selected = GetSelectedAttackDefinition(); selected && !selected->sequence.assetPath.empty()) {
         if (!EnemyAttackProfile::SaveSequenceAsset(selected->sequence.assetPath, selected->sequence, &profileStatus_))
             return;
@@ -1108,6 +1161,7 @@ void ActorDebugPanel::SaveSelectedProfile(bool restartPreview) {
     editableProfile_.Sanitize();
     const std::string path = EnemyAttackProfile::GetDefaultPath(editableProfile_.enemyType);
 
+    // 保存が成功したときだけ種類のキャッシュと編集済み状態を更新し、必要なら保存後の設定で再生を再構築します。
     if (editableProfile_.SaveToFile(path, &profileStatus_)) {
         EnemyAttackProfile::InvalidateCache(editableProfile_.enemyType);
         profileStatus_ = "保存しました: " + path;
@@ -1250,6 +1304,7 @@ void ActorDebugPanel::BeginEffects() {
             const auto generation = sceneManager_->GetSceneGeneration();
             const auto followId = camera->GetFollowTarget() ? camera->GetFollowTarget()->EnsureReplayId() : 0;
             auto* manager = sceneManager_;
+            // 同じシーン内で終了した場合に限り、位置・回転と追従対象を復元します。対象は古いポインターではなくIDから探します。
             restoreMovieCamera_ = [manager, generation, eye, target, rotation, followId] {
                 if (!manager || manager->GetSceneGeneration() != generation) return;
                 auto* restored = CameraManager::GetInstance()->GetMainCamera();
@@ -1263,6 +1318,7 @@ void ActorDebugPanel::BeginEffects() {
         }
     }
 
+    // エディター用セッションを開くのは一度だけにし、各エフェクト管理のプレビューと本編を分けます。
     if (effectsOwned_) return;
     BulletManager::GetInstance()->BeginEditorSession();
     GpuParticleManager::GetInstance()->BeginEditorSession();
@@ -1283,11 +1339,13 @@ void ActorDebugPanel::EndEffects() {
     DebrisEffectManager::GetInstance()->EndEditorSession();
     if (auto* scene = sceneManager_->GetCurrentScene())
         if (auto* particles = scene->GetParticleSystem()) particles->EndEditorSession();
+    // 各管理系を閉じ終えてから、必要な場合だけ退避していたカメラを復元します。
     effectsOwned_ = false;
     if (restoreMovieCamera_) restoreMovieCamera_();
     restoreMovieCamera_ = {};
 }
 float ActorDebugPanel::ResolveGroundHeight(const engine::Vector3& position, float fallback) const {
+    // プレビューの複製を床として拾わないよう、実シーンの地面にだけ下向きのレイを飛ばします。
     PhysicsQueryFilter filter;
     filter.mask = CollisionCategories::Get("ground");
     filter.acceptsObject = [](const engine::Object3D* object) { return object && !object->IsEditorInternal(); };

@@ -27,6 +27,7 @@ void AudioPlayer::Initialize() {
 
 // デコードスレッドの終了を待ってから SourceVoice を破棄し、XAudio2/MF の寿命を逆順に閉じます。
 void AudioPlayer::Finalize() {
+	// 一時再生のハンドルは通常音源と別の表にあるため、先に個別のスレッドとVoiceを閉じる。
 	for (auto& [handle, data] : transientSoundDatas_) {
 		DestroyStreamingData(data.get());
 	}
@@ -134,25 +135,33 @@ std::unique_ptr<SoundDataStreaming> AudioPlayer::CreateStreamingData(
 	return data;
 }
 
+namespace {
+// デコードがVoiceを参照し終えてから、待機中のバッファとVoiceを解放する。
+void StopStreamingVoice(SoundDataStreaming& data) {
+	data.isPlaying_ = false;
+	// キューの空きを待っているワーカーを起こし、バッファやVoiceを回収する前に終了できるようにする。
+	data.cv_.notify_one();
+
+	if (data.decodeThread_.joinable()) {
+		data.decodeThread_.join();
+	}
+
+	if (data.sourceVoice_) {
+		data.sourceVoice_->Stop(0);
+		data.sourceVoice_->FlushSourceBuffers();
+		data.sourceVoice_->DestroyVoice();
+		data.sourceVoice_ = nullptr;
+	}
+}
+}
+
 void AudioPlayer::DestroyStreamingData(SoundDataStreaming* data) {
 	// デコードスレッドが Voice とリングバッファを使い終えてから破棄する。
 	if (!data) {
 		return;
 	}
 
-	data->isPlaying_ = false;
-	data->cv_.notify_one();
-
-	if (data->decodeThread_.joinable()) {
-		data->decodeThread_.join();
-	}
-
-	if (data->sourceVoice_) {
-		data->sourceVoice_->Stop(0);
-		data->sourceVoice_->FlushSourceBuffers();
-		data->sourceVoice_->DestroyVoice();
-		data->sourceVoice_ = nullptr;
-	}
+	StopStreamingVoice(*data);
 
 	data->sourceReader_.Reset();
 }
@@ -233,6 +242,7 @@ void AudioPlayer::PlayStreaming(AudioHandle handle, bool loop, float volume)
 	PropVariantClear(&var);
 
 
+	// Readerを先頭に戻してから、今回の再生に専用のVoiceを作る。
 	xAudio2_->CreateSourceVoice(&data->sourceVoice_, data->waveFormat_, 0, XAUDIO2_DEFAULT_FREQ_RATIO, &data->voiceCallback_, NULL, NULL);
 
 	// 呼び出し側の音量を 0～1 に収めて新しい Voice へ適用します。
@@ -258,19 +268,7 @@ void AudioPlayer::StopSe(AudioHandle handle) {
 	}
 
 	SoundDataStreaming* data = it->second.get();
-	data->isPlaying_ = false;
-	data->cv_.notify_one();
-
-	if (data->decodeThread_.joinable()) {
-		data->decodeThread_.join();
-	}
-
-	if (data->sourceVoice_) {
-		data->sourceVoice_->Stop(0);
-		data->sourceVoice_->FlushSourceBuffers();
-		data->sourceVoice_->DestroyVoice();
-		data->sourceVoice_ = nullptr;
-	}
+	StopStreamingVoice(*data);
 
 	PROPVARIANT var = {};
 	PropVariantInit(&var);
@@ -330,6 +328,7 @@ void AudioPlayer::DecodeThread(SoundDataStreaming* data) {
 				mfBuffer->Lock(&localAudioData, NULL, &localAudioDataBytes);
 
 				// ★★★ バグ修正: リングバッファの該当インデックスのバッファにデータをコピー ★★★
+				// デコード直後のメモリはUnlockで参照できなくなるため、再生終了まで残る専用バッファへPCMをコピーする。
 				auto& currentBuffer = data->buffers_[data->currentBufferIndex_];
 				currentBuffer.assign(localAudioData, localAudioData + localAudioDataBytes);
 
@@ -339,15 +338,18 @@ void AudioPlayer::DecodeThread(SoundDataStreaming* data) {
 				XAUDIO2_BUFFER audioBuffer = {};
 				audioBuffer.pAudioData = currentBuffer.data();
 				audioBuffer.AudioBytes = (UINT32)currentBuffer.size();
+				// 再生バッファの完了通知を待機中のデコードへ戻すため、通知先をバッファに添える。
 				audioBuffer.pContext = &data->cv_;
 				data->sourceVoice_->SubmitSourceBuffer(&audioBuffer);
 
 				// ★★★ バグ修正: 次に使うバッファのインデックスを更新 ★★★
+				// 次の空き枠へ進み、最後の枠の次は先頭へ戻す。
 				data->currentBufferIndex_ = (data->currentBufferIndex_ + 1) % SoundDataStreaming::kNumBuffers;
 			}
 		} else {
 			// バッファが一杯なら、コールバックからの通知を待つ
 			std::unique_lock<std::mutex> lock(data->mtx_);
+			// 完了通知を待ちつつ、通知の前後がずれても10ミリ秒以内に空きと停止フラグを確認し直す。
 			data->cv_.wait_for(lock, std::chrono::milliseconds(10));
 		}
 	}
@@ -449,6 +451,7 @@ AudioPlayer::PlaybackHandle AudioPlayer::PlayTransientSE(
 
 	data->sourceVoice_->SetVolume(
 		std::clamp(volume, 0.0f, 1.0f) * seMasterVolume_);
+	// ピッチは原音を1とする周波数倍率で、0.5～2の範囲をVoiceに渡す。
 	data->sourceVoice_->SetFrequencyRatio(std::clamp(pitch, 0.5f, 2.0f));
 	data->isEndOfStream_ = false;
 	data->loop_ = false;
@@ -459,6 +462,7 @@ AudioPlayer::PlaybackHandle AudioPlayer::PlayTransientSE(
 	const PlaybackHandle handle = nextPlaybackHandle_++;
 	SoundDataStreaming* rawData = data.get();
 	transientSoundDatas_.emplace(handle, std::move(data));
+	// ハンドルの所有表へ登録してから、デコードスレッドにデータのアドレスを渡す。
 	rawData->decodeThread_ = std::thread(&AudioPlayer::DecodeThread, this, rawData);
 	return handle;
 }
@@ -625,6 +629,7 @@ bool AudioEventSystem::LoadEvent(
 		loaded.spatial = root.value("spatial", loaded.spatial);
 		loaded.minDistance =
 			(std::max)(0.0f, root.value("minDistance", loaded.minDistance));
+		// 減衰の終点は開始点から離し、再生時の距離正規化で分母を正に保つ。
 		loaded.maxDistance =
 			(std::max)(loaded.minDistance + 0.01f,
 				root.value("maxDistance", loaded.maxDistance));
@@ -707,6 +712,7 @@ bool AudioEventSystem::SaveEvent(
 		return false;
 	}
 
+	// 書き込みを確認してから、次の発音で保存した設定を反映する。
 	eventCache_[NormalizeAudioPath(path.generic_string())] = std::move(sanitized);
 	SetAudioEventError(errorMessage, "");
 	return true;
@@ -771,6 +777,7 @@ AudioPlayer::PlaybackHandle AudioEventSystem::Play(
 		return AudioPlayer::kInvalidPlaybackHandle;
 	}
 
+	// 候補を抽選し、直前と同じ候補を引いたときだけ一覧で次の音へ送る。
 	std::uniform_int_distribution<std::size_t> clipDistribution(
 		0, definition.clips.size() - 1);
 	std::size_t clipIndex = clipDistribution(randomEngine_);
@@ -790,8 +797,10 @@ AudioPlayer::PlaybackHandle AudioEventSystem::Play(
 	float volume = volumeDistribution(randomEngine_) *
 		std::clamp(volumeScale, 0.0f, 1.0f);
 
+	// イベントが距離減衰を使い、座標と視点が揃った場合に音量を補正する。
 	if (definition.spatial && worldPosition) {
-		if (Camera* camera = CameraManager::GetInstance()->GetActiveCamera()) {
+		if (engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera()) {
+			// カメラの視点からのワールド距離で、最小距離の等倍から最大距離の無音まで直線的に減衰する。
 			const float distance = engine::Math::Length(*worldPosition - camera->GetEye());
 			const float attenuation = 1.0f - std::clamp(
 				(distance - definition.minDistance) /

@@ -68,6 +68,7 @@ void SaveIndicatorOverlay::Update(float deltaTime) {
 
     float alpha = 1.0f;
 
+    // 見た目の確認で固定中は、通知のフェードと自動終了を進めません。
     if (!debugHold_) {
         const float totalDuration = kFadeInDuration + holdDuration_ + kFadeOutDuration;
 
@@ -77,6 +78,7 @@ void SaveIndicatorOverlay::Update(float deltaTime) {
             alpha = 1.0f - (timer_ - kFadeInDuration - holdDuration_) / kFadeOutDuration;
         }
 
+        // 退場まで終えたら、透明なまま描画せず通知全体を非表示にします。
         if (timer_ >= totalDuration) {
             isActive_ = false;
             SetAllVisible(false);
@@ -84,6 +86,7 @@ void SaveIndicatorOverlay::Update(float deltaTime) {
         }
     }
 
+    // 通知の各要素へ同じ透明度を渡し、変更した姿勢をSpriteの更新で反映します。
     ApplyVisibilityAnimation(std::clamp(alpha, 0.0f, 1.0f));
 
     for (auto& sprite : sprites_) {
@@ -161,6 +164,7 @@ void SaveIndicatorOverlay::LoadLayout(const std::string& layoutPath) {
     // レイアウト JSON の座標は基準解像度から実画面へ変換します。
     sprites_.clear();
 
+    // 描画基盤が無い場合は生成できないため、既存の要素を解放した状態で戻ります。
     if (!spriteCommon_) {
         return;
     }
@@ -182,6 +186,7 @@ void SaveIndicatorOverlay::LoadLayout(const std::string& layoutPath) {
         return;
     }
 
+    // 有効な要素だけを同じ解像度換算で生成し、後の名前結び付けに備えます。
     const auto layoutScale = SpriteLayoutScaler::Make(root);
 
     for (const auto& spriteData : root["sprites"]) {
@@ -240,9 +245,11 @@ void SaveIndicatorOverlay::CaptureBaseState(SpriteState& state) {
 
 void SaveIndicatorOverlay::ApplyVisibilityAnimation(float alpha) {
     // 共通透明度に対して、パネルの拡大・アイコンの脈動・文字の揺れを別々に重ねる。
+    // 経過秒を出現秒数で割り、わずかに行き過ぎてから等倍へ戻る補間に使う。
     const float appear = Easing::OutBack01(std::min(timer_ / kFadeInDuration, 1.0f));
     const float pulse = std::sin(timer_ * 5.0f);
 
+    // パネルをわずかに拡大しながら、基準の位置へ滑り込ませます。
     if (panel_.sprite) {
         engine::Vector4 color = panel_.baseColor;
         color.w *= alpha;
@@ -252,6 +259,7 @@ void SaveIndicatorOverlay::ApplyVisibilityAnimation(float alpha) {
         panel_.sprite->SetPosition({panel_.basePosition.x, panel_.basePosition.y + (1.0f - appear) * 10.0f});
     }
 
+    // アイコンは保持中も回転と上下動を続け、通知が動いていることを示します。
     if (icon_.sprite) {
         const float iconScale = (0.82f + 0.18f * appear) * (1.0f + 0.045f * pulse);
         engine::Vector4 color = icon_.baseColor;
@@ -259,9 +267,11 @@ void SaveIndicatorOverlay::ApplyVisibilityAnimation(float alpha) {
         icon_.sprite->SetColor(color);
         icon_.sprite->SetSize({icon_.baseSize.x * iconScale, icon_.baseSize.y * iconScale});
         icon_.sprite->SetPosition({icon_.basePosition.x, icon_.basePosition.y + std::sin(timer_ * 6.0f) * 2.0f});
+        // 回転角はラジアン。通知を出している秒数に比例して回し続ける。
         icon_.sprite->SetRotation(icon_.baseRotation + timer_ * kPi * 0.72f);
     }
 
+    // 文字の明滅と横揺れはパネルと独立させ、表示時の基準位置を毎フレーム使います。
     if (text_.sprite) {
         engine::Vector4 color = text_.baseColor;
         color.w *= alpha * (0.88f + 0.12f * std::sin(timer_ * 7.0f));

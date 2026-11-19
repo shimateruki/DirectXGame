@@ -49,7 +49,10 @@ void CameraEditor::SaveSettings() {
   // 読み込みと同じ規則で保存先を解決し、既定フォルダーを二重に付けない。
   const fs::path filePath = ResolveSettingsFilePath(fileNameBuffer_, kDirectoryPath_);
 
+  settings_.bossFraming.Validate();
   json j;
+  const auto& battle = settings_.bossFraming;
+  j["bossFraming"] = {{"enabled", battle.enabled}, {"minDistance", battle.minDistance}, {"maxDistance", battle.maxDistance}, {"height", battle.height}, {"pitch", battle.pitch}, {"fov", battle.fov}, {"targetWeight", battle.targetWeight}, {"turnSpeed", battle.turnSpeed}, {"response", battle.response}};
   j["gameFollowMode"] = static_cast<int>(settings_.gameFollowMode);
   j["gameplayStyle"] = static_cast<int>(settings_.gameplayStyle);
   j["guidedControl"] = {{"yawLimit", settings_.guidedYawLimit}, {"pitchLimit", settings_.guidedPitchLimit},
@@ -164,11 +167,28 @@ void CameraEditor::LoadSettings() {
      * static_cast<Mode>(j["mode"]);*/
     if (j.contains("gameFollowMode"))
       settings_.gameFollowMode =
-          static_cast<Camera::FollowMode>(j["gameFollowMode"]);
+          static_cast<engine::Camera::FollowMode>(j["gameFollowMode"]);
 
     // 旧JSONには操作方式がないため、従来の自由操作として読み込む。
-    settings_.gameplayStyle = j.contains("gameplayStyle") && j["gameplayStyle"].is_number_integer() && j["gameplayStyle"].get<int>() == 1 ? Camera::GameplayStyle::Guided : Camera::GameplayStyle::Free;
+    settings_.gameplayStyle = j.contains("gameplayStyle") && j["gameplayStyle"].is_number_integer() && j["gameplayStyle"].get<int>() == 1 ? engine::Camera::GameplayStyle::Guided : engine::Camera::GameplayStyle::Free;
+    // 旧ファイルに設定がなくても、シーンからボスが指定された間だけ既定構図を使う。
+    settings_.bossFraming = {};
+    if (j.contains("bossFraming") && j["bossFraming"].is_object()) {
+      const auto& battle = j["bossFraming"];
+      if (battle.contains("enabled") && battle["enabled"].is_boolean())
+        settings_.bossFraming.enabled = battle["enabled"].get<bool>();
+      if (battle.contains("minDistance") && battle["minDistance"].is_number()) settings_.bossFraming.minDistance = battle["minDistance"].get<float>();
+      if (battle.contains("maxDistance") && battle["maxDistance"].is_number()) settings_.bossFraming.maxDistance = battle["maxDistance"].get<float>();
+      if (battle.contains("height") && battle["height"].is_number()) settings_.bossFraming.height = battle["height"].get<float>();
+      if (battle.contains("pitch") && battle["pitch"].is_number()) settings_.bossFraming.pitch = battle["pitch"].get<float>();
+      if (battle.contains("fov") && battle["fov"].is_number()) settings_.bossFraming.fov = battle["fov"].get<float>();
+      if (battle.contains("targetWeight") && battle["targetWeight"].is_number()) settings_.bossFraming.targetWeight = battle["targetWeight"].get<float>();
+      if (battle.contains("turnSpeed") && battle["turnSpeed"].is_number()) settings_.bossFraming.turnSpeed = battle["turnSpeed"].get<float>();
+      if (battle.contains("response") && battle["response"].is_number()) settings_.bossFraming.response = battle["response"].get<float>();
+    }
+    settings_.bossFraming.Validate();
     const auto guided = j.value("guidedControl", json::object());
+    // 誘導操作の値は項目ごとに取り込む。旧ファイルの欠落や不正な値は既定値、範囲を超えた有限値は調整範囲の端へ戻す。
     auto readGuided = [&](const char* key, float fallback, float lo, float hi) {
       if (!guided.is_object() || !guided.contains(key) || !guided[key].is_number()) return fallback;
       const float value = guided[key].get<float>();
@@ -183,7 +203,7 @@ void CameraEditor::LoadSettings() {
     settings_.guidedDeadZoneHeight = readGuided("deadZoneHeight", .1f, 0, .3f);
     settings_.guidedFramingResponse = readGuided("framingResponse", 3, .5f, 15);
     settings_.obstacleResponse = guided.is_object() && guided.contains("obstacleResponse") && guided["obstacleResponse"].is_number_integer() && guided["obstacleResponse"].get<int>() == 0
-        ? Camera::ObstacleResponse::ShortenDistance : Camera::ObstacleResponse::PreserveComposition;
+        ? engine::Camera::ObstacleResponse::ShortenDistance : engine::Camera::ObstacleResponse::PreserveComposition;
     if (j.contains("distance"))
       settings_.distance = j["distance"];
     if (j.contains("height"))
@@ -252,6 +272,7 @@ void CameraEditor::LoadSettings() {
     settings_.cameraPreviewFps = std::clamp(settings_.cameraPreviewFps, 1, 60);
     settings_.cameraPreviewResolutionScale =
         std::clamp(settings_.cameraPreviewResolutionScale, 0.25f, 1.0f);
+    // 読み込んだ解像度倍率を描画先へ先に適用し、以前の寸法で撮影したプレビューを再利用しない。
     PostEffect::GetInstance()->SetCameraPreviewResolutionScale(
         settings_.cameraPreviewResolutionScale);
     InvalidateCameraPreviews();
@@ -282,16 +303,17 @@ void CameraEditor::LoadSettings() {
 
     // editorCameraPos, editorCameraAngle はここでは読み込まない
     // (LoadEditorStateに移行)
+    // 演出カメラの一覧はファイル単位で入れ替える。新しい設定にない演出名を引き継がない。
     overrideParamsMap_.clear();
 
     if (j.contains("Overrides")) {
       for (auto &[key, val] : j["Overrides"].items()) {
-        Camera::CameraOverrideParams p;
+        engine::Camera::CameraOverrideParams p;
         p.duration = val.value("duration", 1.0f);
         p.exitDuration = val.value("exitDuration", 0.35f);
-        p.easing = static_cast<Camera::OverrideEasing>(
+        p.easing = static_cast<engine::Camera::OverrideEasing>(
             std::clamp(val.value("easing", 4), 0, 4));
-        p.eyeSource = static_cast<Camera::OverrideEyeSource>(
+        p.eyeSource = static_cast<engine::Camera::OverrideEyeSource>(
             std::clamp(val.value("eyeSource", 0), 0, 1));
         p.eyeObjectName = val.value("eyeObjectName", "");
         if (val.contains("eyeObjectOffset") &&
@@ -302,7 +324,7 @@ void CameraEditor::LoadSettings() {
                                val["eyeObjectOffset"][2]};
         }
 
-        p.eyeFollowMode = static_cast<Camera::OverrideFollowMode>(
+        p.eyeFollowMode = static_cast<engine::Camera::OverrideFollowMode>(
             std::clamp(val.value("eyeFollowMode", 0), 0, 1));
         p.eyeFollowResponse = val.value("eyeFollowResponse", 12.0f);
         p.trackEyeX = val.value("trackEyeX", false);
@@ -314,7 +336,7 @@ void CameraEditor::LoadSettings() {
                            val["fixedEyePos"][2]};
         }
 
-        p.targetSource = static_cast<Camera::OverrideTargetSource>(
+        p.targetSource = static_cast<engine::Camera::OverrideTargetSource>(
             std::clamp(val.value("targetSource", 0), 0, 2));
         p.targetObjectName = val.value("targetObjectName", "");
         if (val.contains("targetObjectOffset") &&
@@ -326,7 +348,7 @@ void CameraEditor::LoadSettings() {
         }
 
         p.eyeForwardDistance = val.value("eyeForwardDistance", 10.0f);
-        p.targetFollowMode = static_cast<Camera::OverrideFollowMode>(
+        p.targetFollowMode = static_cast<engine::Camera::OverrideFollowMode>(
             std::clamp(val.value("targetFollowMode", 0), 0, 1));
         p.targetFollowResponse = val.value("targetFollowResponse", 14.0f);
         p.trackTargetX = val.value("trackTargetX", true);
@@ -405,6 +427,7 @@ void CameraEditor::SaveEditorState() {
   if (file.is_open()) {
     file << j.dump(4);
 
+    // 姿勢をファイルへ書けたときだけ保存待ちを解除する。
     if (file.good()) {
       editorStateDirty_ = false;
     }

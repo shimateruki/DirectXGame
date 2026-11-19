@@ -12,7 +12,6 @@ Ni 1.450000
 d 1.000000
 illum 2
 map_Kd high_crown_stonedark.png
-map_Bump high_crown_surface_normal.dds
 
 newmtl Stone
 Ka 0.227843 0.230588 0.247059
@@ -26,53 +25,46 @@ Ni 1.450000
 d 1.000000
 illum 2
 map_Kd high_crown_stone.png
-map_Bump high_crown_surface_normal.dds
 
 newmtl StoneLight
 Ka 0.307451 0.301961 0.289608
-Kd 1.000000 1.000000 1.000000
-Ks 0.780000 0.780000 0.860000
+Kd .70 .67 .63
+Ks 0.08 0.08 0.08
 Ke 0.000000 0.000000 0.000000
 Ns 35.840000
-Pr 0.720000
+Pr 0.92
 Pm 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
-map_Kd high_crown_stonelight.png
-map_Bump high_crown_surface_normal.dds
 
 newmtl PavingA
 Ka 0.273137 0.260784 0.244314
-Kd 1.000000 1.000000 1.000000
-Ks 0.780000 0.780000 0.860000
+Kd .67 .64 .60
+Ks 0.08 0.08 0.08
 Ke 0.000000 0.000000 0.000000
 Ns 38.400000
-Pr 0.700000
+Pr 0.92
 Pm 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
-map_Kd high_crown_pavinga.png
-map_Bump high_crown_surface_normal.dds
 
 newmtl PavingB
 Ka 0.252549 0.242941 0.230588
-Kd 1.000000 1.000000 1.000000
-Ks 0.780000 0.780000 0.860000
+Kd .65 .63 .60
+Ks 0.08 0.08 0.08
 Ke 0.000000 0.000000 0.000000
 Ns 28.160000
-Pr 0.780000
+Pr 0.92
 Pm 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
-map_Kd high_crown_pavingb.png
-map_Bump high_crown_surface_normal.dds
 
 newmtl Grass
 Ka 0.104314 0.182549 0.094706
-Kd 1.000000 1.000000 1.000000
+Kd 1.50 1.65 1.42
 Ks 0.780000 0.780000 0.860000
 Ke 0.000000 0.000000 0.000000
 Ns 5.120000
@@ -81,12 +73,11 @@ Pm 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
-map_Kd high_crown_grass.png
-map_Bump high_crown_surface_normal.dds
+map_Kd high_crown_turf.png
 
 newmtl GrassLight
 Ka 0.145490 0.215490 0.112549
-Kd 1.000000 1.000000 1.000000
+Kd 1.50 1.65 1.42
 Ks 0.780000 0.780000 0.860000
 Ke 0.000000 0.000000 0.000000
 Ns 5.120000
@@ -95,8 +86,7 @@ Pm 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
-map_Kd high_crown_grasslight.png
-map_Bump high_crown_surface_normal.dds
+map_Kd high_crown_turf.png
 
 newmtl Gold
 Ka 0.288235 0.216863 0.071373
@@ -182,3 +172,81 @@ illum 2
 map_Kd high_crown_flameglow.png
 map_Bump high_crown_surface_normal.dds
 
+
+newmtl ArenaSlabIvory
+Kd .68 .65 .60
+Ks 0.08 0.08 0.08
+Pr 0.92
+Pm 0.0
+d 1.0
+illum 2
+
+newmtl ArenaSlabCool
+Kd .63 .63 .63
+Ks 0.08 0.08 0.08
+Pr 0.92
+Pm 0.0
+d 1.0
+illum 2
+
+newmtl ArenaSlabEdge
+Kd .56 .54 .51
+Ks 0.08 0.08 0.08
+Pr 0.92
+Pm 0.0
+d 1.0
+illum 2
+
+newmtl ArenaGrassTip
+Kd 1.58 1.75 1.34
+Ks 0.12 0.12 0.12
+Pr 0.91
+Pm 0.0
+d 1.0
+illum 2
+map_Kd high_crown_turf.png
+
+newmtl ArenaCastleBlue
+Kd .30 .43 .55
+Ke 0 0 0
+Ks 0.10 0.10 0.10
+Pr 0.88
+Pm 0.0
+d 1.0
+illum 2
+
+newmtl ArenaBanner
+Kd .25 .24 .52
+Ke 0 0 0
+Ks 0.10 0.10 0.10
+Pr 0.88
+Pm 0.0
+d 1.0
+illum 2
+
+newmtl ArenaGold
+Kd .80 .52 .18
+Ke 0 0 0
+Ks 0.10 0.10 0.10
+Pr 0.88
+Pm 0.0
+d 1.0
+illum 2
+
+newmtl ArenaGemViolet
+Kd .55 .19 .78
+Ke .08 .015 .14
+Ks 0.10 0.10 0.10
+Pr 0.88
+Pm 0.0
+d 1.0
+illum 2
+
+newmtl ArenaGemLight
+Kd .83 .41 .97
+Ke .12 .025 .18
+Ks 0.10 0.10 0.10
+Pr 0.88
+Pm 0.0
+d 1.0
+illum 2

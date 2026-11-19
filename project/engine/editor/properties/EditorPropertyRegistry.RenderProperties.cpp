@@ -344,6 +344,7 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
         },
         [](engine::Object3D& object, const json& value) {
             if (!value.is_number()) return false;
+            // 秒ではなく記録全体に対する開始位置の割合。記録終端からそのまま始めないよう上限を 0.99 にする。
             object.EnsurePathMoverComponent()->SetPhaseOffset(std::clamp(value.get<float>(), 0.0f, 0.99f));
             return true;
         },
@@ -353,6 +354,7 @@ void EditorPropertyRegistry::RegisterBuiltInRenderAndComponentProperties() {
         "component.path.playbackMode", "Path再生条件", "Component", EditorPropertyType::String, CommonFlags(),
         [](const engine::Object3D& object) {
             const auto* path = object.GetPathMoverComponent();
+            // 未装着でも旧データと同じ常時再生を表示する。表示しただけでは Component を追加しない。
             return json(path ? path->GetPlaybackModeName() : "always");
         },
         [](engine::Object3D& object, const json& value) {

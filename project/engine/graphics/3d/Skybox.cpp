@@ -68,6 +68,7 @@ void Skybox::CreateMesh() {
 }
 
 void Skybox::Draw(ID3D12Resource* vpResource) {
+    // 描画基盤またはビュー・射影のバッファが欠ける場合は、GPUへ無効な定数バッファアドレスを渡さないよう中止します。
     if (!common_ || !vpResource) {
 #ifdef USE_IMGUI
         static bool loggedInvalidDraw = false;

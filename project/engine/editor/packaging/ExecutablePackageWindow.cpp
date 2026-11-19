@@ -36,6 +36,7 @@ void ExecutablePackageWindow::Initialize(DebugEditor* editor) {
 }
 
 bool ExecutablePackageWindow::IsTaskRunning() {
+    // 結果未回収のタスクだけを確認し、待ち時間0秒で描画を止めずに状態を取得します。
     return task_.valid() && task_.wait_for(std::chrono::seconds(0)) != std::future_status::ready;
 }
 
@@ -59,6 +60,7 @@ void ExecutablePackageWindow::StartPackageTask(bool buildBeforePackage) {
         return;
     }
 
+    // UIの選択番号を有効な構成・素材形式へ収め、作成条件をこの時点で確定します。
     const int safeIndex = std::clamp(configurationIndex_, 0, static_cast<int>(kConfigurations.size()) - 1);
     PackageRequest request;
     request.packageName = packageNameBuffer_;

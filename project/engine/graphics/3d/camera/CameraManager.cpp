@@ -1,5 +1,6 @@
 #include "CameraManager.h"
 #include <cmath>
+#include <format>
 #include "SceneManager.h"
 #include "BaseScene.h"
 
@@ -11,7 +12,7 @@ CameraManager* CameraManager::GetInstance() {
 // メインカメラを作り直します。入力先の設定はこの後に行います。
 void CameraManager::Initialize() {
     ResetCameraRegions();
-    mainCamera_ = std::make_unique<Camera>();
+    mainCamera_ = std::make_unique<engine::Camera>();
     mainCamera_->Initialize();
     activeCamera_ = nullptr;
     presentationPreviousActiveCamera_ = nullptr;
@@ -23,13 +24,14 @@ bool CameraManager::BeginMainCameraPresentation() {
         return false;
     }
 
+    // 通常復帰に必要なカメラ選択と入力許可を、メインカメラを固定する前に保存します。
     presentationPreviousActiveCamera_ = activeCamera_;
     presentationPreviousInputEnabled_ = mainCamera_->IsInputEnabled();
     mainCameraPresentationActive_ = true;
     mainCamera_->SetInputEnabled(false);
     mainCamera_->SetFollowTarget(nullptr);
     mainCamera_->SetLockOnTarget(nullptr);
-    mainCamera_->SetFollowMode(Camera::FollowMode::FixedPoint);
+    mainCamera_->SetFollowMode(engine::Camera::FollowMode::FixedPoint);
     activeCamera_ = mainCamera_.get();
     return true;
 }
@@ -48,8 +50,9 @@ void CameraManager::PrepareMainCameraReturn(engine::Object3D* followTarget, cons
     mainCamera_->SetEye(eye);
     mainCamera_->SetTarget(target);
     mainCamera_->SetRotation(rotation);
+    // 演出終了直前の姿勢を先に渡し、その姿勢から通常追従への復帰を始めます。
     mainCamera_->SetFollowTarget(followTarget);
-    mainCamera_->SetFollowMode(Camera::FollowMode::Aimable);
+    mainCamera_->SetFollowMode(engine::Camera::FollowMode::Aimable);
 }
 
 void CameraManager::SnapMainCameraReturn(float distance, float height, float pitch) {
@@ -65,6 +68,7 @@ void CameraManager::EndMainCameraPresentation() {
     if (mainCamera_) {
         mainCamera_->SetInputEnabled(presentationPreviousInputEnabled_);
     }
+    // 演出が一時的に選んだカメラを解除し、演出前の選択を戻す。入力の許可も演出前の値を使う。
     activeCamera_ = presentationPreviousActiveCamera_;
     presentationPreviousActiveCamera_ = nullptr;
     mainCameraPresentationActive_ = false;
@@ -72,6 +76,7 @@ void CameraManager::EndMainCameraPresentation() {
 
 void CameraManager::Update(float deltaTime) {
     if (mainCamera_) {
+        // シーンの領域を先に確定し、その構図でカメラを更新してから描画側の遮蔽用データを作る。
         const auto* scene = SceneManager::GetInstance()->GetCurrentScene();
         if (scene) {
             auto* subject = mainCamera_->GetFollowTarget();
@@ -92,19 +97,19 @@ void CameraManager::SetInputManager(engine::InputManager* inputManager) {
 
 // 演出は現在のアクティブカメラへ送ります。カメラがなければ要求を破棄します。
 void CameraManager::PlayShake(float duration, float amplitude, float frequency, const engine::Vector3& axisWeight) {
-    if (Camera* camera = GetActiveCamera()) {
+    if (engine::Camera* camera = GetActiveCamera()) {
         camera->StartShake(duration, amplitude, frequency, axisWeight);
     }
 }
 
 void CameraManager::PlayFovPulse(float duration, float amountRadians, float attackRatio) {
-    if (Camera* camera = GetActiveCamera()) {
+    if (engine::Camera* camera = GetActiveCamera()) {
         camera->StartFovPulse(duration, amountRadians, attackRatio);
     }
 }
 
 void CameraManager::ClearPresentationLayers() {
-    if (Camera* camera = GetActiveCamera()) {
+    if (engine::Camera* camera = GetActiveCamera()) {
         camera->ClearPresentationLayers();
     }
 }
@@ -136,17 +141,19 @@ bool CameraManager::ResolveSceneCameraPose(const engine::Object3D& object,
     if (settings.eyeSource == SceneCameraEyeSource::SceneObjectRelativeToReference) {
         const auto* reference = find(settings.eyeReferenceObjectName);
         if (!reference) return false;
-        eye = Camera::ResolveRelativeEye(*origin, *reference, settings.eyeOffset);
+        eye = engine::Camera::ResolveRelativeEye(*origin, *reference, settings.eyeOffset);
     } else {
         eye = (origin->GetParent() ? origin->GetWorldPosition() : origin->GetTranslate()) + settings.eyeOffset;
     }
     auto forward = engine::Math::TransformNormal({0,0,1}, origin->GetWorldMatrix());
     const float length = engine::Math::Length(forward);
+    // 回転の前方向を単位長へ戻し、参照Objectの拡縮で forwardDistance が変わらないようにします。
     forward = length > 0.0001f ? forward * (1.0f / length) : engine::Vector3{0,0,1};
     if (settings.targetMode == SceneCameraTargetMode::FixedPoint) {
         target = settings.fixedTarget;
     } else if (settings.targetMode == SceneCameraTargetMode::SceneObject) {
         const auto* targetObject = find(settings.targetObjectName);
+        // 対象必須の呼び出しでは候補から外し、対象が任意の場合だけ前方の仮の注視点へ切り替えます。
         if (!targetObject && requireTarget) return false;
         target = targetObject ? targetObject->GetWorldPosition() + settings.targetOffset
             : eye + forward * settings.forwardDistance + settings.targetOffset;
@@ -184,7 +191,13 @@ void CameraManager::UpdateCameraRegions(const std::vector<std::unique_ptr<engine
         ownsRegionOverride_ = false; activeRegionId_.clear(); activeRegionName_.clear();
         pendingRegionId_.clear(); pendingRegionTime_ = 0.0f;
     }
-    if (!enabled || !subject) { ResetCameraRegions(); return; }
+    if (!enabled || !subject) {
+        ResetCameraRegions();
+        if (subject && (mainCameraPresentationActive_ || activeCamera_ || camera.IsOverridden())) {
+            regionStatus_ = "演出カメラを優先";
+        }
+        return;
+    }
     auto exitRegion = [&] {
         if (ownsRegionOverride_ && camera.IsOverridden()) camera.EndOverride(regionExitDuration_);
         activeRegionId_.clear(); activeRegionName_.clear();
@@ -204,11 +217,27 @@ void CameraManager::UpdateCameraRegions(const std::vector<std::unique_ptr<engine
         (!ownsRegionOverride_ && (camera.IsOverridden() || camera.GetOverrideWeight() > 0.0f))) {
         regionStatus_ = "演出カメラを優先"; return;
     }
+    // ボス戦は配置済みの遠景より自動構図を優先する。上の演出優先判定は維持する。
+    if (camera.IsBossFramingActive()) {
+        if (ownsRegionOverride_ && camera.IsOverridden()) camera.EndOverride(.6f);
+        if (ownsRegionOverride_ && camera.GetOverrideWeight() <= 0.0f) ResetCameraRegions();
+        pendingRegionId_.clear(); pendingRegionTime_ = 0.0f;
+        regionStatus_ = "ボス戦の自動構図を優先";
+        return;
+    }
     // 誘導モードはロックオン中も配置構図を保ち、自由視点だけ追従へ切り替えます。
-    if (manualRegionDelay_ > 0.0f || camera.IsAimCameraRequested() || (camera.GetFollowMode() == Camera::FollowMode::LockOn && !camera.IsGuidedGameplay()) ||
-        camera.GetFollowMode() == Camera::FollowMode::FirstPerson) {
+    if (manualRegionDelay_ > 0.0f || camera.IsAimCameraRequested() || (camera.GetFollowMode() == engine::Camera::FollowMode::LockOn && !camera.IsGuidedGameplay()) ||
+        camera.GetFollowMode() == engine::Camera::FollowMode::FirstPerson) {
         exitRegion(); pendingRegionId_.clear(); pendingRegionTime_ = 0.0f;
-        regionStatus_ = "手動・照準・ロックオンを優先"; return;
+        if (manualRegionDelay_ > 0.0f)
+            regionStatus_ = "手動操作を優先";
+        else if (camera.IsAimCameraRequested())
+            regionStatus_ = "照準カメラを優先";
+        else if (camera.GetFollowMode() == engine::Camera::FollowMode::FirstPerson)
+            regionStatus_ = "一人称視点を優先";
+        else
+            regionStatus_ = "ロックオンを優先";
+        return;
     }
 
     // 見た目の高さ保持と区画選択を揃える。別の対象を明示した呼び出しは実座標を使う。
@@ -224,6 +253,7 @@ void CameraManager::UpdateCameraRegions(const std::vector<std::unique_ptr<engine
             !settings.region.Contains(regionPosition, id == activeRegionId_)) continue;
         engine::Vector3 eye{}, target{};
         if (!ResolveSceneCameraPose(*object, objects, eye, target, true)) continue;
+        // 同じ優先度の領域が重なるときは適用中の領域を維持し、それ以外はID順で結果を固定します。
         const bool better = !best || settings.region.priority > best->GetSceneCameraSettings().region.priority ||
             (settings.region.priority == best->GetSceneCameraSettings().region.priority &&
              (id == activeRegionId_ || (RegionIdentity(*best) != activeRegionId_ && id < RegionIdentity(*best))));
@@ -245,12 +275,14 @@ void CameraManager::UpdateCameraRegions(const std::vector<std::unique_ptr<engine
             ResolveSceneCameraPose(*end, objects, endEye, endTarget, true)) {
             const float length = std::sqrt(lengthSquared);
             const auto delta = subject->GetWorldPosition() - route.pathStart;
+            // 対象位置をXZ平面の経路直線へ射影し、経路の長さに対する割合へ変換します。
             const float progress = std::clamp((delta.x*axis.x+delta.z*axis.z)/lengthSquared,0.0f,1.0f);
             if (routeProgressId_ != bestId) { routeProgressId_ = bestId; routeProgress_ = progress; }
             // 短い往復では道上の基準点を動かさない。余白を越えた分を時間補間する。
             const float slack = camera.GetGuidedDeadZoneWidth()*engine::Math::Length(bestEye-bestTarget)*std::tan(bestFov*.5f)/length;
             const float goal = std::clamp(routeProgress_,(std::max)(0.0f,progress-slack),(std::min)(1.0f,progress+slack));
             routeProgress_ += (goal-routeProgress_)*(1.0f-std::exp(-camera.GetGuidedFramingResponse()*frameDeltaTime));
+            // 先読み距離を経路長で割り、視点位置より先を注視します。終点より先へは進めません。
             const float lookProgress = std::clamp(routeProgress_+camera.GetGuidedLookAhead()/length,0.0f,1.0f);
             bestEye = bestEye + (endEye-bestEye)*routeProgress_;
             bestTarget = bestTarget + (endTarget-bestTarget)*lookProgress;
@@ -260,14 +292,15 @@ void CameraManager::UpdateCameraRegions(const std::vector<std::unique_ptr<engine
     }
     if (!routeApplied) routeProgressId_.clear();
     if (bestId != pendingRegionId_) { pendingRegionId_ = bestId; pendingRegionTime_ = 0.0f; }
+    // 同じ候補に留まった時間だけで切替を判定し、境界をかすめた瞬間の視点変更を抑えます。
     pendingRegionTime_ += frameDeltaTime;
     const float delay = best ? best->GetSceneCameraSettings().region.activationDelay : 0.2f;
     if (bestId != activeRegionId_ && pendingRegionTime_ >= delay) {
         if (best) {
             const auto& settings = best->GetSceneCameraSettings();
-            Camera::CameraOverrideParams params;
+            engine::Camera::CameraOverrideParams params;
             params.duration = settings.blendInDuration;
-            params.easing = static_cast<Camera::OverrideEasing>(settings.easing);
+            params.easing = static_cast<engine::Camera::OverrideEasing>(settings.easing);
             params.fixedEyePos = bestEye; params.fixedTargetPos = bestTarget;
             params.trackTargetX = params.trackTargetZ = false;
             // 自機への追従だけは、通常カメラと同じジャンプ高さの保持を使う。
@@ -275,9 +308,9 @@ void CameraManager::UpdateCameraRegions(const std::vector<std::unique_ptr<engine
                 settings.targetObjectName == subject->GetName();
             params.trackEyeY = settings.eyeSource != SceneCameraEyeSource::CameraObject &&
                 settings.eyeObjectName == subject->GetName();
-            params.eyeFollowMode = static_cast<Camera::OverrideFollowMode>(settings.eyeFollowMode);
+            params.eyeFollowMode = static_cast<engine::Camera::OverrideFollowMode>(settings.eyeFollowMode);
             params.eyeFollowResponse = settings.eyeFollowResponse;
-            params.targetFollowMode = static_cast<Camera::OverrideFollowMode>(settings.targetFollowMode);
+            params.targetFollowMode = static_cast<engine::Camera::OverrideFollowMode>(settings.targetFollowMode);
             params.targetFollowResponse = settings.targetFollowResponse;
             camera.StartOverride(params);
             regionOverrideRevision_ = camera.GetOverrideRevision(); ownsRegionOverride_ = true;
@@ -296,9 +329,22 @@ void CameraManager::UpdateCameraRegions(const std::vector<std::unique_ptr<engine
         camera.SetRegionProjection(bestFov, settings.nearClip, settings.farClip, subject);
     }
     if (ownsRegionOverride_ && !camera.IsOverridden() && camera.GetOverrideWeight() <= 0.0f) {
+        // 復帰ブレンド中は射影設定を保持し、Overrideの影響が消えてから元の射影へ戻します。
         camera.ClearRegionProjection(); ownsRegionOverride_ = false;
     }
-    regionStatus_ = activeRegionName_.empty() ? "通常追従 / 範囲外または切替待ち" : "適用中: " + activeRegionName_;
+    // 判定済みの候補・時刻を表示に使い、エディター側では範囲判定をやり直さない。
+    if (bestId != activeRegionId_) {
+        const std::string from = activeRegionName_.empty() ? "通常追従" : activeRegionName_;
+        const std::string to = best ? best->GetName() : "通常追従";
+        const float remainingSeconds = (std::max)(0.0f, delay - pendingRegionTime_);
+        regionStatus_ = std::format("{} → {}  |  切替まで {:.2f} 秒", from, to, remainingSeconds);
+    } else if (ownsRegionOverride_ && !camera.IsOverridden()) {
+        regionStatus_ = "通常追従へブレンド中";
+    } else if (!activeRegionName_.empty()) {
+        regionStatus_ = (camera.GetOverrideWeight() < 1.0f ? "ブレンド中 → " : "適用中: ") + activeRegionName_;
+    } else {
+        regionStatus_ = "通常追従 / 範囲外";
+    }
 }
 
 void CameraManager::UpdateVisibility(float deltaTime) {
@@ -312,7 +358,7 @@ void CameraManager::UpdateVisibility(float deltaTime) {
         !SceneManager::GetInstance()->IsPlaying()) return;
     auto* subject = camera->GetFollowTarget();
     const auto& settings = camera->GetVisibilitySettings();
-    if (!subject || !settings.enabled || (camera->IsOverridden() && !ownsRegionOverride_) || camera->GetFollowMode() == Camera::FollowMode::FirstPerson) return;
+    if (!subject || !settings.enabled || (camera->IsOverridden() && !ownsRegionOverride_) || camera->GetFollowMode() == engine::Camera::FollowMode::FirstPerson) return;
     // 物理境界の中心を使い、巨大なaimHeightや装飾のサイズに透過円を引きずらせない。
     const Aabb bounds = subject->GetAabb();
     const auto extent = bounds.max - bounds.min;
@@ -326,23 +372,25 @@ void CameraManager::UpdateVisibility(float deltaTime) {
         validBounds ? (std::max)(0.15f, (std::max)(extent.x, extent.z) * 0.5f) : 0.3f};
     visibilityFrame_.deltaTime = std::isfinite(deltaTime) ? std::clamp(deltaTime, 0.0f, 0.1f) : 0.0f;
     visibilityFrame_.foregroundBarrierCenter = regionBarrierCenter_;
+    // カメラの切替量に応じて手前バリアの透過を弱め、領域境界で突然切り替わらないようにします。
     visibilityFrame_.foregroundBarrierCenter.w *= camera->GetOverrideWeight();
     visibilityFrame_.foregroundBarrierParameters = regionBarrierParameters_;
     visibilityFrame_.enabled = true;
 }
 
-bool CameraManager::CanFadeObject(const engine::Object3D* object, const Camera* camera) const {
+bool CameraManager::CanFadeObject(const engine::Object3D* object, const engine::Camera* camera) const {
     if (!visibilityFrame_.enabled || !object || camera != mainCamera_.get() ||
         (activeCamera_ && activeCamera_ != camera)) return false;
     const bool explicitlyFade = object->GetCameraOcclusionMode() == engine::Object3D::CameraOcclusionMode::Fade;
     bool automatic = true;
     for (const auto* current = object; current; current = current->GetParent()) {
         const auto kind = current->GetClassName();
-        // 自機や敵本体は透かさない。敵の子に付けたバリア等は個別指定で許可できる。
+        // 自機と明示的な透過禁止は常に維持する。敵本体の透過はボス戦の視界確保時だけ許可する。
         if (current == camera->GetFollowTarget() || kind == "Player" || kind == "Item" || kind == "Camera" ||
-            (current == object && kind == "Enemy") ||
+            (current == object && kind == "Enemy" && !camera->IsBossFramingActive()) ||
             current->GetCameraOcclusionMode() == engine::Object3D::CameraOcclusionMode::KeepVisible) return false;
-        if (kind == "Enemy" || kind == "EnemyVisualPart" || kind == "Effect") automatic = false;
+        // ボス戦だけ本体に自機周辺の透過円を許可する。攻撃を含む別パーツの扱いは変えない。
+        if (kind == "Effect" || kind == "EnemyVisualPart" || (!camera->IsBossFramingActive() && kind == "Enemy")) automatic = false;
     }
     return explicitlyFade || automatic;
 }

@@ -11,7 +11,7 @@
 namespace {
 // 一つの沈む床を構成する子の上面も調べ、どの部品を踏んでも親を始動する。
 bool HasRiderOnDeck(engine::Object3D& part, Character& actor) {
-    if (const Collider* collider = part.GetCollider(); collider && part.GetCollisionAttribute() != 0) {
+    if (const engine::Collider* collider = part.GetCollider(); collider && part.GetCollisionAttribute() != 0) {
         if (!collider->HasModelVolume() && IsStandingOnMovingFloor(part, actor))
             return true;
         if (!actor.IsDead() && actor.IsGrounded() && actor.GetVelocity().y <= 0.1f &&
@@ -47,6 +47,7 @@ bool HasRiderOnDeck(engine::Object3D& part, Character& actor) {
             }
         }
     }
+    // この部品に乗っていなければ、再生から除外されていない子部品の上面も再帰的に調べます。
     for (engine::Object3D* child : part.GetChildren()) {
         if (child && !child->IsReplayRemoved() && HasRiderOnDeck(*child, actor))
             return true;
@@ -97,8 +98,10 @@ void GimmickSinkingFloor::Update(float deltaTime) {
             contactTimer_ = 0.0f;
     }
 
+    // 浅いモードでは接触の猶予中だけ沈む高さを目標にし、解けたら元の高さへ滑らかに戻します。
     const bool isStepped = contactTimer_ > 0.0f;
     float targetY = startPos_.y + (isStepped ? -sinkDepth_ : 0.0f);
+    // sinkSpeed_は追従率です。経過秒数を使う指数補間で、フレーム数に左右されず目標との高さ差を縮めます。
     float t = 1.0f - std::exp(-sinkSpeed_ * deltaTime);
 
     engine::Vector3 pos = GetTransform()->translate;
@@ -156,6 +159,7 @@ void GimmickSinkingFloor::UpdateSubmerging(float deltaTime) {
         initializedStart_ = true;
     }
 
+    // 床を動かす前の位置で乗員を集め、移動後に同じ変位を乗員へ適用できるようにします。
     std::vector<Character*> riders;
 
     if (auto* scene = manager->GetCurrentScene()) {
@@ -196,10 +200,12 @@ void GimmickSinkingFloor::UpdateSubmerging(float deltaTime) {
             submergePhase_ = 3;
             submergeTimer_ = 0.0f;
         }
+    // 最深部では時間だけ進め、待機が終わってから上昇へ移ります。
     } else if (submergePhase_ == 3) {
         submergeTimer_ += frameDeltaTime;
         if (submergeTimer_ >= (std::max)(0.1f, GetParameters()->interval))
             submergePhase_ = 4;
+    // 開始時の高さまで上昇し、次に踏まれるまでは待機します。
     } else if (submergePhase_ == 4) {
         next.y = (std::min)(startPos_.y, before.y + speed * frameDeltaTime);
         if (next.y >= startPos_.y)

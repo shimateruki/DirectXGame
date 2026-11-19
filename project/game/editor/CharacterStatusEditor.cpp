@@ -85,6 +85,7 @@ bool DrawStatusEditor(GameplayStatusManager::CharacterStatus& status, const char
     changed |= ImGui::DragFloat("感知範囲", &status.detectionRange, 0.5f, 0.0f, 500.0f);
     changed |= ImGui::DragFloat3("タイプ共通スケール", &status.scale.x, 0.005f, 0.001f, 20.0f, "%.3f");
 
+    // Sweep判定を使う場合だけ、接地や段差を調整できるようにします。
     if (ImGui::TreeNodeEx("Character Motor", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::TextDisabled("標準OFF時は従来の移動結果を維持します。タイプごとに段階導入できます。");
         changed |= ImGui::Checkbox("高速移動をSweep判定", &status.motorContinuousCollision);
@@ -98,6 +99,7 @@ bool DrawStatusEditor(GameplayStatusManager::CharacterStatus& status, const char
         ImGui::TreePop();
     }
 
+    // スライダー以外から入る値も含め、負の速度や極小スケールを実行時へ渡さないよう補正します。
     status.attackPower = (std::max)(status.attackPower, 0.0f);
     status.speed = (std::max)(status.speed, 0.0f);
     status.maxFallSpeed = (std::max)(status.maxFallSpeed, 0.0f);
@@ -111,6 +113,7 @@ bool DrawStatusEditor(GameplayStatusManager::CharacterStatus& status, const char
     status.motorGroundProbeDistance = (std::max)(status.motorGroundProbeDistance, 0.0f);
     status.motorSkinWidth = std::clamp(status.motorSkinWidth, 0.0f, 0.25f);
 
+    // 変身の制限を有効にした場合だけ時間を編集し、値は次回の有効化に備えて保持します。
     changed |= ImGui::Checkbox("変身に制限時間を使う", &status.morphLimited);
     ImGui::BeginDisabled(!status.morphLimited);
     changed |= ImGui::DragFloat("変身時間（秒）", &status.morphDuration, 0.1f, 0.1f, 999.0f, "%.1f");
@@ -168,10 +171,12 @@ void RefreshCharacterModelList() {
     try {
         const fs::path root(kModelRootDirectory);
 
+        // モデルのルートが存在しなければ空の候補欄にし、更新操作で再走査できるようにします。
         if (!fs::exists(root) || !fs::is_directory(root)) {
             return;
         }
 
+        // 対応形式の実ファイルから参照名を求め、同じ参照名は一度だけ追加します。
         for (const auto& entry : fs::recursive_directory_iterator(root)) {
             if (!entry.is_regular_file() || !IsSupportedModelFile(entry.path())) {
                 continue;
@@ -185,6 +190,7 @@ void RefreshCharacterModelList() {
         }
 
         std::sort(characterModelNames.begin(), characterModelNames.end());
+    // 走査途中でアクセスに失敗した場合、途中までの候補は残さず空に戻します。
     } catch (...) {
         characterModelNames.clear();
     }
@@ -202,6 +208,7 @@ void SavePending() {
 
 bool Draw(BaseScene* scene, const std::string& type) {
 #ifdef USE_IMGUI
+    // 同じ種類の配置物で共有する基本値を開く。空の種別はコピー形態共通のプレイヤーを指す。
     auto* manager = GameplayStatusManager::GetInstance();
     manager->Initialize();
     bool changed = false;
@@ -211,9 +218,11 @@ bool Draw(BaseScene* scene, const std::string& type) {
             : "同じ種類の敵すべてに使う設定です。配置した1体だけの変更ではありません。");
         ImGui::TextDisabled("操作を離すと自動保存。表示中のプレビューは先頭へ戻して反映します。");
         auto* status = type.empty() ? &manager->GetMutablePlayerStatus() : manager->FindMutableEnemyStatus(type);
+        // 設定が登録済みの場合にだけ編集を出し、モデルの候補は初めて表示するときに用意する。
         if (status) {
             if (!modelListReady) RefreshCharacterModelList();
             bool statusChanged = DrawStatusEditor(*status, "SelectedCharacterStatus");
+            // 加減速はプレイヤー共通の移動設定なので、敵の種類別編集には出さない。
             if (type.empty() && ImGui::TreeNodeEx("通常移動の加速・減速", ImGuiTreeNodeFlags_DefaultOpen)) {
                 auto& movement = manager->GetMutablePlayerLocomotion();
                 statusChanged |= ImGui::DragFloat("最高速まで（秒）", &movement.accelerationTime, 0.01f, 0.0f, 3.0f, "%.2f");
@@ -223,6 +232,7 @@ bool Draw(BaseScene* scene, const std::string& type) {
                 movement.Normalize();
                 ImGui::TreePop();
             }
+            // 編集中の値はその場で配置済み対象へ適用し、永続化は保留中の保存へ渡す。
             if (statusChanged) {
                 manager->MarkDirty(type);
                 const int count = CharacterStatusEditor::Apply(scene, type);
@@ -232,6 +242,7 @@ bool Draw(BaseScene* scene, const std::string& type) {
         } else ImGui::TextDisabled("この種類の基本ステータスは登録されていません。");
 
         if (ImGui::Button("モデル一覧更新")) RefreshCharacterModelList();
+        // ファイル全体を読み直す操作と標準値に戻す操作は、現在の表示対象を超えて全種類に適用する。
         if (ImGui::TreeNode("共通設定ファイルの操作")) {
             ImGui::TextWrapped("再読込・標準値への復元は、Playerとすべての敵タイプが対象です。");
             if (ImGui::Button("全種類を再読込")) {
@@ -243,6 +254,7 @@ bool Draw(BaseScene* scene, const std::string& type) {
             if (ImGui::Button("全種類を標準値へ")) ImGui::OpenPopup("ResetAllStatus");
             if (ImGui::BeginPopupModal("ResetAllStatus", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
                 ImGui::TextWrapped("Playerと全敵タイプの設定を標準値へ戻して保存します。");
+                // 初期値で上書きする操作は確認を通った場合だけ実行し、配置物の値も更新する。
                 if (ImGui::Button("戻して保存")) {
                     manager->ResetToDefaults();
                     CharacterStatusEditor::Apply(scene, "*");
@@ -255,6 +267,7 @@ bool Draw(BaseScene* scene, const std::string& type) {
             }
             ImGui::TreePop();
         }
+        // 編集中の連続入力が落ち着いた時点で保存する経路を進め、表示側へ結果を返す。
         SavePending();
         ImGui::TextWrapped("%s", statusText.c_str());
         ImGui::TextWrapped("保存先: %s", GameplayStatusManager::GetSettingsPath(type).c_str());
@@ -268,16 +281,20 @@ bool Draw(BaseScene* scene, const std::string& type) {
 } // namespace
 
 int CharacterStatusEditor::Apply(BaseScene* scene, const std::string& type) {
+    // 配置済みの対象を更新する処理なので、シーンがない場合は反映件数ゼロを返します。
     if (!scene) return 0;
     auto* manager = GameplayStatusManager::GetInstance();
     int count = 0;
     for (const auto& object : scene->GetObjects()) {
         // ダミーの固定HPやコピーの実行中姿勢は、プレビューの再生成側に任せます。
         if (!object || object->IsEditorInternal() || object->IsReplayRemoved()) continue;
+        // 配置物の敵種別が空ならパラメータの種別を参照し、全種・プレイヤー・指定の敵タイプを選別します。
         std::string enemyType = object->GetEnemyType();
         if (enemyType.empty() && object->GetParameters()) enemyType = object->GetParameters()->enemyType;
         const bool matches = type == "*" || (type.empty() ? object->GetClassName() == "Player"
             : object->GetClassName() == "Enemy" && enemyType == type);
+        // 適用に成功した対象は行列を更新し、エディターに返す反映件数へ加えます。
+        // 編集中の変更で配置済みのキャラクターを回復させないため、現在HPを初期化せず適用する。
         if (matches && manager->ApplyManagedStatus(object.get(), false)) {
             object->UpdateLocalMatrix();
             object->UpdateWorldMatrix();
@@ -288,6 +305,7 @@ int CharacterStatusEditor::Apply(BaseScene* scene, const std::string& type) {
 }
 
 void CharacterStatusEditor::Register() {
+    // プレビュー側へ、対象一覧の取得・表示中の編集・ドラッグ終了後の保存の入口を登録します。
     EnemyAttackPreviewRegistry::RegisterStatusEditor({
         [] {
             auto* manager = GameplayStatusManager::GetInstance();

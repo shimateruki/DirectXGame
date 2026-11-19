@@ -8,6 +8,7 @@
 namespace {
 // 円形デッドゾーンを除いたスティック入力を長さ0～1のベクトルへ変換します。
 engine::Vector2 NormalizeStick(SHORT rawX, SHORT rawY, SHORT deadZone) {
+    // 生の軸は符号付き16ビット値。32768で割って-1〜1の大きさへ変換する。
     const float x = static_cast<float>(rawX) / 32768.0f;
     const float y = static_cast<float>(rawY) / 32768.0f;
     const float length = std::hypot(x, y);
@@ -49,6 +50,7 @@ void engine::InputManager::UpdateMenuStickNavigation() {
     const engine::Vector2 stick = GetLeftStick();
     int direction = 0;
 
+    // 閾値は正規化後の軸に対する値。斜めでは倒し量が大きい軸に絞り、同値なら縦へ送る。
     if (std::max(std::abs(stick.x), std::abs(stick.y)) >= 0.45f) {
         direction = std::abs(stick.y) >= std::abs(stick.x) ? (stick.y > 0 ? 1 : 2) : (stick.x < 0 ? 3 : 4);
     }
@@ -58,6 +60,7 @@ void engine::InputManager::UpdateMenuStickNavigation() {
 
     if (direction != menuStickDirection_) {
         menuStickDirection_ = direction;
+        // 最初の長押し待ちは320ミリ秒とし、その後の反復を130ミリ秒間隔で進める。
         menuStickNextRepeatMs_ = now + 320;
         if (direction)
             menuStickTriggered_[direction - 1] = true;
@@ -122,6 +125,7 @@ void engine::InputManager::Initialize(HWND hwnd)
     SDL_EventState(SDL_JOYBUTTONDOWN, SDL_IGNORE);
     SDL_EventState(SDL_JOYBUTTONUP, SDL_IGNORE);
 
+    // 高頻度の通知を止めても、軸やセンサーの最新値はUpdateで直接取得する。
     OpenFirstAvailableSdlController();
 
 }
@@ -203,6 +207,7 @@ void engine::InputManager::Update()
             gyroData_ = { data[0], data[1], data[2] };
         }
 
+        // 接続直後の無効なゼロ値を基準にせず、最初に取得できた非ゼロの加速度を基準にする。
         if (!isCalibrated_ && hasData) {
             if (accelData_.x != 0.0f || accelData_.y != 0.0f || accelData_.z != 0.0f) {
                 baseAccel_ = accelData_;
@@ -255,6 +260,7 @@ void engine::InputManager::Update()
             gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_Y;
         }
 
+        // 十字キーはラベル入れ替えをせず、各方向を同じ方向のビットへ写す。
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_DPAD_UP)) {
             gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_UP;
         }
@@ -271,6 +277,7 @@ void engine::InputManager::Update()
             gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_DPAD_RIGHT;
         }
 
+        // メニュー用のStartとBackも変換し、SDL接続でも同じビットを読めるようにする。
         if (SDL_GameControllerGetButton(sdlController_, SDL_CONTROLLER_BUTTON_START)) {
             gamepadState_.Gamepad.wButtons |= XINPUT_GAMEPAD_START;
         }
@@ -500,7 +507,9 @@ engine::Vector2 engine::InputManager::GetCameraLookDelta(float deltaTime) const 
     const engine::Vector2 stick = GetRightStick();
 
     // カメラ設定の感度と反転を Camera::AddRotation 側で共通適用します。
+    // 最大入力を1秒あたり360のマウス相当量に換算して足す。長いフレームは0.05秒で止めて視点の急変を抑える。
     const float step = 360.0f * std::clamp(deltaTime, 0.0f, 0.05f);
+    // 上が正のスティックYを、下が正のマウス相対移動に合わせて逆符号で加える。
     return {mouse.x + stick.x * step, mouse.y - stick.y * step};
 }
 
@@ -583,6 +592,7 @@ void engine::InputManager::PlayRumble(float lowFrequency, float highFrequency, f
         return;
     }
 
+    // 低周波・高周波の値はそれぞれ0〜1の強さ。要求の有効期間は秒で保持する。
     RumbleRequest request;
     request.lowFrequency = std::clamp(lowFrequency, 0.0f, 1.0f);
     request.highFrequency = std::clamp(highFrequency, 0.0f, 1.0f);
@@ -632,6 +642,7 @@ void engine::InputManager::RefreshRumbleOutput() {
         return;
     }
 
+    // 同じ強さを両入力バックエンドへ渡せるよう、正規化値を16ビットの出力範囲に変換する。
     XINPUT_VIBRATION vibration{};
     vibration.wLeftMotorSpeed = static_cast<WORD>(lowFrequency * 65535.0f);
     vibration.wRightMotorSpeed = static_cast<WORD>(highFrequency * 65535.0f);
@@ -640,6 +651,7 @@ void engine::InputManager::RefreshRumbleOutput() {
     if (sdlController_) {
         const Uint16 low = static_cast<Uint16>(lowFrequency * 65535.0f);
         const Uint16 high = static_cast<Uint16>(highFrequency * 65535.0f);
+        // SDL側ではミリ秒が必要なので1000倍にし、一回の送信を60秒に制限する。
         const Uint32 durationMs = static_cast<Uint32>(std::clamp(longestRemaining * 1000.0f, 0.0f, 60000.0f));
         SDL_GameControllerRumble(sdlController_, low, high, durationMs);
     }
@@ -649,6 +661,7 @@ void engine::InputManager::RefreshRumbleOutput() {
 }
 
 void engine::InputManager::Finalize() {
+    // 入力機器を閉じる前に振動を停止し、接続中の機器へ出力ゼロを送る。
     StopRumble();
 
     // コントローラーを閉じる
@@ -717,6 +730,7 @@ WORD engine::InputManager::GetPressedGamepadButton() const {
         XINPUT_GAMEPAD_LEFT_THUMB, XINPUT_GAMEPAD_RIGHT_THUMB
     };
 
+    // 同時押しでも戻り値は1個だけなので、配列の順で先に見つけたボタンを返す。
     for (WORD btn : buttons) {
         if (gamepadState_.Gamepad.wButtons & btn) {
             return btn;
@@ -728,6 +742,7 @@ WORD engine::InputManager::GetPressedGamepadButton() const {
 
 // 現在押されているマウスボタンを取得する
 int engine::InputManager::GetPressedMouseButton() const {
+    // 同時押しでは番号の小さいボタンを返す。-1は未入力として0番の左クリックと区別する。
     for (int i = 0; i < 4; ++i) { // 標準的な4ボタンをチェック
         if (mouseState_.rgbButtons[i] & 0x80) {
             return i;

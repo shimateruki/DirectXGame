@@ -112,8 +112,8 @@ inline void AfterDraw(SceneManager* manager, const std::string& path) {
     emptyTransform.translate = engine::Math::Transform(
         {0.0f, 0.47f, jump % 2 == 0 ? -5.0f : 5.0f}, floor->GetTransform()->matWorld);
     emptyTransform.UpdateMatrix();
-    Collider emptyProbe(&emptyTransform);
-    ColliderConfig probeConfig;
+    engine::Collider emptyProbe(&emptyTransform);
+    engine::ColliderConfig probeConfig;
     probeConfig.type = ColliderType::Sphere;
     probeConfig.size = {0.25f, 0.25f, 0.25f};
     emptyProbe.SetConfig(probeConfig);

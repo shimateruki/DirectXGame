@@ -53,6 +53,7 @@ void GimmickRotatingObject::Update(float deltaTime) {
         isPlaying = sceneManager->IsPlaying();
     }
 
+    // 床追従で変わった姿勢・表示・衝突を配置時の値へ戻し、次のプレイで床を取得し直します。
     if (!isPlaying) {
         if (supportFloor_) {
             SetTranslate(startPosition_);
@@ -67,6 +68,7 @@ void GimmickRotatingObject::Update(float deltaTime) {
         return;
     }
 
+    // Play開始時点の姿勢・表示・衝突を、追従解除後に戻す値として保存します。
     if (!initializedForPlay_) {
         active_ = GetParameters()->startActive;
         pathRotationOffset_ = 0.0f;
@@ -88,6 +90,7 @@ void GimmickRotatingObject::Update(float deltaTime) {
                     supportFloor_ = object.get();
                     supportFloor_->UpdateLocalMatrix();
                     supportFloor_->UpdateWorldMatrix(false);
+                    // ワールド位置を床のローカル座標へ移し、床が傾いても同じ取り付け位置を使います。
                     supportLocalPosition_ = engine::Math::Transform(
                         GetWorldPosition(), engine::Math::Inverse(supportFloor_->GetWorldMatrix()));
                     supportStartRotation_ = supportFloor_->GetRotation();
@@ -97,9 +100,11 @@ void GimmickRotatingObject::Update(float deltaTime) {
         }
     }
 
+    // 速度の保存単位は度/秒です。秒経過を掛けてこのフレームの回転量をラジアンで求めます。
     const float step = GetParameters()->speed * std::numbers::pi_v<float> / 180.0f * (std::max)(0.0f, deltaTime);
     const bool playingPath = GetRecorder() && GetRecorder()->GetState() == GhostRecorder::State::Playing &&
                              !GetRecordPathName().empty();
+    // 床に対する相対位置を保ち、床の角度変化と自転を重ねます。床が消えれば表示と衝突も連動します。
     if (supportFloor_) {
         if (active_)
             pathRotationOffset_ = std::fmod(pathRotationOffset_ + step, 2.0f * std::numbers::pi_v<float>);
@@ -118,6 +123,7 @@ void GimmickRotatingObject::Update(float deltaTime) {
         SetCollisionAttribute(supportFloor_->GetCollisionAttribute() ? initialCollisionAttribute_ : 0);
         UpdateLocalMatrix();
         UpdateWorldMatrix(false);
+    // 記録の姿勢は毎フレーム上書きされるため、１フレーム分でなく累積した自転角を足します。
     } else if (playingPath) {
         if (active_) {
             pathRotationOffset_ = std::fmod(pathRotationOffset_ + step, 2.0f * std::numbers::pi_v<float>);

@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+namespace engine {
+
 
 /// <summary>衝突形状と所有Transformからの相対位置・大きさ。</summary>
 // 関連：Collider（この型を使う機能の本体）
@@ -189,3 +191,5 @@ private:
     mutable std::vector<std::array<engine::Vector3, 3>> worldHull_; // 姿勢を反映した凸包面のキャッシュ。
     mutable std::vector<engine::Vector3> hullPoints_, hullNormals_, hullEdges_;
 };
+
+} // namespace engine

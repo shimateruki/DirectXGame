@@ -71,6 +71,7 @@ void GimmickCoin::Update(float deltaTime) {
     // 取得時の跳ね上がりと、一時ドロップの落下・寿命は通常の回転より優先します。
     engine::Vector3 rotate = GetRotation();
 
+    // 取得後は待機時の移動・回転を止め、その時点の位置と縮尺を基準に浮上して消えます。
     if (isCollected_) {
         collectAnimationTimer_ += deltaTime;
         const float t = std::clamp(collectAnimationTimer_ / kCollectAnimationDuration, 0.0f, 1.0f);
@@ -91,6 +92,7 @@ void GimmickCoin::Update(float deltaTime) {
                   collectStartScale_.z * popScale * vanish});
         SetColor({1.0f, 0.92f, 0.18f, vanish});
 
+        // 縮小演出が完了した時点で、シーンに遅延削除を依頼します。
         if (t >= 1.0f) {
             SetIsVisible(false);
             SetDead(true);
@@ -143,6 +145,7 @@ void GimmickCoin::UpdateTemporaryDrop(float deltaTime) {
     // 落下中のコインは地面への接触後に減速し、期限直前だけ点滅させます。
     dropAge_ += deltaTime;
 
+    // 寿命に達したら取得判定と表示を無効にし、そのフレームの物理更新を止めます。
     if (dropAge_ >= dropLifetime_) {
         SetCollisionAttribute(0);
         SetCollisionMask(0);
@@ -153,9 +156,11 @@ void GimmickCoin::UpdateTemporaryDrop(float deltaTime) {
     }
 
     engine::Vector3 position = GetTranslate();
+    // 水平移動に追従して地面を探し直し、モデルの下端が接する原点高さに換算します。
     const engine::Vector3 groundSample = {position.x, dropGroundY_ - dropGroundOffset_, position.z};
     dropGroundY_ = GroundEffectLocator::ResolveGroundPosition(groundSample).y + dropGroundOffset_;
 
+    // 最初は重力と反発を適用し、鉛直速度が弱くなった後は水平摩擦だけを残します。
     if (dropSettleTimer_ <= 0.0f) {
         dropVelocity_.y -= kDropGravity * deltaTime;
         position += dropVelocity_ * deltaTime;
@@ -182,6 +187,7 @@ void GimmickCoin::UpdateTemporaryDrop(float deltaTime) {
 
     SetTranslate(position);
 
+    // 設定した残り時間に入ったら、消滅が近いほど点滅を速めます。
     const float remaining = dropLifetime_ - dropAge_;
 
     if (dropBlinkStartTime_ > 0.0f && remaining <= dropBlinkStartTime_) {

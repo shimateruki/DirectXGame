@@ -26,6 +26,7 @@ inline float PlanarSpeed(const engine::Vector3& velocity) {
     return std::sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
 }
 
+
 inline bool StepGroundHop(float& hopTimer, const engine::Vector3& velocity, bool grounded, float deltaTime, float interval,
                           float speedThreshold) {
     // 停止中は次の跳躍を少し手前で待機させ、動き出してすぐ弾むようにする。
@@ -53,6 +54,7 @@ inline float BossHopAnticipation(float hopTimer, float interval, float anticipat
     return Easing::SmoothStep(progress);
 }
 
+
 // ボスの移動意図を保ちながら、跳ぶ直前だけ足を止めて力をためます。
 inline bool StepBossGroundHop(float& hopTimer, engine::Vector3& velocity, float intentSpeed, bool grounded, float deltaTime,
                               float interval, float anticipationDuration, float speedThreshold) {
@@ -76,6 +78,7 @@ inline bool StepBossGroundHop(float& hopTimer, engine::Vector3& velocity, float 
     return false;
 }
 
+
 inline engine::Vector3 MakeScale(const engine::Vector3& baseScale, const engine::Vector3& velocity, float timer, bool grounded,
                          const Params& params = {}) {
     // 空中では縦長、接地中は速度に応じた周期でつぶれと伸びを切り替える。
@@ -83,6 +86,7 @@ inline engine::Vector3 MakeScale(const engine::Vector3& baseScale, const engine:
         std::clamp(PlanarSpeed(velocity) / (std::max)(params.speedForFullBounce, 0.01f), 0.0f, 1.0f);
     const float idlePulse = std::sin(timer * 3.1f) * params.idleAmplitude;
 
+    // 空中は移動用の周期を重ねず、上下速度の大きさに合わせた縦の伸びだけを使います。
     engine::Vector3 scale = baseScale;
     if (!grounded) {
         const float fallRate = std::clamp(std::abs(velocity.y) / 22.0f, 0.0f, 1.0f);
@@ -93,6 +97,7 @@ inline engine::Vector3 MakeScale(const engine::Vector3& baseScale, const engine:
         return scale;
     }
 
+    // 地上では水平速度で周期と振幅を調整し、待機中は小さな呼吸だけを残します。
     const float phase = timer * (params.hopFrequency + speedRate * 4.0f);
     const float wave = std::sin(phase);
     const float squash = (std::max)(0.0f, -wave) * speedRate;
@@ -109,6 +114,7 @@ inline engine::Vector3 MakeScale(const engine::Vector3& baseScale, const engine:
     return scale;
 }
 
+
 inline engine::Vector3 MakeChargeSquash(const engine::Vector3& baseScale, float chargeRate, float timer, float strength = 1.0f) {
     chargeRate = std::clamp(chargeRate, 0.0f, 1.0f);
     const float pulse = std::sin(timer * 18.0f) * 0.04f * chargeRate * strength;
@@ -116,6 +122,7 @@ inline engine::Vector3 MakeChargeSquash(const engine::Vector3& baseScale, float 
             baseScale.y * (1.0f - chargeRate * 0.34f * strength),
             baseScale.z * (1.0f + chargeRate * 0.34f * strength - pulse)};
 }
+
 
 // 移動方向に応じて身体を傾け、横移動でもただ滑って見えないようにします。
 inline void ApplyTravelPose(engine::Vector3& scale, engine::Vector3& rotation, const engine::Vector3& baseScale, const engine::Vector3& velocity,
@@ -164,6 +171,7 @@ inline void StepDampedSpring(engine::Vector3& value, engine::Vector3& velocity, 
     const float omegaSquared = omega * omega;
     const float deltaOmegaSquared = safeDelta * omegaSquared;
     const float deltaSquaredOmegaSquared = safeDelta * deltaOmegaSquared;
+    // 位置と速度を同時に解く暗黙積分の共通分母を逆数で保持し、各軸で同じ係数を使います。
     const float inverseDeterminant = 1.0f / (f + deltaSquaredOmegaSquared);
 
     const auto stepComponent = [&](float& current, float& currentVelocity, float targetValue) {

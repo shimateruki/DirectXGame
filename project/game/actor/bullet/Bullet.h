@@ -15,7 +15,7 @@ class Bullet : public engine::Object3D {
     // 速度に沿って移動し、寿命タイマーを進めます。
     void Update(float deltaTime) override;
 
-    // 衝突相手に応じて弾の消滅やダメージ通知を行います。
+    // 接触した通常弾を消費して命中を通知し、爆発弾は周囲へのダメージ処理へ渡します。
     bool OnCollision(engine::Object3D* other) override;
 
     /// <summary>発射位置、速度、寿命、衝突属性とダメージを設定して弾を有効化します。</summary>
@@ -32,9 +32,11 @@ class Bullet : public engine::Object3D {
                       float trailSpeedScale, bool trailReverseDirection, bool impactDirected);
     // 弾にまとわせる粒子のプリセットと基準半径を指定し、発生時計を先頭へ戻す。
     void ConfigureBurningVfx(const std::string& preset, float radius);
+    // 破片の倍率と、寿命切れ・地形への掃引接触で着弾を出すかを指定します。
     void ConfigureDestructionVfx(const std::string& debrisPreset, const std::string& secondaryDebrisPreset,
                                  float debrisScale, bool impactOnExpiry, bool destroyOnSolidCastHit);
 
+    // ワールド単位の爆風半径です。0以下では通常の単発弾として扱います。
     void SetExplosionRadius(float radius) { explosionRadius_ = radius; }
 
     bool IsDead() const { return isDead_; }
@@ -42,7 +44,9 @@ class Bullet : public engine::Object3D {
     // 弾を死亡扱いにする。playImpact 時だけ着弾演出を出し、既に死亡済みなら何もしない。
     void Expire(bool playImpact = false);
 
+    // 弾の上向き速度から毎秒引く重力加速度です。
     void SetGravity(float gravity) { gravity_ = gravity; }
+    // 衝突を経由せず飛ぶ確認用の弾として扱い、終了時に所有元で絞り込めるようにします。
     void SetPreviewOnly(const engine::Object3D* owner) { previewOnly_ = true; previewOwner_ = owner; }
     bool IsPreviewOnly() const { return previewOnly_; }
     const engine::Object3D* GetPreviewOwner() const { return previewOwner_; }
@@ -103,6 +107,7 @@ class Bullet : public engine::Object3D {
 
     // 速度ゼロでも無効な方向ベクトルを GPU パーティクルへ渡さない。
     void EmitTrailVfx();
+    // 弾の半径に合わせて炎粒子の広がりと大きさを変え、進行方向の後ろへ流します。
     void EmitBurningVfx();
 
     // 衝突と強制終了が重なっても着弾演出を重複発生させない。

@@ -126,6 +126,7 @@ void SceneWorkspace::DrawHierarchyPanel() {
     ImGui::EndDisabled();
 
     ImGui::SameLine();
+    // 復元操作は選択の有無とは独立し、一時非表示の対象があるときに使える。
     ImGui::BeginDisabled(GetTemporaryHiddenCount() == 0);
 
     if (ImGui::Button(ICON_FA_EYE " 全表示を復元")) {
@@ -351,6 +352,7 @@ std::string SceneWorkspace::GetCurrentSceneKey() const {
 }
 
 std::array<SceneWorkspace::CameraBookmark, SceneWorkspace::kBookmarkCount>& SceneWorkspace::GetCurrentBookmarks() {
+    // 編集時は現在のシーン用の枠がなければ作る。復帰側は FindCurrentBookmarks() で有無だけを確認する。
     return bookmarksByScene_[GetCurrentSceneKey()];
 }
 
@@ -365,7 +367,7 @@ void SceneWorkspace::CaptureBookmark(std::size_t index) {
         return;
     }
 
-    Camera* camera = CameraManager::GetInstance()->GetMainCamera();
+    engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera();
 
     if (!camera) {
         return;
@@ -404,11 +406,12 @@ void SceneWorkspace::RecallBookmark(std::size_t index) {
     cameraEditor->SetMode(CameraEditor::Mode::Editor);
     cameraEditor->SetEditorCameraTransform(bookmark.position, bookmark.rotation);
 
-    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+    if (engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         camera->Update();
     }
 
     // 名前が重複・変更されても同じObjectを選べるよう、永続GUIDで再選択する。
+    // 選択対象が見つからなくても、保存したカメラ地点への移動はすでに反映済み。
     if (editor_ && sceneManager_->GetCurrentScene() &&
         engine::Object3D::IsPersistentGuidValid(bookmark.objectGuid)) {
         if (engine::Object3D* object = sceneManager_->GetCurrentScene()->FindObjectByPersistentGuid(bookmark.objectGuid)) {

@@ -97,6 +97,7 @@ using AttackAbilityDefinition = EnemyAttackDefinition;
 
 // 旧プロファイルと新しい弾部品を同じ規則で解決します。Editor・実行・テストで共有します。
 inline AttackProjectileComponent ResolveProjectileComponent(const EnemyAttackDefinition& attack, const AttackSequenceEvent& event) {
+    // 発射命令に弾部品が保存されていれば、攻撃全体の旧設定より優先する。
     if (event.projectile.configured)
         return event.projectile;
     AttackProjectileComponent part;
@@ -111,6 +112,7 @@ inline AttackProjectileComponent ResolveProjectileComponent(const EnemyAttackDef
     part.style = attack.sequence.projectileStyle;
     part.visualScale = attack.sequence.visualScale;
     part.appearance = attack.sequence.fireAppearance;
+    // 旧設定の炎用素材と発光色は、炎以外の弾へ持ち込まない。
     if (part.style != "fire") {
         part.trail.clear();
         part.secondaryTrail.clear();

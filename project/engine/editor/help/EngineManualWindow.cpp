@@ -638,51 +638,21 @@ const std::vector<ManualPage>& GetManualPages() {
         },
         {
             "03 VFX",
-            "エフェクト確認ステージ (Effect Preview)",
-            "isolated preview studio viewport background grid axis lighting camera speed loop",
-            "ゲームシーンから離れたBlender Studio Viewport風の隔離空間で、ParticleとMesh Effectを背景、床、1mグリッド、軸、照明、カメラ、速度を揃えて比較します。",
-            "Hierarchy最上部の「エフェクト確認ステージ (Effect Preview)」を選びます。",
+            "エフェクトの自動プレビュー",
+            "effect preview particle mesh effect timeline",
+            "VFXの編集ツールを選ぶと、確認用の空間にカメラが移動します。",
+            "通常・GPUパーティクル、メッシュエフェクト、VFXシーケンサー、3D破片、トレイルのいずれかを選びます。",
             {
-                "Previewを有効化し、通常確認はStudio Dark、黒煙や暗色EffectはStudio Light、発光・Bloom・AlphaはEmission Blackを選びます。",
-                "床、1mグリッド、XYZ軸を表示し、原点、接地、高さ、横幅を確認します。標準空間は直径70mで旧Previewの約3.5倍です。外周の5m Major Lineで大きいEffectの規模も判断できます。",
-                "プレビュー中心高さは標準1mです。中心原点のMesh EffectやParticleが床へ埋まる場合に使い、足元から出す接地型Effectだけ0mへ下げます。Material PreviewはモデルAABBの最下端から自動接地します。",
-                "Studio Lightingを有効にすると、Directional Light、Ambient、Fog、SkyboxがPreview中だけ中立設定へ切り替わります。必要ならKey Lightの色、方向、強度を調整します。",
-                "カメラ距離、高さ、方位角、注視点高さを設定します。標準では斜め上からの3/4 Viewになり、「カメラをプレビューへ移動」でいつでも標準構図へ戻せます。",
-                "確認するEffectを選び、One ShotまたはLoopで再生します。",
-                "正面、斜め、遠距離、近距離から輪郭、Alpha、発光を確認します。",
-                "比較するEffectは同じPreset、グリッド間隔、空間半径、距離、速度に揃えて差を確認します。",
-                "調整後はPreviewを終了し、ゲームシーンの本番位置でも確認します。",
+                "選んだツールの設定を調整し、エフェクトプレビューのTimelineで再生やシークを行います。",
+                "調整内容は、各編集ツールの保存操作で反映します。",
+                "別のツールへ切り替えて通常のシーン表示へ戻り、実際の配置場所でも見え方を確認します。",
             },
-            "Preview Stage自体は保存対象ではありません。調整した各Particle / Mesh Effect Editor側でJSONを保存します。床、グリッド、軸などの補助ObjectはEditorOnlyです。",
+            "",
             {
-                "Studio DarkとStudio Lightの両方で輪郭、色、Alphaが読める。",
-                "原点と床の関係が正しく、1mグリッドからEffectの実寸を判断できる。",
-                "中心原点のモデルやEffectが床へ埋まらず、接地型Effectも不自然に浮いていない。",
-                "再生速度1.0でタイミングが成立する。",
-                "Preview終了後にEditorカメラ、Directional Light、Fog、Skybox、発生位置が通常状態へ戻る。",
+                "編集対象を選ぶとプレビュー空間が表示される。",
+                "編集を終了すると元のシーンの表示とカメラへ戻る。",
             },
-            "Studio Lightingは評価条件を揃えるための一時設定で、本番のPost Effect、Light、遮蔽物を再現するものではありません。ここだけで完成判定せず、最後は実ステージでも確認してください。",
-        },
-        {
-            "03 VFX",
-            "マテリアル確認 (Material Preview)",
-            "material board comparison special shader variants",
-            "モデル上でMaterial Typeと特殊Shaderの見え方を並べ、同じ条件で比較します。",
-            "Hierarchy最上部の「マテリアル確認 (Material Preview)」を選びます。",
-            {
-                "確認モデルを選ぶかGame Viewからドロップします。",
-                "通常一覧、特殊Materialのみ、展開Variantなど表示範囲を選びます。",
-                "選択対象の近く、またはEffect Previewの隔離空間へ確認ボードを生成します。",
-                "各モデルを選択してInspectorからMaterial Parameterを調整し、光とカメラ角度を変えて比較します。",
-                "確認が終わったら生成したPreview Objectを専用ボタンで削除します。",
-            },
-            "Material Preview自体の保存はありません。採用した値は実際のObjectのInspectorとScene Fileへ反映・保存します。",
-            {
-                "正面だけでなく逆光・斜めから破綻しない。",
-                "透明、影、深度、Blendの重なりが正しい。",
-                "確認用ObjectがHierarchyに残っていない。",
-            },
-            "確認用Objectを残したままScene保存しないでください。比較結果は実Objectへ移し、Preview削除後に保存します。",
+            "",
         },
         {
             "04 データ・検証",
@@ -737,24 +707,20 @@ const std::vector<ManualPage>& GetManualPages() {
         },
         {
             "04 データ・検証",
-            "Asset参照エクスプローラー / 配置物集計",
-            "Asset Reference Explorer GUID missing dynamic reference rename trash Scene Inventory 配置物集計 model collision",
-            "Assetがどこから参照されているか、Missingや動的参照候補があるかを確認し、現在Sceneに何が何個あるかをカテゴリ・種類・モデル・当たり判定別に集計します。",
-            "Asset参照は上部の「表示 → Asset参照エクスプローラー」、配置物集計はHierarchy最上部の「配置物集計 (Scene Inventory)」を選びます。Ctrl+Kから名前検索して開くこともできます。",
+            "Asset参照エクスプローラー",
+            "Asset Reference Explorer GUID missing dynamic reference rename trash",
+            "Assetがどこから参照されているか、Missingや動的参照候補があるかを確認します。",
+            "上部の「表示 → Asset参照エクスプローラー」、またはCtrl+Kの名前検索から開きます。",
             {
                 "Asset参照エクスプローラーで「参照を再スキャン」を押し、Assetの参照元、選択ObjectのAsset、Missing参照の各Tabを確認します。",
                 "確定参照と動的参照候補を分けて確認します。動的参照候補があるAssetを未使用と断定しないでください。",
                 "名前変更は「GUIDを維持して名前変更」を使い、Path参照が残る場合は一覧で修正します。削除は参照件数を確認し、必要な場合だけゴミ箱へ移動します。",
                 "Missing参照は近い候補を選び、参照元JSONが変わっていないことを再スキャンで確認してから1件ずつ修復します。",
-                "配置物集計では検索と「非表示Objectを含める」を設定し、カテゴリ別、種類別、モデル別、当たり判定Tabで過不足を確認します。",
-                "一覧の対象へカメラ移動し、必要なら集計をクリップボードへコピーしてステージ設計や負荷確認に使います。",
             },
-            "配置物集計は読み取り専用です。Asset参照の修復は参照元JSON、名前変更はAssetと.meta、削除はゴミ箱移動を伴います。変更後は対象EditorとSceneを再読込して確認します。",
+            "Asset参照の修復は参照元JSON、名前変更はAssetと.meta、削除はゴミ箱移動を伴います。変更後は対象EditorとSceneを再読込して確認します。",
             {
                 "重要Assetに確定参照または動的参照候補が表示される。",
                 "Missing修復後に参照元Editorで同じAssetを読み込める。",
-                "同じモデルやCollisionなしObjectが意図せず大量配置されていない。",
-                "非表示の出現待ちGimmickやEditor補助Objectを集計条件で取り違えていない。",
             },
             "動的に文字列を組み立てるPathは完全に追跡できない場合があります。参照0件だけを理由に削除せず、Asset Audit、全Scene、実ゲームを合わせて確認してください。",
         },
@@ -1124,6 +1090,7 @@ std::string ToLowerAscii(std::string value) {
     for (char& c : value) {
         const unsigned char byte = static_cast<unsigned char>(c);
 
+        // UTF-8の日本語のバイト列をそのまま保持し、ASCIIの英字だけを小文字へそろえます。
         if (byte < 0x80) {
             c = static_cast<char>(std::tolower(byte));
         }
@@ -1256,6 +1223,7 @@ void EngineManualWindow::Draw() {
         }
     }
 
+    // 今のページが検索から外れたときだけ最初の一致ページへ移動します。0件なら本文の選択を保持します。
     if (!query.empty() && visibleCount > 0 && !MatchesPage(pages[selectedIndex_], query)) {
         for (int i = 0; i < static_cast<int>(pages.size()); ++i) {
             if (MatchesPage(pages[i], query)) {

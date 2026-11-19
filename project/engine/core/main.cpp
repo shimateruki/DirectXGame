@@ -9,7 +9,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
     BeginStartupProfile();
 
     // Frameworkクラスのポインタで、Gameクラスのインスタンスを生成
-    std::unique_ptr<Framework> game = std::make_unique<Game>();
+    std::unique_ptr<engine::Framework> game = std::make_unique<Game>();
 
     // Frameworkの初期化
     game->Initialize();

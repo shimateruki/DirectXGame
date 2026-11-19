@@ -53,6 +53,7 @@ class CrownMeleeCombo {
         const auto bounds = player.GetAabb();
         const float height = (std::max)(0.8f, bounds.max.y - bounds.min.y);
         const Vec center = player.GetWorldPosition() + Vec{0, height * 0.56f, 0};
+        // 横薙ぎを基準に角度を作り、二段目は上へ、三段目は下へ振る弧へ変える。
         float yaw = -1.30f + 2.6f * swing;
         float pitch = 0.10f;
         if (stage_ == 1) {
@@ -160,6 +161,7 @@ class CrownMeleeCombo {
             trail_.Add(pose.tip, pose.axis, settings_.trailWidth * presentation_.trailScale * (stage_ == 2 ? 1.35f : 1.0f),
                        (current - t) * settings_.duration[stage_]);
         }
+        // 三段目の打点終了を跨いだら、穂先の真下を調べて地面の衝撃演出を一度だけ出す。
         if (stage_ == 2 && !impactSent_ && current >= kHitEnd[stage_]) {
             impactSent_ = true;
             const auto pose = Sample(player, kHitEnd[stage_]);
@@ -183,18 +185,21 @@ class CrownMeleeCombo {
     // 現在段とage_から槍・ゲートの姿勢を作る。dtは秒で、命中判定はここでは発生させない。
     void UpdateVisuals(Player& player, float deltaTime) {
         if (!Active()) return;
+        // コンボの現在段の長さで進行率を作り、この段の槍の伸びと消え方を求める。
         const float t = age_ / settings_.duration[stage_];
         const auto pose = Sample(player, t);
         const float reveal = Ease(t / (kHitStart[stage_] * 0.8f));
         const float fade = Ease((t - 0.80f) / 0.20f);
         const float length = settings_.reach[stage_] * (0.10f + reveal * 0.90f);
         const float scale = length / 3.65f;
+        // 手元と曲線の方向を基準に穂先を決め、その位置に合うようモデルの中心を逆算する。
         const Vec tip = pose.grip + pose.axis * length;
         const Vec center = tip - pose.axis * (2.02f * scale);
         lance_->SetTranslate(center);
         lance_->SetScale({scale * 0.85f * presentation_.meleeThickness, scale,
                           scale * 0.85f * presentation_.meleeThickness});
         lance_->SetQuaternion(Aim({0,-1,0}, pose.axis));
+        // 出現中は手元から見せ、消える区間では穂先側から切り抜き面を移動させる。
         engine::Object3D::PortalClipSettings clip;
         clip.enabled = true;
         clip.normal = fade > 0 ? pose.axis : pose.axis * -1.0f;
@@ -206,8 +211,10 @@ class CrownMeleeCombo {
         lance_->SetPortalClip(clip);
         lance_->Update(deltaTime);
 
+        // 発生までに開いて打点の後に閉じる割合で、ゲートの幅と材質を更新する。
         const float gateOpen = Ease(t / 0.10f) * (1.0f - Ease((t - kHitStart[stage_]) / 0.18f));
         gate_->SetIsVisible(gateOpen > 0.005f);
+        // ゲートは技を開始した時点からのプレイヤーの移動量を反映する。
         gate_->SetTranslate(gateCenter_ + player.GetWorldPosition() - stageOrigin_);
         gate_->SetQuaternion(Aim({0,0,1}, gateNormal_));
         const float extent = (stage_ == 2 ? 0.90f : 0.58f) * presentation_.meleeGateScale;
@@ -229,7 +236,7 @@ public:
     bool CanQueueNext() const {
         return Active() && stage_ < 2 && age_ >= settings_.queueStart && age_ < settings_.duration[stage_];
     }
-    // 次段を予約できる進行区間だけ入力を受理する。受理できなければfalse。
+    // 次段を予約できる進行区間だけ入力を保持する。予約できるかはCanQueueNext()で確認できる。
     void QueueNext() { if (CanQueueNext()) queued_ = true; }
 
     // 表示物の生成に成功した場合だけ操作を止めて一段目を始める。開始不可ならfalse。
@@ -251,6 +258,7 @@ public:
         settings_.radius *= presentation_.meleeThickness;
         auto* scene = SceneManager::GetInstance()->GetCurrentScene();
         trail_.Initialize(scene ? scene->GetObject3DCommon() : nullptr);
+        // 開始時の体力と操作許可を退避し、被弾中断と終了時の操作復元に使う。
         startHp_ = player.GetHp();
         restoreControl_ = player.IsControlActive();
         player.SetIsControlActive(false);
@@ -282,6 +290,7 @@ public:
         lastFloorImpact_ += deltaTime;
         trail_.Tick(deltaTime, settings_.trailLife);
         if (!Active()) return;
+        // 継続できない状態では、このフレームの踏み込みや判定を出す前に終了する。
         if (player.IsDead() || player.IsCinematicLocked() || player.GetHp() < startHp_) { End(player); return; }
         float remaining = deltaTime, travel = 0.0f;
         // 最多3段で終了します。段末を越えたdtも次段へ渡します。
@@ -291,9 +300,11 @@ public:
             const float previous = age_ / duration;
             age_ = (std::min)(duration, age_ + step);
             const float current = age_ / duration;
+            // 踏み込みは段の前半だけ進める。前フレームとの差を足し、この更新の移動距離にする。
             travel += settings_.stepDistance * (Ease((current - 0.12f) / 0.38f) - Ease((previous - 0.12f) / 0.38f));
             Sweep(player, previous, current);
             remaining -= step;
+            // 段末まで進んだ時点で次段の予約を消費し、予約がなければ終了する。
             if (age_ >= duration) {
                 if (queued_ && stage_ < 2) BeginStage(player, stage_ + 1);
                 else End(player);
@@ -306,7 +317,7 @@ public:
             UpdateVisuals(player, deltaTime);
         }
     }
-    void Draw(ID3D12Resource* point, ID3D12Resource* spot, Camera* camera, int index) {
+    void Draw(ID3D12Resource* point, ID3D12Resource* spot, engine::Camera* camera, int index) {
         effects_.Draw(point, spot, camera, index);
         trail_.Draw(point, spot, camera, index);
         if (!Active()) return;
@@ -316,7 +327,7 @@ public:
     }
     // 攻撃後に残る残光と帯の履歴も消す。技の段階変更とは別に呼べる。
     void ClearEffects() { effects_.Clear(); trail_.Clear(); }
-    void DrawGate(Camera* camera, uint32_t depth, uint32_t grab, int index) {
+    void DrawGate(engine::Camera* camera, uint32_t depth, uint32_t grab, int index) {
         if (!Active() || !gate_->GetIsVisible()) return;
         gate_->UpdateWorldMatrix(true);
         gate_->DrawSpecialMaterialForCamera(camera, depth, grab, index);

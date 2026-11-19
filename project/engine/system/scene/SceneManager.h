@@ -100,7 +100,7 @@ public:
     /// <summary>シーン遷移のいずれかの段階を実行中か返す。</summary>
     bool IsTransitioning() const { return transitionPhase_ != TransitionPhase::Idle; }
 
-    /// <summary>シーン初期化を非同期で進めているか返す。</summary>
+    /// <summary>メインスレッドで段階的なシーン初期化が進行中か返す。</summary>
     bool IsSceneInitializingAsync() const {
         return sceneInitializationStarted_ && !sceneInitializationFinished_;
     }
@@ -161,10 +161,10 @@ private:
     /// <summary>遷移先とフェード・ロードの方式を内部キューへ登録する。</summary>
     void QueueSceneChange(const std::string& sceneName, bool startFadeOut, bool skipLoading = false, bool destinationHandlesReveal = false);
 
-    /// <summary>次シーンの生成を非同期タスクに依頼する。</summary>
+    /// <summary>次シーンを現在のスレッドで作り、マニフェストのCPU先読みを非同期タスクに依頼する。</summary>
     void StartAsyncSceneCreate();
 
-    /// <summary>非同期のシーン生成が完了したか返す。</summary>
+    /// <summary>マニフェストのCPU先読みが完了したか、待機せずに返す。</summary>
     bool IsAsyncSceneReady() const;
 
     /// <summary>生成済みシーンをメインスレッドで初期化する。</summary>

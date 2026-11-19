@@ -452,7 +452,12 @@ float3 BuildDashPanelColor(float2 uv, float3 textureBase, float3 normal, float s
     float3 base = lerp(float3(0.017f, 0.010f, 0.014f), float3(0.155f, 0.031f, 0.006f), lane);
     base *= lerp(0.86f, 1.08f, dot(saturate(textureBase), float3(0.299f, 0.587f, 0.114f)));
 
-    float3 amber = lerp(float3(1.22f, 0.245f, 0.012f), MATERIAL_COLOR.rgb * 1.36f, 0.22f);
+    float3 panelTint = MATERIAL_COLOR.rgb;
+#ifdef DASH_PANEL_STOP_PALETTE
+    // Author the cool variant in the same palette space as the warm panel.
+    panelTint = panelTint.bgr;
+#endif
+    float3 amber = lerp(float3(1.22f, 0.245f, 0.012f), panelTint * 1.36f, 0.22f);
     float3 gold = float3(1.85f, 0.78f, 0.055f);
     float3 hotCore = float3(2.55f, 2.06f, 0.72f);
     float glow = arrow * 2.90f + trailA * 0.62f + trailB * 0.36f + sideRail * 1.08f + border * 0.72f;
@@ -464,7 +469,12 @@ float3 BuildDashPanelColor(float2 uv, float3 textureBase, float3 normal, float s
     float3 sideColor = float3(0.050f, 0.014f, 0.010f) * lerp(0.80f, 1.20f, textureBase);
     sideColor += amber * border * 0.20f;
     float emissiveGain = 1.0f + saturate(gMaterial.emissive - 1.0f) * 0.32f;
-    return lerp(sideColor, topColor, topMask) * emissiveGain;
+    float3 rgb = lerp(sideColor, topColor, topMask) * emissiveGain;
+#ifdef DASH_PANEL_STOP_PALETTE
+    return rgb.bgr;
+#else
+    return rgb;
+#endif
 }
 
 #include "Object3d.MaterialVariants.hlsli"

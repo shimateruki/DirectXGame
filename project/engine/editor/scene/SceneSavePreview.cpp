@@ -124,6 +124,7 @@ void SceneSavePreview::BuildObjectDiff(FileDiff& diff, const json& oldJson, cons
     std::map<std::string, json> oldObjects;
     std::map<std::string, json> newObjects;
 
+    // 名前のない要素は新旧で別のキーにし、偶然同じ添字でも同一Objectに見立てない。
     if (HasObjectList(oldJson)) {
         int unnamedIndex = 0;
 
@@ -192,6 +193,7 @@ void SceneSavePreview::BuildObjectDiff(FileDiff& diff, const json& oldJson, cons
         diff.objects.push_back(std::move(change));
     }
 
+    // 追加・削除・変更を上から確認できるよう種類順に並べ、同じ種類は名前順に揃える。
     std::sort(diff.objects.begin(), diff.objects.end(), [](const ObjectChange& a, const ObjectChange& b) {
         if (a.kind != b.kind)
             return static_cast<int>(a.kind) < static_cast<int>(b.kind);
@@ -360,6 +362,7 @@ void SceneSavePreview::CollectJsonDiffs(const json& before, const json& after, c
         }
     }
 
+    // 両辺の構造が異なる場合は現在のパスで打ち切り、値の変更として1行にまとめる。
     std::string label = path.empty() ? "(root)" : path;
     outDetails.push_back(label + ": " + JsonValueToText(before) + " -> " + JsonValueToText(after));
 }

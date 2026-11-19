@@ -24,6 +24,7 @@ void InspectorWindow::DrawEnemyTypeSelector() {
             // 実際のFactoryから表示・Collider・基本値を取得する。配置位置と親子関係は保つ。
             auto defaults = Registry::Create(Registry::Kind::Enemy, type.id, scene->GetObject3DCommon());
             if (!defaults || defaults->GetEnemyType() != type.id) continue;
+            // プレビューが使っている旧設定を終えてから、作成した既定値を選択中のObjectへ移します。
             if (auto* session = editor_->GetActorSession()) session->Stop();
             object->SetEnemyType(type.id);
             object->SetName("Enemy_" + type.id);

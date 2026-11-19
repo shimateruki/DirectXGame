@@ -74,6 +74,7 @@ void CinematicPlayer::Initialize(SceneManager* sceneManager) {
 
 bool CinematicPlayer::Load(const std::string& path, SceneManager* sceneManager) {
     Initialize(sceneManager);
+    // 前回の再生・所有状態を初期化した後で読み込みます。成功した場合だけ新しいSequenceを所有し、参照先を更新します。
     auto loaded = std::make_unique<CinematicSequence>();
     if (!loaded->Load(path)) {
         LOG_ERROR("Cinematic load failed: {}", path);
@@ -86,6 +87,7 @@ bool CinematicPlayer::Load(const std::string& path, SceneManager* sceneManager) 
 
 bool CinematicPlayer::Prepare() {
     RefreshBindings();
+    // 現シーンの参照と素材を準備してから検証します。問題があれば停止して、途中まで適用された設定を復元します。
     const auto issues = ValidateBindings();
     for (const auto& issue : issues) LOG_ERROR("Cinematic preparation failed: {}", issue);
     if (issues.empty()) return true;
@@ -113,6 +115,7 @@ void CinematicPlayer::RefreshBindings() {
     animationRuntime_.clear();
 
     if (!sequence_ || !boundScene_) return;
+    // 演出の生成オブジェクトもトラックから参照するため、対象解決より先に準備します。
     bindingsReady_ = true;
     PreparePresentation();
 
@@ -139,6 +142,7 @@ void CinematicPlayer::RefreshBindings() {
         const auto& track = sequence_->vfxTracks[index];
         auto& runtime = vfxRuntime_[index];
         runtime.target = ResolveTarget(track.binding);
+        // 位置固定の素材は発生時に起点を設定するため、準備段階では追従するObjectを渡しません。
         runtime.sequencer.Initialize(track.snapshotTargetPosition ? nullptr : runtime.target);
 
         if (!track.sequenceName.empty()) {
@@ -254,6 +258,7 @@ void CinematicPlayer::Play(bool loop, TimerView* timeView) {
     isLooping_ = loop;
     playbackTimer_.Resume();
     isPreviewing_ = false;
+    // 0秒のイベントも通過判定に含めるため、前回時刻を0秒より1/60秒前として初回評価します。
     Evaluate(0.0f, -1.0f / 60.0f, true);
     if (timeView && playbackTimer_.IsRunning()) *timeView = playbackTimer_.GetView();
 }
@@ -351,14 +356,17 @@ void CinematicPlayer::Update(float deltaTime) {
             RestoreBasePoses();
             CaptureBasePoses();
             ResetRuntimeEvents();
+            // 終端を越えた秒数を周期内へ折り返し、フレームで使い切れなかった時間を次周へ渡します。
             nextTime = std::fmod(nextTime, std::max(duration, 0.1f));
             playbackTimer_.Seek(0.0f);
+            // 前回時刻を0秒より前に置き、前回時刻を含まない通過判定でも0秒のイベントを拾います。
             Evaluate(nextTime, -1.0f / 60.0f, true);
             playbackTimer_.Seek(nextTime);
             return;
         }
 
         Evaluate(duration, previousTime, true);
+        // 終端イベントのコールバックから停止される場合があります。そのときは停止後の状態を終端プレビューで上書きしません。
         if (!playbackTimer_.IsRunning()) return;
         playbackTimer_.Seek(duration);
         playbackTimer_.Pause();
@@ -547,6 +555,7 @@ void CinematicPlayer::CaptureBasePoses() {
             continue;
         }
 
+        // 停止時に元へ戻せるよう、Animatorと旧方式の再生情報を退避します。Bodyクリップ用には描画だけの変形も保存します。
         runtime.animatorSnapshot = runtime.target->CaptureAnimatorSnapshot();
         runtime.legacyAnimationName = runtime.target->GetAnimationName();
         runtime.legacyAnimationTime = runtime.target->GetAnimationTime();
@@ -575,6 +584,7 @@ void CinematicPlayer::RestoreBasePoses() {
         return;
     const auto live = GetLiveTargets();
 
+    // 位置・回転・拡縮を先に戻し、その後で描画専用の変形やアニメーションの再生状態を復元します。
     for (auto& runtime : transformRuntime_) {
         if (!runtime.target || !runtime.captured || !live.contains(runtime.target)) {
             continue;
@@ -589,6 +599,7 @@ void CinematicPlayer::RestoreBasePoses() {
             continue;
         }
 
+        // 本体クリップが描画だけを変えた場合は、アニメーターの状態を切り替えずメッシュの変形だけを戻します。
         if (runtime.bodyCaptured) {
             if (auto* renderer = runtime.target->GetMeshRenderer()) {
                 const auto& base = runtime.baseVisual;
@@ -598,8 +609,10 @@ void CinematicPlayer::RestoreBasePoses() {
 
             runtime.bodyCaptured = false;
         } else if (runtime.animatorSnapshot.valid) {
+            // コントローラーがある対象は状態名と再生時刻、遷移の進み具合をまとめて戻します。
             runtime.target->RestoreAnimatorSnapshot(runtime.animatorSnapshot);
         } else {
+            // 旧方式ではクリップ名と秒数、ループ指定を使って再生を元に戻します。
             runtime.target->RestoreAnimationPlayback(runtime.legacyAnimationName, runtime.legacyAnimationTime,
                                                      runtime.legacyLoop);
         }
@@ -635,10 +648,12 @@ void CinematicPlayer::Evaluate(float timeSeconds, float previousTimeSeconds, boo
         EvaluateTransformTrack(index, timeSeconds, previousTimeSeconds, dispatchEvents);
     }
 
+    // トラックで対象の基本姿勢を置いた後、同じ再生時刻のアニメーションを評価します。
     EvaluateAnimationClips(timeSeconds);
 
     if (dispatchEvents) {
         for (const auto& marker : sequence_->events) {
+            // 通過区間は (前回秒, 今回秒] です。境界ちょうどのイベントは到達フレームで拾い、次のフレームでは拾い直しません。
             if (marker.time > previousTimeSeconds && marker.time <= timeSeconds) {
                 engine::Object3D* target = ResolveTarget(marker.binding);
 
@@ -676,6 +691,7 @@ void CinematicPlayer::EvaluateTransformTrack(size_t index, float timeSeconds, fl
         return;
     }
 
+    // シーケンス全体の秒数から開始秒を引き、トラック先頭を0秒にします。
     const float localTime = timeSeconds - track.startTime;
     const float previousLocalTime = previousTimeSeconds - track.startTime;
     const float trackDuration = GetTransformTrackDuration(index);
@@ -698,6 +714,7 @@ void CinematicPlayer::EvaluateTransformTrack(size_t index, float timeSeconds, fl
         return;
     }
 
+    // キー付きの軌道はトラック内の秒数をサンプルし、相対再生だけ基準点の位置とヨーを合成します。
     auto value = SampleCinematicTransform(track.keys, evaluateTime);
 
     if (track.anchorRelative) {
@@ -786,8 +803,10 @@ void CinematicPlayer::EvaluateAnimationClips(float timeSeconds, bool bodyOnly) {
             continue;
         }
 
+        // 区間の長さとブレンドは演出の経過秒で測り、姿勢のサンプル時刻にだけ再生速度を掛けます。
         float localTime = elapsed * std::max(0.0f, clip.playbackSpeed);
 
+        // Bodyクリップにはループ指定を渡し、素材自身の周期で折り返させます。他の系統はこの区間の長さで折り返します。
         if (clip.driver != "Body" && clip.loop && duration > 0.0f) {
             localTime = std::fmod(localTime, duration);
         }
@@ -874,6 +893,7 @@ void CinematicPlayer::UpdateVFXTracks(float timeSeconds, float previousTimeSecon
                 if (!position) {
                     continue;
                 }
+                // 開始位置を固定するクリップは追従先を外し、現在位置に素材のオフセットを足して起点を一度だけ決めます。
                 runtime.sequencer.SetTargetObject(nullptr);
                 runtime.sequencer.SetRootPosition(*position + track.rootOffset);
                 runtime.sequencer.SetRootScale(track.rootScale);
@@ -910,6 +930,7 @@ void CinematicPlayer::UpdateAudioClips(float timeSeconds, float previousTimeSeco
         const float endTime = clip.startTime + std::max(0.05f, clip.duration);
         const bool crossedStart = clip.startTime > previousTimeSeconds && clip.startTime <= timeSeconds;
 
+        // 大きな時間ステップでループ音の終了時刻も通り過ぎたときは、無意味な開始と停止を避けます。
         if (!runtime.started && crossedStart && (!clip.loop || timeSeconds < endTime)) {
             if (playAudio_) playAudio_(clip.audioId, clip.volume, clip.loop);
             runtime.started = true;
@@ -996,6 +1017,7 @@ void CinematicPlayer::UpdateCameraTrack(float timeSeconds) {
         return;
     }
 
+    // 次のショットがある場合はカメラが切り替わることを解除側へ伝え、旧ショットの解除後に新しいショットを開始します。
     StopCameraTrack(requestedCamera != nullptr);
 
     if (requestedCamera) {

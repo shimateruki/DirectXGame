@@ -136,6 +136,7 @@ json StatusToJson(const GameplayStatusManager::CharacterStatus& status) {
 // 専用ファイルがない環境では、共有JSONから読み込んだ値をそのまま使う。
 bool LoadEnemyParameters(const std::string& path, GameplayStatusManager::CharacterStatus& status) {
     try {
+        // 敵専用のファイルは任意。未配置なら、呼び元が用意した値をそのまま使う。
         if (!fs::exists(path)) {
             return true;
         }
@@ -146,6 +147,7 @@ bool LoadEnemyParameters(const std::string& path, GameplayStatusManager::Charact
             return false;
         }
 
+        // 読込み中の値はコピーに適用し、不正なファイルで現在値を途中まで置き換えない。
         auto loaded = status;
         JsonToStatus(parameters, loaded);
         status = std::move(loaded);
@@ -196,7 +198,7 @@ GameplayStatusManager::~GameplayStatusManager() {
 }
 
 void GameplayStatusManager::Initialize() {
-    // 新設定を優先し、存在しない場合だけ旧ファイルを一度読み込んで移行する。
+    // 新設定を優先し、正常に読み込めなければ旧ファイルで補う。
     if (initialized_) {
         return;
     }
@@ -212,9 +214,11 @@ void GameplayStatusManager::Initialize() {
         }
     }
 
+    // 共有JSONを読み取った後で、敵タイプごとの専用ファイルを重ねて優先します。
     const bool enemyParametersLoaded = LoadDedicatedEnemyParameters();
     initialized_ = true;
 
+    // 専用ファイルの読込にも成功した場合だけ、新しい保存形式を書き出して移行を確定します。
     if (migratedLegacySettings && enemyParametersLoaded) {
         dirty_ = true;
         Save();
@@ -225,6 +229,7 @@ bool GameplayStatusManager::Reload() {
     // 再読込に失敗した場合は編集中の値を戻し、失敗したJSONで上書きしない。
     Initialize();
 
+    // 読込中は既定値から作り直すため、失敗時に戻せるよう現在の設定と保存待ちの状態を控えます。
     const CharacterStatus previousPlayer = playerStatus_;
     const auto previousLocomotion = playerLocomotion_;
     const auto previousEnemies = enemyStatuses_;
@@ -237,6 +242,7 @@ bool GameplayStatusManager::Reload() {
         return true;
     }
 
+    // 再読込の一部だけを採用せず、従来のプレイヤー・移動・敵設定へまとめて戻します。
     dirty_ = wasDirty;
     playerStatus_ = previousPlayer;
     playerLocomotion_ = previousLocomotion;
@@ -254,6 +260,7 @@ bool GameplayStatusManager::Save() {
         }
     }
 
+    // 敵ごとの保存を終えた後、共有JSONにはプレイヤーの設定と補正済みの操作応答を残します。
     json root;
     root["schemaVersion"] = 6;
     root["player"] = StatusToJson(playerStatus_);
@@ -266,6 +273,7 @@ bool GameplayStatusManager::Save() {
         return false;
     }
 
+    // 共有・個別の保存が全て終わってから再保存の印を消します。
     dirty_ = false;
     dirtyEnemies_.clear();
     return true;
@@ -422,6 +430,7 @@ std::string GameplayStatusManager::GetSettingsPath(const std::string& enemyType)
 }
 
 bool GameplayStatusManager::LoadDedicatedEnemyParameters() {
+    // 一件失敗しても他の敵の読込を続けます。各設定は専用ファイルの有無にかかわらず補正します。
     bool loadedAll = true;
     for (auto& [enemyType, status] : enemyStatuses_) {
         if (!LoadEnemyParameters(GetSettingsPath(enemyType), status)) {
@@ -517,6 +526,7 @@ void GameplayStatusManager::ApplyStatus(engine::Object3D* object, const Characte
 
     auto param = object->GetParameters().value();
 
+    // 変更前の最大HPと現在HPから残量比を取り、最大値を置き換えた後のHPへ換算します。
     const float previousMaxHp = (std::max)(param.maxHp, 1.0f);
     const float previousHp = std::clamp(param.hp, 0.0f, previousMaxHp);
     const bool wasFullHp = NearlyEqual(previousHp, previousMaxHp);
@@ -524,6 +534,7 @@ void GameplayStatusManager::ApplyStatus(engine::Object3D* object, const Characte
 
     param.maxHp = status.maxHp;
 
+    // 最大HPが変わっても、全快していた個体は全快のまま、被弾中の個体は残っていた割合を保つ。
     if (resetCurrentHp || wasFullHp) {
         param.hp = param.maxHp;
     } else {
@@ -545,6 +556,7 @@ void GameplayStatusManager::ApplyStatus(engine::Object3D* object, const Characte
     param.motorGroundProbeDistance = status.motorGroundProbeDistance;
     param.motorSkinWidth = status.motorSkinWidth;
 
+    // パラメータを一括反映してから、モデルと表示スケールは異なる場合だけ差し替えます。
     object->SetParameters(param);
 
     if (!status.modelName.empty() && object->GetModelName() != status.modelName) {
@@ -554,9 +566,11 @@ void GameplayStatusManager::ApplyStatus(engine::Object3D* object, const Characte
     const engine::Vector3 currentScale = object->GetScale();
     if (!NearlyEqual(currentScale.x, status.scale.x) || !NearlyEqual(currentScale.y, status.scale.y) ||
         !NearlyEqual(currentScale.z, status.scale.z)) {
+        // 表示倍率を直接変えず、固有の姿勢更新が基準として使う初期スケールにも反映する。
         object->ApplyManagedScale(status.scale);
     }
 
+    // 敵本体が参照する検知距離にも同じ調整値を適用し、行動側の値を揃えます。
     if (auto* enemy = dynamic_cast<BaseEnemy*>(object)) {
         enemy->SetDetectionRange(status.detectionRange);
     }

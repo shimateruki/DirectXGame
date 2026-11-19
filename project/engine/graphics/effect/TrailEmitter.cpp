@@ -34,6 +34,7 @@ void TrailEmitter::Update(float /*deltaTime*/) {
     engine::Vector3 diff = currentPos - lastEmitPos_;
     float distance = engine::Math::Length(diff);
 
+    // しきい値に届くまで前回の対象位置を保持し、そこからの直線距離で発生を判定します。
     if (distance < config_.emitDistance)
         return; // まだ足りない
 
@@ -64,5 +65,6 @@ void TrailEmitter::Update(float /*deltaTime*/) {
         GpuParticleManager::GetInstance()->Emit(config_.gpuParticlePreset, spawnPos, emitMat);
     }
 
+    // 次の距離はエフェクトを置いた中点ではなく、このフレームの対象位置から測ります。
     lastEmitPos_ = currentPos;
 }

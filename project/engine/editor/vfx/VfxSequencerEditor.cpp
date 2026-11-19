@@ -101,7 +101,7 @@ engine::Vector3 VfxSequencerEditor::ResolvePreviewPosition() const {
     }
 
     if (isPreviewMode_) {
-        const Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
+        const engine::Camera* camera = CameraManager::GetInstance()->GetActiveCamera();
 
         if (camera) {
             engine::Vector3 camEye = camera->GetEye();
@@ -112,6 +112,7 @@ engine::Vector3 VfxSequencerEditor::ResolvePreviewPosition() const {
                 camTarget.z - camEye.z
             };
 
+            // 視線の長さを除いて向きだけを使う。指定距離は注視点までの倍率ではなく、視点からのワールド距離。
             float length = std::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
             engine::Vector3 forward = { 0.0f, 0.0f, 1.0f };
 
@@ -159,6 +160,7 @@ void VfxSequencerEditor::Update(float deltaTime) {
         PlayPreview();
 
         const float targetTime = std::clamp(seekTime, 0.0f, (std::max)(previewSequencer_.GetDuration(), 0.0f));
+        // シーク時は速度倍率の影響を外して秒数を合わせ、再評価を終えたら元の倍率へ戻す。
         const float previousScale = gpuManager->GetTimeScale();
         gpuManager->SetTimeScale(1.0f);
         float simulatedTime = 0.0f;
@@ -173,6 +175,7 @@ void VfxSequencerEditor::Update(float deltaTime) {
         }
 
         if (targetTime > simulatedTime) {
+            // 最後の1コマ未満だけ個別に進め、指定時刻を超えて次の発火を実行しない。
             const float remainder = targetTime - simulatedTime;
             previewSequencer_.Update(remainder);
             meshManager->UpdateEditorPreviewStep(remainder);
@@ -218,6 +221,7 @@ void VfxSequencerEditor::Update(float deltaTime) {
         gpuManager->SetTimeScale((std::max)(0.0f, particlePreviewScale));
     }
 
+    // Stage と専用パネルの倍率の積がほぼ 0 なら Sequencer の時計を進めない。
     const bool previewPaused = isThisEditorSelected && particlePreviewScale <= 0.0001f;
 
     if (!previewPaused) {
@@ -279,6 +283,7 @@ void VfxSequencerEditor::RefreshFileList() {
     if (fs::exists(particleRoot)) {
         for (const auto& entry : fs::recursive_directory_iterator(particleRoot)) {
             if (entry.is_regular_file() && entry.path().extension() == ".json") {
+                // 粒子プリセットの参照キーには素材ルートからの相対階層を残し、同名の別フォルダーも選べるようにする。
                 auto relative = entry.path().lexically_relative(particleRoot);
                 const auto key = relative.replace_extension().generic_u8string();
                 particlePresetList_.emplace_back(key.begin(), key.end());
@@ -449,6 +454,7 @@ void VfxSequencerEditor::DrawImGui() {
     if (selectedEvent_ >= 0 && selectedEvent_ < static_cast<int>(events.size())) {
         if (ImGui::Button("選択イベントを複製")) {
             VfxEvent copy = events[selectedEvent_];
+            // 元のイベントと表示上見分けやすいよう、複製直後だけ発火時刻を 0.1 秒ずらす。
             copy.triggerTime += 0.1f;
             events.push_back(copy);
             selectedEvent_ = static_cast<int>(events.size()) - 1;
@@ -518,6 +524,7 @@ bool VfxSequencerEditor::LoadSequenceFile(const fs::path& path) {
         const auto document = nlohmann::json::parse(input);
         if (!document.contains("events") || !document["events"].is_array()) return false;
         auto keyPath = relative;
+        // 再生器が参照するキーは拡張子を除いた素材ルート相対パス。フォルダー階層は保持する。
         const auto key = keyPath.replace_extension().generic_u8string();
 
         // 既存の形式と互換処理を使い、解析完了後にだけプレビュー内容を置き換える。
@@ -577,7 +584,7 @@ void VfxSequencerEditor::DrawTimelinePreview() {
                 draggingEvent_ = row;
                 dragStartTime_ = events[row].triggerTime;
 
-                // ドラッグ中に表示秒数が変わると換算率が跳ねるため、開始時の「画素→秒」の尺度を固定する。
+                // 編集中に表示秒数を変更しても、ドラッグの換算には開始時の表示秒数を使う。
                 dragTimelineDuration_ = maxTime;
             }
         }
@@ -588,6 +595,7 @@ void VfxSequencerEditor::DrawTimelinePreview() {
         float time = dragStartTime_ + ImGui::GetMouseDragDelta().x / width * maxTime;
         if (snapTimeline_)
             time = std::round(time / 0.05f) * 0.05f;
+        // 画面に表示する範囲とは別に、保存できる開始時刻を0〜120秒に制限する。
         events[draggingEvent_].triggerTime = std::clamp(time, 0.0f, 120.0f);
     }
 
@@ -601,6 +609,7 @@ void VfxSequencerEditor::DrawTimelinePreview() {
     drawList->AddRectFilled(origin, ImVec2(origin.x + width, origin.y + height), bgColor, 4.0f);
     drawList->AddRect(origin, ImVec2(origin.x + width, origin.y + height), IM_COL32(120, 130, 145, 180), 4.0f);
 
+    // 表示幅と全秒数からおよそ48ピクセル以上になる整数秒間隔を選び、縮小すると目盛りを間引く。
     const int tickStep = (std::max)(1, static_cast<int>(std::ceil(maxTime * 48.0f / width)));
 
     for (int second = 0; second <= static_cast<int>(maxTime); second += tickStep) {
@@ -674,6 +683,7 @@ void VfxSequencerEditor::DrawEventEditor(int index, VfxEvent& event) {
 
         ImGui::DragFloat(ICON_FA_STOPWATCH " 発火時間", &event.triggerTime, 0.02f, 0.0f, 120.0f, "%.2f s");
 
+        // 通常の発生。毎秒発生数が 0 なら単発で、正の値を指定したときだけ継続と方向の設定を表示する。
         if (event.type == VfxEventType::GpuParticle) {
             DrawPresetCombo("プリセット", event.presetName, particlePresetList_);
             ImGui::DragFloat("毎秒発生数（0で単発）", &event.emissionRate, .1f, 0, 120);
@@ -686,6 +696,7 @@ void VfxSequencerEditor::DrawEventEditor(int index, VfxEvent& event) {
             }
             ImGui::DragFloat3(ICON_FA_ARROWS_ALT " オフセット", &event.offset.x, 0.1f);
         }
+        // 粒子の発生点を移動させる。開始・途中・終端の位置と到達までの秒数を設定する。
         else if (event.type == VfxEventType::MovingParticle) {
             DrawPresetCombo("プリセット", event.presetName, particlePresetList_);
             ImGui::DragFloat3(ICON_FA_ARROWS_ALT " 開始オフセット", &event.offset.x, 0.1f);
@@ -694,15 +705,18 @@ void VfxSequencerEditor::DrawEventEditor(int index, VfxEvent& event) {
             ImGui::DragFloat(ICON_FA_STOPWATCH " 移動時間", &event.duration, 0.02f, 0.05f, 30.0f, "%.2f s");
             ImGui::DragInt(ICON_FA_SLIDERS_H " イージング", &event.easingType, 1.0f, 0, 30);
         }
+        // 選んだメッシュ素材を配置する。素材の見た目は別エディターへ任せ、ここでは発火時の姿勢を調整する。
         else if (event.type == VfxEventType::MeshEffect) {
             DrawPresetCombo("エフェクト", event.presetName, meshEffectList_);
             ImGui::DragFloat3(ICON_FA_ARROWS_ALT " オフセット", &event.offset.x, 0.1f);
             ImGui::DragFloat3(ICON_FA_SYNC_ALT " 回転", &event.rotation.x, 0.05f);
             ImGui::DragFloat3(ICON_FA_EXPAND_ARROWS_ALT " スケール", &event.scale.x, 0.05f);
         }
+        // 時刻に達したら鳴らす素材だけを選ぶ。位置や継続時間の入力は設けない。
         else if (event.type == VfxEventType::SoundEffect) {
             DrawPresetCombo("SE", event.presetName, seFileList_);
         }
+        // 揺れの長さと速さを指定し、共通の強さを X/Y/Z の重みで配分する。
         else if (event.type == VfxEventType::CameraShake) {
             ImGui::DragFloat(ICON_FA_STOPWATCH " 揺れ時間", &event.duration, 0.01f, 0.03f, 5.0f, "%.2f s");
             ImGui::DragFloat(ICON_FA_BOLT " 強さ", &event.intensity, 0.01f, 0.0f, 5.0f, "%.2f");
@@ -710,6 +724,7 @@ void VfxSequencerEditor::DrawEventEditor(int index, VfxEvent& event) {
             ImGui::DragFloat3(ICON_FA_SLIDERS_H " 軸ごとの重み", &event.scale.x, 0.02f, 0.0f, 2.0f);
             ImGui::TextDisabled("軸重みは X/Y/Z の揺れやすさです。Zを低めにすると画面酔いしにくくなります。");
         }
+        // 画面効果を発火直後に加え、指定した秒数とカーブで減衰させる。
         else if (event.type == VfxEventType::PostEffectPulse) {
             ImGui::DragFloat(ICON_FA_STOPWATCH " 継続時間", &event.duration, 0.01f, 0.03f, 5.0f, "%.2f s");
             ImGui::DragInt(ICON_FA_SLIDERS_H " 減衰カーブ", &event.easingType, 1.0f, 0, 4);
@@ -719,6 +734,7 @@ void VfxSequencerEditor::DrawEventEditor(int index, VfxEvent& event) {
             ImGui::DragFloat("波打ち", &event.wobbleIntensity, 0.001f, 0.0f, 1.0f, "%.3f");
             ImGui::DragFloat("ブルーム加算", &event.bloomIntensity, 0.01f, 0.0f, 10.0f, "%.2f");
         }
+        // 一時ライトの位置と色、届く範囲と距離による減衰を調整する。
         else if (event.type == VfxEventType::LightPulse) {
             ImGui::DragFloat(ICON_FA_STOPWATCH " Duration", &event.duration, 0.01f, 0.03f, 5.0f, "%.2f s");
             ImGui::DragFloat3(ICON_FA_ARROWS_ALT " Offset", &event.offset.x, 0.1f);
@@ -744,16 +760,19 @@ void VfxSequencerEditor::DrawEventEditor(int index, VfxEvent& event) {
             ImGui::Checkbox("素材色を上書き", &event.debrisOverrideColor);
             if (event.debrisOverrideColor) ImGui::ColorEdit4("破片の色", &event.debrisColor.x);
         }
+        // 画角の変化量は度数法。継続時間のうち、立ち上がりに割く割合も設定する。
         else if (event.type == VfxEventType::CameraFovPulse) {
             ImGui::DragFloat(ICON_FA_STOPWATCH " 継続時間", &event.duration, 0.01f, 0.03f, 3.0f, "%.2f s");
             ImGui::DragFloat("FOV変化量", &event.intensity, 0.1f, -30.0f, 30.0f, "%.1f deg");
             ImGui::DragFloat("立ち上がり比率", &event.attackRatio, 0.01f, 0.01f, 0.95f, "%.2f");
             ImGui::TextDisabled("正の値で広角、負の値で望遠へ振ってから元へ戻ります。");
         }
+        // 短時間だけ進行を減速する。倍率 0 は停止、1 は通常速度。
         else if (event.type == VfxEventType::HitStop) {
             ImGui::DragFloat(ICON_FA_STOPWATCH " 停止時間", &event.duration, 0.005f, 0.01f, 1.0f, "%.3f s");
             ImGui::DragFloat("時間倍率", &event.intensity, 0.01f, 0.0f, 1.0f, "%.2f");
         }
+        // 低周波と高周波のモーターを別々の強さで駆動する。
         else if (event.type == VfxEventType::ControllerRumble) {
             ImGui::DragFloat(ICON_FA_STOPWATCH " 振動時間", &event.duration, 0.01f, 0.01f, 5.0f, "%.2f s");
             ImGui::DragFloat("低周波モーター", &event.intensity, 0.01f, 0.0f, 1.0f, "%.2f");

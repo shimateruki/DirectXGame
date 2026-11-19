@@ -9,7 +9,9 @@
 
 // 前方宣言
 namespace engine { class Object3D; }
-class Camera;
+namespace engine { class Camera; }
+
+namespace engine {
 
 // 担当：ライトと環境設定を管理し、描画用バッファと環境補間を更新する。
 // 関連：DirectXCommon（GPU資源）、MeshRenderer（照明利用）、LightEditor（編集）
@@ -48,6 +50,7 @@ public:
     struct EnvironmentProfileState {
         DirectionalLight directionalLight{};
         engine::Vector4 clearColor = { 0.52f, 0.68f, 0.84f, 1.0f };
+        // 影マップ一辺のピクセル数。影を描くワールド範囲の大きさは shadowAreaSize に別で持ちます。
         int shadowMapResolution = 2048;
         float shadowAreaSize = 80.0f;
         bool skyboxEnabled = true;
@@ -64,7 +67,7 @@ public:
     /// </summary>
     enum class LightMode {
         None,       // 通常（変化なし）
-        Follow,     // 特定のオブジェクトを追従する
+        Follow,     // 追従用途の保存値。位置追従自体はどのモードでもtargetの有無で決まります。
         Flicker,    // チカチカと不規則に点滅（故障した蛍光灯など）
         SineWave,   // 周期的に明滅（呼吸のような表現）
     };
@@ -173,7 +176,7 @@ public:
 
     ID3D12Resource* GetDirectionalLightResource() { return directionalLightResource_.Get(); }
 
-    // Editor は読み取り一覧から値を作り、SetPointLight/SetSpotLight で適用する。
+    // 平行光は編集用の値を直接返し、点光源・スポットライトは下の参照一覧と専用Setterで扱います。
     DirectionalLight& GetDirectionalLight() { return directionalLightData_; }
 
     const std::vector<PointLightInstance>& GetPointLights() const { return pointLights_; }
@@ -191,7 +194,7 @@ public:
     }
 
     /// <summary>指定カメラに対する平行光源の影用ビュー投影行列を取得する。</summary>
-    const engine::Matrix4x4& GetDirectionalShadowViewProjection(const Camera* camera);
+    const engine::Matrix4x4& GetDirectionalShadowViewProjection(const engine::Camera* camera);
 
     // シャドウマップ解像度と影を描く領域の大きさ。
     int GetShadowMapResolution() const;
@@ -275,6 +278,7 @@ private:
     float environmentBlendElapsed_ = 0.0f;
     float environmentBlendDuration_ = 0.0f;
     bool environmentBlendActive_ = false;
+    // 補間中間で空画像や品質を切り替えたか。連続値を更新するたびにロードを繰り返さないための印です。
     bool environmentBlendDiscreteApplied_ = false;
     std::string currentEnvironmentProfileFile_;
 
@@ -313,6 +317,7 @@ private:
     DirectionalLight directionalLightData_{};
     Microsoft::WRL::ComPtr<ID3D12Resource> directionalLightResource_;
 
+    // 材質の環境反射で読むキューブマップ。背景描画に使う skyboxTextureHandle_ と個別に設定できます。
     uint32_t environmentMapHandle_ = 0;
 
     float shadowAreaSize_ = 80.0f;
@@ -330,3 +335,5 @@ private:
     bool lastLoadSucceeded_ = true;
 
 };
+
+} // namespace engine

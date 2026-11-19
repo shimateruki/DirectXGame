@@ -26,12 +26,14 @@ void Timer::Update(float deltaSeconds) {
     }
 }
 void Timer::Seek(float seconds) {
+    // 指定時刻は開始からの秒です。再生中か一時停止中かを保ったまま、経過時間だけを更新します。
     if (std::isfinite(seconds)) state_->elapsed = std::max(0.0f, seconds);
 }
 float Timer::Elapsed() const { return state_->elapsed; }
 bool Timer::IsRunning() const { return state_->running; }
 TimerView Timer::GetView() const {
     TimerView view;
+    // 弱参照だけを渡すため、参照側が時計の寿命を延ばすことはありません。
     view.state_ = state_;
     return view;
 }

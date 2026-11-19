@@ -30,6 +30,7 @@ void GimmickTimedSwitch::Update(float deltaTime) {
             contactTimer_ = 0.0f;
     }
 
+    // 接触の通知が一瞬途切れても保持時間中は押下色を保ち、失効したら待機色へ戻します。
     bool isPressed = contactTimer_ > 0.0f;
 
     if (isPressed) {
@@ -50,11 +51,13 @@ bool GimmickTimedSwitch::OnCollision(engine::Object3D* other) {
 
     CollisionInfo info = CheckCollision(other);
 
+    // 上面からの接触だけ保持時間を更新し、横から触れただけでは押しません。
     if (info.isColliding && info.normal.y < -0.5f) {
         contactTimer_ = 0.12f;
 
         int targetId = GetTargetId();
 
+        // 接続先が設定されている場合は、現在のシーンへスイッチの通知を送ります。
         if (targetId != -1) {
             if (BaseScene* scene = SceneManager::GetInstance()->GetCurrentScene()) {
                 scene->TriggerEvent(targetId);

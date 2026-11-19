@@ -20,7 +20,7 @@ public:
     /// <summary>
     /// 初期化
     /// </summary>
-    void Initialize(WinApp* winApp, DirectXCommon* dxCommon);
+    void Initialize(WinApp* winApp, engine::DirectXCommon* dxCommon);
 
     /// <summary>
     /// 終了処理
@@ -51,5 +51,6 @@ private:
     ImGuiManager& operator=(const ImGuiManager&) = delete;
 
 private:
-    DirectXCommon* dxCommon_ = nullptr;
+    // 描画コマンドリストを借りるための参照です。ImGuiの終了まで描画基盤が生存している必要があります。
+    engine::DirectXCommon* dxCommon_ = nullptr;
 };

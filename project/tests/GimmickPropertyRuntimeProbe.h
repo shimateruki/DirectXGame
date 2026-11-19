@@ -132,28 +132,37 @@ inline void CheckSettings(engine::Object3DCommon* common, DebugEditor* editor, B
 }
 
 
-// 全生成IDを旧Factoryの設定と比較します。旧データは専用worktreeのコピーを読みます。
+// 既存IDは旧Factoryと比較し、全IDの保存・複製とEditorのプロパティを確認します。
 inline void CheckAllGimmicks(engine::Object3DCommon* common, DebugEditor* editor, BaseScene* scene, std::ofstream& log) {
     using json = nlohmann::json;
     auto* factory = GimmickFactory::GetInstance();
     auto* registry = EditorPropertyRegistry::GetInstance();
     const auto types = factory->GetRegisteredTypes();
-    Require(types.size() == 31, "registered type count including Default and aliases");
+    Require(types.size() == 33, "registered type count including Default and aliases");
     Require(EditorObjectFactoryRegistry::GetTypes(EditorObjectFactoryRegistry::Kind::Gimmick).size() == types.size(), "editor type list drift");
     std::set<std::string> seen;
     std::size_t fieldCount = 0;
     for (const auto& type : types) {
         Require(seen.insert(type.id).second, "duplicate type id");
         auto object = factory->CreateGimmick(type.id, common);
-        auto legacy = LegacyGimmickCreation::Create(type.id, common);
-        auto currentJson = object->ExportToJson();
-        auto oldJson = legacy->ExportToJson();
-        currentJson.erase("guid"); oldJson.erase("guid");
-        if (currentJson != oldJson) {
-            log << "FACTORY DIFF " << type.id << ": " << json::diff(oldJson, currentJson).dump() << std::endl;
-            Require(false, "factory defaults changed");
+        if (type.id != "DashPanelWhiteGlass" && type.id != "ContactHazard") {
+            auto legacy = LegacyGimmickCreation::Create(type.id, common);
+            auto currentJson = object->ExportToJson();
+            auto oldJson = legacy->ExportToJson();
+            currentJson.erase("guid"); oldJson.erase("guid");
+            if (currentJson != oldJson) {
+                log << "FACTORY DIFF " << type.id << ": " << json::diff(oldJson, currentJson).dump() << std::endl;
+                Require(false, "factory defaults changed");
+            }
+            Require(typeid(*object) == typeid(*legacy), "legacy factory runtime class");
         }
-        Require(type.matches && type.matches(*object) && typeid(*object) == typeid(*legacy), "factory runtime class");
+        if (type.id == "DashPanelWhiteGlass") {
+            Require(dynamic_cast<GimmickBreakableBlock*>(object.get()) && object->GetParameters() &&
+                object->GetParameters()->actionMode == GimmickBreakableBlock::kDashPanelOnly &&
+                object->GetMaterialType() == 10 && object->GetModelName() == "Stages/star_garden_glass_panel",
+                "dash panel white glass defaults");
+        }
+        Require(type.matches && type.matches(*object), "factory runtime class");
         Require(factory->GetCreationType(*object) == type.id, "factory alias identity");
         const auto count = registry->GetProperties().size();
         auto second = factory->CreateGimmick(type.id, common);

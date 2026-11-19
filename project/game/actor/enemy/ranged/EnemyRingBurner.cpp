@@ -293,7 +293,7 @@ void EnemyRingBurner::Initialize(engine::Object3DCommon* common, const std::stri
     SetCollisionMask(CollisionCategories::Get("player") | CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"));
     SetColliderType(ColliderType::Obb);
     SetCollisionSize({1.25f, kModelHeight * 0.5f, 1.25f});
-    ColliderConfig collider = GetColliderConfig();
+    engine::ColliderConfig collider = GetColliderConfig();
     collider.center = {0.0f, kModelHeight * 0.5f, 0.0f};
     SetColliderConfig(collider);
 
@@ -310,11 +310,13 @@ void EnemyRingBurner::Update(float deltaTime) {
         return;
     }
 
+    // 演出の変形と粒子の時計を進めます。砲台として動作するため、通常の追跡速度は与えません。
     EnsureBaseScale();
     idleTimer_ += deltaTime;
     particleTimer_ = (std::max)(0.0f, particleTimer_ - deltaTime);
     SetVelocity({0.0f, 0.0f, 0.0f});
 
+    // 踏まれている間は抑制タイマーを更新し続け、降りてから初めて残り時間を減らします。
     if (IsTargetStandingOnTop()) {
         if (state_ != State::Suppressed) {
             EnterState(State::Suppressed, kSuppressedReleaseDuration);
@@ -387,6 +389,7 @@ void EnemyRingBurner::UpdateCombat(float deltaTime) {
 }
 
 void EnemyRingBurner::UpdateWaveDamage(float previousRadius) {
+    // 一度被弾を通知した輪は、その後のフレームでは同じ対象を調べません。
     if (waveDamageDone_ || !GetTarget()) {
         return;
     }
@@ -396,6 +399,7 @@ void EnemyRingBurner::UpdateWaveDamage(float previousRadius) {
     const float targetDistance = PlanarDistance(origin, targetPosition);
     const float targetRelativeHeight = targetPosition.y - origin.y;
     const float horizontalScale = (std::max)(baseScale_.x, baseScale_.z);
+    // 帯の片側の幅は本体の大きさから決めます。輪が広がるときは現在半径の4.5%も下限として使います。
     const float bandWidth = (std::max)(kWaveBandHalfWidth * horizontalScale, waveRadius_ * 0.045f);
 
     // フレーム間に通過した帯も調べ、処理落ちで輪がプレイヤーを飛び越えないようにします。
@@ -408,6 +412,7 @@ void EnemyRingBurner::UpdateWaveDamage(float previousRadius) {
         return;
     }
 
+    // 水平には輪の中心から外向き、鉛直には上向きの速度を渡します。
     const engine::Vector3 knockbackDirection = NormalizePlanar(targetPosition - origin);
     DamageEvent damageEvent;
     damageEvent.target = GetTarget();

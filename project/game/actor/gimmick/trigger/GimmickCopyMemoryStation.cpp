@@ -61,6 +61,7 @@ void GimmickCopyMemoryStation::Initialize(engine::Object3DCommon* common, const 
     SetCollisionAttribute(CollisionCategories::Get("trigger"));
     SetCollisionMask(CollisionCategories::Get("player"));
 
+    // 台座の接触を拾う箱だけを作り、どの見本を取得するかは FindTouchedCore() で個別に調べます。
     engine::Object3D::ColliderConfig collider;
     collider.type = ColliderType::Obb;
     collider.center = {0.0f, 0.95f, 0.0f};
@@ -80,6 +81,7 @@ void GimmickCopyMemoryStation::Initialize(engine::Object3DCommon* common, const 
     SetParameter(&engine::EntityParameter::copyMemoryUnlimitedDuration, true);
     SetParameter(&engine::EntityParameter::startActive, true);
 
+    // 各コアを描画専用に生成し、コライダーは台座側のものだけ使います。
     for (size_t index = 0; index < kCoreCount; ++index) {
         coreVisuals_[index] = std::make_unique<engine::Object3D>();
         coreVisuals_[index]->Initialize(common);
@@ -306,6 +308,7 @@ void GimmickCopyMemoryStation::UpdateCoreVisuals(float deltaTime) {
     const std::string desiredModel = single ? "Gimmicks/copy_memory_station_single"
                                      : four ? "Gimmicks/copy_memory_station_four"
                                             : "Gimmicks/copy_memory_station";
+    // 既知の台座モデルだけ有効枠数に対応する形へ切り替え、手動で設定した別モデルは維持します。
     if ((GetModelName() == "Gimmicks/copy_memory_station" || GetModelName() == "Gimmicks/copy_memory_station_four" ||
          GetModelName() == "Gimmicks/copy_memory_station_single") &&
         GetModelName() != desiredModel) {
@@ -321,6 +324,7 @@ void GimmickCopyMemoryStation::UpdateCoreVisuals(float deltaTime) {
         SetColliderConfig(trigger);
     }
 
+    // 見本の種別が変わったものを再設定し、表示できる枠だけ浮遊と取得パルスを進めます。
     for (size_t index = 0; index < kCoreCount; ++index) {
         for (size_t part = 0; part < 4; ++part)
             effects_[index * 4 + part]->SetIsVisible(false);
@@ -425,6 +429,7 @@ void GimmickCopyMemoryStation::UpdateCoreEffects(size_t index, float deltaTime, 
         engine::Vector3 position = origin;
         engine::Vector3 rotation = GetRotation();
 
+        // 最初の三つは移動する光点、最後は台座に固定する輪です。
         if (part < 3) {
             const float seed = static_cast<float>(part) * 2.094395f + static_cast<float>(index) * 0.71f;
             const float cycle = std::fmod(
@@ -441,6 +446,7 @@ void GimmickCopyMemoryStation::UpdateCoreEffects(size_t index, float deltaTime, 
                 // 吸い込まれるコアへ粒を寄せます。
                 alpha = 0.75f;
                 position = origin + offset * (scale * (1.0f - elapsed / 0.32f));
+            // コアがプレイヤーへ届いた後は、その受け取り位置から光を散らして弱めます。
             } else if (active && elapsed < 0.72f) {
                 const float t = (elapsed - 0.32f) / 0.40f;
                 position = transferTargets_[index] + engine::Vector3{std::cos(seed) * (0.2f + t * 0.8f),
@@ -463,6 +469,7 @@ void GimmickCopyMemoryStation::UpdateCoreEffects(size_t index, float deltaTime, 
             }
         }
 
+        // 台座の発光設定を適用し、十分な明るさがある光だけ姿勢と描画を更新します。
         alpha *= GetParameters() ? std::clamp(ReadSettings().glow * 2.0f, 0.0f, 1.5f) : 0.9f;
         effect->SetIsVisible(alpha > 0.015f);
         if (!effect->GetIsVisible())
@@ -572,6 +579,7 @@ void GimmickCopyMemoryStation::ActivateCore(Player& player, size_t index) {
         return;
     }
 
+    // 適用後は同じコアを連続で取得できないよう記録し、吸い込み演出の行き先を取得時の位置に固定します。
     latchedCore_ = static_cast<int>(index);
     selectionCooldown_ = kSelectionCooldown;
     corePulseTimers_[index] = kPulseDuration;

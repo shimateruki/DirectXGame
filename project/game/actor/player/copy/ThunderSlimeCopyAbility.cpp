@@ -26,6 +26,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
         // 回避・連続落雷・溜めを排他的に開始し、別行動へ移る際は溜めを解く。
         primaryHeld_ = input.primaryHeld;
 
+        // 同時入力では回避、連続落雷、溜めの順に優先し、前二つでは溜めの表示も解除します。
         if (input.secondaryTriggered && evadeCooldown_ <= 0.0f) {
             StopCharge(player);
             Evade(player);
@@ -154,6 +155,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
             return;
         }
 
+        // 押し続けている間だけ火花を更新します。前の火花を同じスコープから消して重なりを防ぎます。
         if (sparkEffectTimer_ <= 0.0f) {
             ClearSparkEffects();
             const float radius = 1.05f;
@@ -183,6 +185,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
             sparkEffectTimer_ = 0.10f;
         }
 
+        // 見た目の更新間隔とは別の時計で、近接した敵への帯電ダメージを間引きます。
         if (sparkDamageTimer_ <= 0.0f) {
             DamageSphere(player, center, 2.2f, 3.0f, DamageType::Electric, 2.0f, 0.5f);
             sparkDamageTimer_ = 0.28f;
@@ -197,6 +200,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
         SpawnEffect("Resources/json/effect/shared/effect_player_thunder_impact_ring.json",
                     ground + engine::Vector3{0.0f, 0.06f, 0.0f});
         EmitPreset("shared/player_thunder_strike_impact", ground + engine::Vector3{0.0f, 0.22f, 0.0f});
+        // 落雷ごとの重なりを敵本体へ解決し、同じ連続攻撃ですでに当てた敵は飛ばします。
         PhysicsQueryFilter filter;
         filter.mask = CollisionCategories::Get("enemy");
         filter.ignoredObject = &player;
@@ -222,6 +226,7 @@ class ThunderSlimeCopyAbility final : public ICopyAbilitySession {
                                                                            direction, 9.5f, filter);
         const float distance = hit.isHit ? std::max(1.15f, hit.distance - 0.75f) : 9.5f;
         const engine::Vector3 destination = start + direction * distance;
+        // 移動前後に別の表示を置き、到着地点で無敵と範囲攻撃を開始します。
         SpawnEffect("Resources/json/effect/player/copy/thunder/effect_player_thunder_evade_cross.json", start + engine::Vector3{0.0f, 0.62f, 0.0f});
         SpawnEffect("Resources/json/effect/player/copy/thunder/effect_player_thunder_evade_seal.json",
                     destination + engine::Vector3{0.0f, 0.08f, 0.0f});

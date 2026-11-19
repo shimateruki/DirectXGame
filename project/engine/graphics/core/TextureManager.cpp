@@ -271,6 +271,7 @@ void UploadTextureData(
     HRESULT hr = DirectX::PrepareUpload(device, mipImages.GetImages(), mipImages.GetImageCount(), mipImages.GetMetadata(), subresources);
     assert(SUCCEEDED(hr));
 
+    // GPUが要求する行・サブリソースの配置に合わせ、画像データの総バイト数に整列パディングを含めます。
     uint64_t intermediateSize = GetRequiredIntermediateSize(texture, 0, UINT(subresources.size()));
 
     D3D12_HEAP_PROPERTIES uploadHeapProperties{};
@@ -335,6 +336,7 @@ ResolvedTexturePath ResolveTexturePath(
 
     std::filesystem::path path = PathFromUtf8(filePath);
     resolved.useDdsCache = allowDdsCache && !IsDdsCacheDisabled();
+    // DDSを直接指定した場合も、対応する元画像がありDDSが利用できないときだけ元画像へ戻ります。
     const bool requestedDds = ToLower(path.extension().string()) == ".dds";
 
     if (requestedDds) {
@@ -389,7 +391,7 @@ ResolvedTexturePath ResolveTexturePath(
 // DDSを読めなかった場合だけ元画像を試す。白画像の寸法では成否を判定しない。
 DirectX::ScratchImage DecodeResolvedTexture(const ResolvedTexturePath& resolved, bool forceSRGB) {
     bool loadedFromFile = false;
-    auto image = DirectXCommon::LoadTexture(resolved.loadPath, forceSRGB, &loadedFromFile);
+    auto image = engine::DirectXCommon::LoadTexture(resolved.loadPath, forceSRGB, &loadedFromFile);
     if (loadedFromFile || ToLower(PathFromUtf8(resolved.loadPath).extension().string()) != ".dds") {
         return image;
     }
@@ -405,7 +407,7 @@ DirectX::ScratchImage DecodeResolvedTexture(const ResolvedTexturePath& resolved,
 
     const std::string source = PathToUtf8(sourcePath);
     OutputDebugStringA(("DDS texture load failed; retrying source: " + resolved.loadPath + " -> " + source + "\n").c_str());
-    return DirectXCommon::LoadTexture(source, forceSRGB);
+    return engine::DirectXCommon::LoadTexture(source, forceSRGB);
 }
 
 // 実行中の描画コマンドリストを触らず、テクスチャ転送専用の一時コマンドリストでGPUへ送る。
@@ -420,6 +422,7 @@ bool UploadTextureDataWithDedicatedCommandList(
     }
 
     Microsoft::WRL::ComPtr<ID3D12CommandAllocator> uploadAllocator;
+    // 描画と同じDirect Queueへ投入しますが、レコーダーは分けて現在の描画コマンドを閉じずに転送できます。
     HRESULT hr = device->CreateCommandAllocator(
         D3D12_COMMAND_LIST_TYPE_DIRECT,
         IID_PPV_ARGS(uploadAllocator.GetAddressOf()));
@@ -501,12 +504,13 @@ TextureManager* TextureManager::GetInstance() {
     return &instance;
 }
 
-void TextureManager::Initialize(DirectXCommon* dxCommon) {
+void TextureManager::Initialize(engine::DirectXCommon* dxCommon) {
     // DirectXCommonからデバイスを受け取り、テクスチャ生成に必要な参照を保持する。
     assert(dxCommon);
     dxCommon_ = dxCommon;
     device_ = dxCommon->GetDevice();
 
+    // 描画キューと分けてテクスチャ転送用のキューを用意する。フェンスを作れない場合は転送キューも使わない。
     D3D12_COMMAND_QUEUE_DESC copyQueueDesc{};
     copyQueueDesc.Type = D3D12_COMMAND_LIST_TYPE_COPY;
     copyQueueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
@@ -549,6 +553,7 @@ bool TextureManager::BeginAsyncUploadBatch() {
     asyncUploadAllocator_.Reset();
     asyncUploadCommandList_.Reset();
 
+    // 前回の提出が残っていない場合だけ、今回のCopy用リストと記録領域を準備する。
     HRESULT hr = device_->CreateCommandAllocator(
         D3D12_COMMAND_LIST_TYPE_COPY,
         IID_PPV_ARGS(asyncUploadAllocator_.GetAddressOf()));
@@ -604,6 +609,7 @@ bool TextureManager::RecordAsyncTextureUpload(
         return false;
     }
 
+    // 送信先と転送用の中間バッファをこのバッチに保持します。Copy Queueのフェンス到達後にまとめて解放します。
     asyncTextureUploads_.push_back(std::move(upload));
     return true;
 }
@@ -632,6 +638,7 @@ bool TextureManager::SubmitAsyncUploadBatch() {
     ID3D12CommandList* commandLists[] = { asyncUploadCommandList_.Get() };
     copyCommandQueue_->ExecuteCommandLists(1, commandLists);
 
+    // 転送コマンドを積んだ後で同じキューへ完了の目印を積み、CPU側はこの値を実行済みかの判定に使います。
     pendingCopyFenceValue_ = ++copyFenceValue_;
     hr = copyCommandQueue_->Signal(copyFence_.Get(), pendingCopyFenceValue_);
 
@@ -759,6 +766,7 @@ bool TextureManager::Prepare(
         return true;
     }
 
+    // ロックを外して画像をデコードした間に別スレッドが登録する可能性があるため、再確認した結果を保持します。
     preparedTextures_.emplace(resolved.cacheKey, std::move(prepared));
     return true;
 }
@@ -769,17 +777,11 @@ uint32_t TextureManager::LoadInternal(
     bool allowDdsCache,
     bool forceReload) {
     const ResolvedTexturePath resolved = ResolveTexturePath(filePath, colorSpace, allowDdsCache);
-    const bool isLinearTexture = resolved.isLinearTexture;
-    const bool useDdsCache = resolved.useDdsCache;
-    const bool isSourceTexture = resolved.isSourceTexture;
-    const bool ddsIsUpToDate = resolved.ddsIsUpToDate;
-    const std::string& effectiveFilePath = resolved.effectiveFilePath;
-    const std::string& loadPath = resolved.loadPath;
-    const std::string& cacheKey = resolved.cacheKey;
 
+    // 通常ロードではデコード前に登録済みSRVを再利用する。
     if (!forceReload) {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto it = textureHandleMap_.find(cacheKey);
+        auto it = textureHandleMap_.find(resolved.cacheKey);
 
         if (it != textureHandleMap_.end()) {
             return it->second;
@@ -788,13 +790,13 @@ uint32_t TextureManager::LoadInternal(
 
     const auto start = std::chrono::high_resolution_clock::now();
 
-    // 法線・マスク系以外は見た目の色を保つためsRGBとして読み込む。
-    const bool forceSRGB = !isLinearTexture;
+    // 先読み済み画像を取り出し、なければ色空間の指定を保ってデコードする。
+    const bool forceSRGB = !resolved.isLinearTexture;
     DirectX::ScratchImage mipImages;
     float preparedDecodeDurationMs = 0.0f;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto prepared = preparedTextures_.find(cacheKey);
+        auto prepared = preparedTextures_.find(resolved.cacheKey);
 
         if (prepared != preparedTextures_.end()) {
             preparedDecodeDurationMs = prepared->second->decodeDurationMs;
@@ -831,10 +833,12 @@ uint32_t TextureManager::LoadInternal(
         return 0;
     }
 
+    // 転送を記録できた画像だけを、通常画像またはキューブマップとして登録する。
     D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
     srvDesc.Format = metadata.format;
     srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 
+    // 同じ画像データでもキューブマップは六面を扱うビューにし、通常の2D画像とシェーダーからの参照方法を分けます。
     if (metadata.IsCubemap()) {
         srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
         srvDesc.TextureCube.MostDetailedMip = 0;
@@ -850,7 +854,7 @@ uint32_t TextureManager::LoadInternal(
         std::lock_guard<std::mutex> lock(mutex_);
 
         // 他スレッドが読み込み中に同じテクスチャを先に登録していた場合は、そのハンドルを使う。
-        auto existingIt = textureHandleMap_.find(cacheKey);
+        auto existingIt = textureHandleMap_.find(resolved.cacheKey);
 
         if (!forceReload && existingIt != textureHandleMap_.end()) {
             return existingIt->second;
@@ -865,12 +869,12 @@ uint32_t TextureManager::LoadInternal(
         }
 
         TextureData& newData = textureDatas_[srvHandle];
-        newData.filePath = loadPath;
+        newData.filePath = resolved.loadPath;
         newData.metadata = metadata;
         newData.resource = resource;
         newData.srvHandle = srvHandle;
 
-        textureHandleMap_[cacheKey] = srvHandle;
+        textureHandleMap_[resolved.cacheKey] = srvHandle;
     }
 
     const auto end = std::chrono::high_resolution_clock::now();
@@ -879,8 +883,8 @@ uint32_t TextureManager::LoadInternal(
     ProfilerManager::GetInstance()->RecordLoadTime("Sprite", filePath, duration);
 
     // まだ有効なDDSがない元画像は、裏側でDDS生成できるよう要求を積む。
-    if (useDdsCache && isSourceTexture && !ddsIsUpToDate) {
-        AppendDdsCacheRequest(effectiveFilePath, isLinearTexture, duration);
+    if (resolved.useDdsCache && resolved.isSourceTexture && !resolved.ddsIsUpToDate) {
+        AppendDdsCacheRequest(resolved.effectiveFilePath, resolved.isLinearTexture, duration);
     }
 
     return srvHandle;
@@ -888,6 +892,7 @@ uint32_t TextureManager::LoadInternal(
 
 std::optional<uint32_t> TextureManager::AcquireVideoSurface(const void* owner) {
     std::lock_guard lock(mutex_);
+    // 動画用の転送先は一つだけ共有する。同じ再生元は再取得でき、別の再生元との同時利用は拒む。
     if (!owner || !device_ || (videoOwner_ && videoOwner_ != owner))
         return std::nullopt;
     if (!videoHandle_) {
@@ -908,6 +913,7 @@ std::optional<uint32_t> TextureManager::AcquireVideoSurface(const void* owner) {
             D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, nullptr, IID_PPV_ARGS(&resource))))
             return std::nullopt;
         UINT64 bytes = 0;
+        // 動画の各行をGPUの整列幅で扱えるように、コピー領域のサイズと配置を先に取得します。
         device_->GetCopyableFootprints(&texture, 0, 1, 0, &videoFootprint_, nullptr, nullptr, &bytes);
         D3D12_HEAP_PROPERTIES uploadHeap{};
         uploadHeap.Type = D3D12_HEAP_TYPE_UPLOAD;
@@ -937,10 +943,12 @@ std::optional<uint32_t> TextureManager::AcquireVideoSurface(const void* owner) {
         textureDatas_.emplace(handle, std::move(data));
         videoHandle_ = handle;
     }
+    // 画像・転送バッファ・SRVを準備できた段階で、今回の再生元に使用権を渡す。
     videoOwner_ = owner;
     return videoHandle_;
 }
 
+// 現在使っている再生元だけが使用権を返せる。テクスチャとSRVは次回の動画へ再利用する。
 void TextureManager::ReleaseVideoSurface(const void* owner) {
     std::lock_guard lock(mutex_);
     if (videoOwner_ == owner)
@@ -952,6 +960,7 @@ bool TextureManager::UploadVideoSurface(const void* owner, ID3D12GraphicsCommand
     std::lock_guard lock(mutex_);
     if (!videoHandle_ || !dxCommon_ || !owner || videoOwner_ != owner)
         return false;
+    // 動画は同じ転送領域を使い回します。前フレームのコピーが領域を読み終えるまで新しい画素を書き込みません。
     if (videoUploadFence_ && dxCommon_->GetFence()->GetCompletedValue() < *videoUploadFence_)
         return false;
     const auto& footprint = videoFootprint_.Footprint;
@@ -962,6 +971,7 @@ bool TextureManager::UploadVideoSurface(const void* owner, ID3D12GraphicsCommand
     const D3D12_RANGE noRead{0, 0};
     if (FAILED(videoUpload_->Map(0, &noRead, &mapped)))
         return false;
+    // 入力画素の1行は幅×4バイト、GPU用の1行は整列されたRowPitchです。行単位のコピーでパディングを避けます。
     auto* destination = static_cast<uint8_t*>(mapped) + videoFootprint_.Offset;
     for (UINT row = 0; row < footprint.Height; ++row)
         std::memcpy(destination + row * footprint.RowPitch, pixels.data() + row * rowBytes, rowBytes);
@@ -982,6 +992,7 @@ bool TextureManager::UploadVideoSurface(const void* owner, ID3D12GraphicsCommand
     commands.CopyTextureRegion(&to, 0, 0, 0, &from, nullptr);
     std::swap(barrier.Transition.StateBefore, barrier.Transition.StateAfter);
     commands.ResourceBarrier(1, &barrier);
+    // 今回のコピーを含むグラフィックスキューの次回Signalを、転送領域の再利用条件にします。
     videoUploadFence_ = dxCommon_->GetFenceValue() + 1;
     return true;
 }
@@ -1033,6 +1044,7 @@ void TextureManager::LoadAllTexture(const std::string& directoryPath) {
         const std::string ext = ToLower(path.extension().string());
 
         if (ext == ".dds") {
+            // 元画像があるDDSは元画像側のLoadに選択を任せ、一括読み込みで重複登録しないようにします。
             if (sourceBaseNames.count(GetTextureBasePath(path)) != 0) {
                 continue;
             }

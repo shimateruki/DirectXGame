@@ -22,7 +22,7 @@ struct HealthBarState {
     // バインド先が変わったときは演出時計を消し、現在HPから遅延ゲージも揃える。
     void Reset(float hp, float maxHp) {
         *this = {};
-        // 非表示中も前回値を更新し、再表示した瞬間に過去の減少を被弾として検出しない。
+        // 初回の被弾判定が空のHPから始まらないよう、比較に使うHPと残量率を設定します。
         previousHp = hp;
         previousRate = delayedRate = Rate(hp, maxHp);
     }
@@ -39,6 +39,7 @@ struct HealthBarState {
             if (animated) {
                 damagePulseTimer = 0.42f;
                 hurtIconTimer = 0.48f;
+                // 連続被弾では後から減るゲージを現在値まで急に落とさず、少なくとも今回の被弾直前の割合を確保します。
                 delayedRate = (std::max)(delayedRate, Rate(previousHp, maxHp));
             }
         }
@@ -56,6 +57,7 @@ struct HealthBarState {
         } else if (damageHoldTimer > 0.0f) {
             damageHoldTimer = (std::max)(0.0f, damageHoldTimer - frameDeltaTime);
         } else {
+            // 遅延ゲージを毎秒0.62の割合で減らし、実HPの表示を下回る手前で止めます。
             delayedRate = (std::max)(rate, delayedRate - frameDeltaTime * 0.62f);
         }
         animationTimer = std::fmod(animationTimer + frameDeltaTime, 1000.0f);

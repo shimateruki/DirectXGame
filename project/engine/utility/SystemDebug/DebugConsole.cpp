@@ -7,6 +7,7 @@ DebugConsole* DebugConsole::GetInstance() {
 }
 
 void DebugConsole::Initialize() {
+    // エラー総数を先に初期化します。履歴の取り出しと同期させる用途はなく、件数の読み書きにだけ原子操作を使います。
     errorCount_.store(0, std::memory_order_relaxed);
 #ifdef USE_IMGUI
     std::lock_guard<std::mutex> lock(logMutex_);
@@ -44,12 +45,14 @@ void DebugConsole::AddLog(LogLevel level, const std::string& log) {
     }
 
 
+    // 上限は表示履歴だけに適用します。古い行を除いても、別に持つエラー累積数は減らしません。
     const size_t maxLogs = 200;
 
     while (logs_.size() >= maxLogs) {
         logs_.pop_front();
     }
 
+    // 古いログを削ってから末尾へ追加し、自動スクロールが有効なら次の描画に追従を予約します。
     logs_.push_back({ log, level });
 
     if (autoScroll_) {
@@ -67,6 +70,7 @@ void DebugConsole::DrawImGui() {
 #ifdef USE_IMGUI
     ImGui::SetNextWindowSize(ImVec2(500, 400), ImGuiCond_FirstUseEver);
 
+    // 折りたたまれて中身を描画しない場合も、Begin に対応する End を呼んでから抜けます。
     if (!ImGui::Begin("Debug Console")) {
         ImGui::End();
         return;

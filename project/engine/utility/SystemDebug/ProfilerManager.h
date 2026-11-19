@@ -60,10 +60,11 @@ public:
     /// <summary>GPU計測のサンプリング中かを返す。</summary>
     bool IsGpuSampling() const { return isGpuSampling_; }
 
-    /// <summary>GPU計測を開始し、前回の集計値を破棄する。</summary>
+    /// <summary>GPU計測を開始し、今回分の累積値と計測件数を初期化する。</summary>
     void StartGpuSampling() {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
         isGpuSampling_ = true;
+        // 採取回数と合計を初期化します。前回の平均結果は、新しい採取が終了して更新するまで表示に使います。
         remainingSamplingFrames_ = kMaxSamplingFrames;
         gpuSampleAccum_.clear();
         gpuSampleCount_.clear();
@@ -127,6 +128,7 @@ public:
 
     ~ScopedCpuProfiler() {
         auto end = std::chrono::high_resolution_clock::now();
+        // 時計から得た時間差をミリ秒へ換算し、GPU計測と同じ単位で集計先へ渡します。
         float ms = std::chrono::duration<float, std::milli>(end - start_).count();
         ProfilerManager::GetInstance()->RecordCpuTime(name_, ms);
     }

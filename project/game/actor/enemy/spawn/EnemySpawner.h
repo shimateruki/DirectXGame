@@ -7,7 +7,7 @@
 namespace engine { class Object3DCommon; }
 
 // 一定間隔で敵を発生させるための配置用オブジェクト
-// 関連：生成したBaseEnemyの所有権を登録済みコールバックへ渡す。
+// 関連：生成先の座標を登録済みコールバックへ通知し、敵の生成と所有は通知先に任せる。
 // 主な入口：Initialize / Update / SetOnSpawnCallback
 class EnemySpawner : public engine::Object3D {
   public:
@@ -29,7 +29,7 @@ class EnemySpawner : public engine::Object3D {
     void Spawn();
 
   private:
-    // Factory に渡す共通描画情報。スポーン時の敵初期化で使う。
+    // 初期化時に受け取った共通描画情報。このクラスの通知には生成位置だけを渡す。
     engine::Object3DCommon* common_ = nullptr;
 
     std::string enemyType_;      // 生成したい敵タイプ名。

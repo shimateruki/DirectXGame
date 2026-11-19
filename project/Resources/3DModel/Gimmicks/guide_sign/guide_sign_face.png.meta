@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "94890dc945d6e685924c9d6736c2c7db",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/3DModel/Gimmicks/guide_sign/guide_sign_face.png",
+  "version": 1
+}

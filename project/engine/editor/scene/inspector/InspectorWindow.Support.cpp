@@ -75,6 +75,7 @@ void RefreshInspectorTargetMatrices(const std::vector<engine::Object3D*>& target
             continue;
         }
 
+        // 親の変換を合成する前に、このObjectの編集済みTransformからローカル行列を作り直します。
         object->UpdateLocalMatrix();
         object->UpdateWorldMatrix();
     }
@@ -120,6 +121,7 @@ void ApplyPrimaryTransformDeltaToTargets(
         afterRotation.z - beforeRotation.z,
     };
 
+    // 位置・回転は加算差分、拡縮は倍率です。各対象の元のサイズ差を保ったまま同じ倍率を反映します。
     const engine::Vector3 scaleRatio = {
         SafeScaleRatio(afterScale.x, beforeScale.x),
         SafeScaleRatio(afterScale.y, beforeScale.y),
@@ -492,6 +494,7 @@ void DrawAutomaticComponentProperties(
             options.compact = true;
             options.mixed = mixed;
             auto effective = *property;
+            // 対象ごとの上限は共有定義を書き換えず、今回の描画用コピーにだけ設定します。
             if (property->maximum) effective.ui.maxValue = property->maximum(*primary);
             const bool changed = EditorPropertyDrawer::DrawValue(effective, value, "##Value", options);
             ImGui::EndDisabled();
@@ -675,6 +678,7 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, engine::Ob
         cameraObject->GetPersistentGuid() + ":" + cameraObject->GetName();
     if (regionEditId != regionObjectId) { regionEditBefore = nullptr; regionEditId = regionObjectId; }
     auto regionEdit = [&](bool modified) {
+        // ドラッグ開始直前の設定を退避し、各フレームの差分を終了時に一件のUndoへまとめます。
         if (ImGui::IsItemActivated()) regionEditBefore = regionFrameBefore;
         if (modified) {
             if (!regionEditBefore.is_object()) regionEditBefore = regionFrameBefore;
@@ -706,6 +710,7 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, engine::Ob
             regionEdit(ImGui::DragFloat3("##CameraPathStart", &region.pathStart.x, .1f));
             ImGui::TextUnformatted("道の終点 (World)"); ImGui::SetNextItemWidth(-1);
             regionEdit(ImGui::DragFloat3("##CameraPathEnd", &region.pathEnd.x, .1f));
+            // 終点候補は名前ではなく永続GUIDで解決します。表示名を変更しても割り当てを維持するためです。
             const engine::Object3D* endCamera = nullptr;
             auto* scene = SceneManager::GetInstance()->GetCurrentScene();
             if (scene) for (const auto& candidate : scene->GetObjects())
@@ -956,6 +961,7 @@ void DrawCameraObjectInspector(DebugEditor* editor, BaseScene* scene, engine::Ob
 
     ImGui::SameLine();
 
+    // 録画パスを停止してからシーンカメラの一時上書きを解除し、通常の視点へ戻します。
     if (ImGui::Button(ICON_FA_STOP " 停止##CameraObject")) {
         if (cameraObject->GetRecorder())
             cameraObject->GetRecorder()->Stop();
@@ -1059,6 +1065,7 @@ void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, engine::Obje
         return;
     }
 
+    // 元Assetが見つからないインスタンスは、参照の問題を通知して復元またはリンク解除の入口を残します。
     if (!manager->HasValidPrefabSource(object)) {
         ImGui::TextColored(ImVec4(1.0f, 0.45f, 0.25f, 1.0f),
             ICON_FA_EXCLAMATION_TRIANGLE " 元Prefabが見つかりません。UnpackするかPrefab Assetを復元してください。");
@@ -1088,6 +1095,7 @@ void DrawPrefabInstancePanel(DebugEditor* editor, BaseScene* scene, engine::Obje
 
     ImGui::SameLine();
 
+    // 適用と違い、戻す対象はこのインスタンスです。変更前の状態も同じインスタンスに限って記録します。
     if (ImGui::Button(ICON_FA_UNDO " Revert All", ImVec2(112.0f, 0.0f))) {
         const auto beforeStates = editor->CaptureObjectStates(instanceObjects);
         const int reverted = manager->RevertAllPrefabOverrides(object, sceneObjects);
@@ -1371,6 +1379,7 @@ void DrawMaterialInstancePanel(
 
         ImGui::SameLine();
 
+        // 共有Assetへの参照だけを消し、いま表示している材質値は保持します。
         if (ImGui::Button(ICON_FA_UNLINK " リンク解除##MaterialInstance")) {
             for (engine::Object3D* target : targets)
                 if (target)
@@ -1388,6 +1397,7 @@ void DrawMaterialInstancePanel(
         const std::string path = NormalizeMaterialInstanceSavePath(savePath);
         std::string error;
 
+        // 代表の現在値を保存できた後にだけ他の選択対象へ適用し、候補一覧を最新にします。
         if (selectedObject->SaveMaterialInstance(path, &error)) {
             for (engine::Object3D* target : targets) {
                 if (target && target != selectedObject)
@@ -1432,8 +1442,10 @@ void DrawDecalPanel(
             const engine::Matrix4x4 rotation = transform->isQuaternionMaster
                 ? engine::Math::MakeRotateQuaternionMatrix(transform->quaternion)
                 : engine::Math::MakeRotateMatrix(transform->rotate);
+            // デカールのローカル前面は−Zです。指定の面オフセットと以前の差だけを法線方向に足し、繰り返し編集でも累積させません。
             const engine::Vector3 normal = { -rotation.m[2][0], -rotation.m[2][1], -rotation.m[2][2] };
             target->SetTranslate(transform->translate + normal * (settings.depthOffset - oldSettings.depthOffset));
+            // 元の平面が各軸−1～1なので、指定した全幅・全高を半分にしてTransformの倍率にします。
             target->SetScale({ settings.size.x * 0.5f, settings.size.y * 0.5f, 1.0f });
             target->UpdateLocalMatrix();
             target->UpdateWorldMatrix();

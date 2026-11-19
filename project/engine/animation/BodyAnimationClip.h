@@ -46,6 +46,9 @@ public:
     /// <returns>有効なキーがなければ false。この場合 sampleOut は既定値に戻る。</returns>
     bool Evaluate(float timeSeconds, bool loop, Sample& sampleOut) const;
 
+    // 開始キーのイージングで区間内の姿勢を補間する。時刻と区間の下限は秒。
+    static Sample InterpolatePose(const Key& from, const Key& to, float time, float minimumSegmentDuration);
+
     bool IsValid() const { return !keys_.empty() && duration_ > 0.0f; }
 
     float GetDuration() const { return duration_; }

@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "dd4a450f21d0cdaa7d3469d68c39ad55",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/guide_choose_heading.png",
+  "version": 1
+}

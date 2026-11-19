@@ -22,16 +22,16 @@ public:
     void SetInputManager(engine::InputManager* inputManager);
 
     /// <summary>所有するメインカメラを返す。</summary>
-    Camera* GetMainCamera() { return mainCamera_.get(); }
+    engine::Camera* GetMainCamera() { return mainCamera_.get(); }
 
     /// <summary>一時的なカメラがあればそれを、なければメインカメラを返す。</summary>
-    Camera* GetActiveCamera() { return activeCamera_ ? activeCamera_ : mainCamera_.get(); }
+    engine::Camera* GetActiveCamera() { return activeCamera_ ? activeCamera_ : mainCamera_.get(); }
 
     /// <summary>一時的なカメラへの参照を返す。未設定時はnullptr。</summary>
-    Camera* GetActiveCameraOverride() const { return activeCamera_; }
+    engine::Camera* GetActiveCameraOverride() const { return activeCamera_; }
 
     /// <summary>一時的に有効にするカメラを設定する。所有しない。</summary>
-    void SetActiveCamera(Camera* camera) { activeCamera_ = camera; }
+    void SetActiveCamera(engine::Camera* camera) { activeCamera_ = camera; }
 
     /// <summary>メインカメラを演出用の固定視点へ切り替える。多重開始時はfalseを返す。</summary>
     bool BeginMainCameraPresentation();
@@ -79,11 +79,12 @@ public:
     };
     const VisibilityFrame& GetVisibilityFrame() const { return visibilityFrame_; }
     // 指定カメラの視界確保で、対象を透過してよいか判定する。
-    bool CanFadeObject(const engine::Object3D* object, const Camera* camera) const;
+    bool CanFadeObject(const engine::Object3D* object, const engine::Camera* camera) const;
     // 視界確保の対象と透過量を更新する。deltaTimeは秒。
     void UpdateVisibility(float deltaTime);
 
 private:
+    // 経路カメラの開始点を0、終点を1とした位置。進行を保持する経路は routeProgressId_ で識別します。
     float routeProgress_ = 0.0f;
     std::string routeProgressId_;
     VisibilityFrame visibilityFrame_;
@@ -106,9 +107,9 @@ private:
     uint64_t regionOverrideRevision_ = 0;
     bool ownsRegionOverride_ = false;
 
-    std::unique_ptr<Camera> mainCamera_; // 通常のゲーム視点を所有する。
-    Camera* activeCamera_ = nullptr; // 一時的に選んだカメラ。借用参照。
-    Camera* presentationPreviousActiveCamera_ = nullptr; // メインカメラ演出の開始前に有効だった視点。
+    std::unique_ptr<engine::Camera> mainCamera_; // 通常のゲーム視点を所有する。
+    engine::Camera* activeCamera_ = nullptr; // 一時的に選んだカメラ。借用参照。
+    engine::Camera* presentationPreviousActiveCamera_ = nullptr; // メインカメラ演出の開始前に有効だった視点。
     bool presentationPreviousInputEnabled_ = true;
     bool mainCameraPresentationActive_ = false;
 };

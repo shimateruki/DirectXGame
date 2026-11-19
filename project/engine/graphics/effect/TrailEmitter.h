@@ -41,7 +41,7 @@ public:
     /// <summary>現在の発生設定を返す。</summary>
     const TrailEmitterConfig& GetConfig() const { return config_; }
 
-    /// <summary>最後にエフェクトを発生させた位置を返す。</summary>
+    /// <summary>最後に記録した対象のワールド位置を返す。次の発生距離の基準点。</summary>
     engine::Vector3 GetLastEmitPos() const { return lastEmitPos_; }
 
 private:

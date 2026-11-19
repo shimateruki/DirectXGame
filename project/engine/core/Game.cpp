@@ -126,6 +126,7 @@ void Game::Initialize() {
 		InitializeEditorTools();
 	}
 
+	// 基盤・シーン・各ツールが揃ってから、編集か通常再生かの入力状態を決める。
 	ConfigureInitialPlayState();
 
 	CameraEditor::GetInstance()->Initialize();
@@ -138,7 +139,7 @@ void Game::InitializeEngineServices() {
 	// ゲーム全体で使うマネージャやアセットを初期化し、シーン生成の準備を行う。
 	{
 		StartupProfileScope phase("Framework::Initialize call");
-		Framework::Initialize();
+		engine::Framework::Initialize();
 	}
 
 	ProfilerManager::GetInstance()->Initialize();
@@ -214,7 +215,8 @@ void Game::ApplyInitialSceneOverrides() {
 void Game::InitializePostProcess() {
 	// ポストエフェクト、LUT、フェード、キー設定を初期化する。
 	LoadColorWorkflowSetting();
-	LightManager::GetInstance()->ApplySceneClearColor();
+	engine::LightManager::GetInstance()->ApplySceneClearColor();
+	// 色空間とクリア色を先に読み、後処理の作成時点から同じ描画設定を使う。
 	PostEffect::GetInstance()->Initialize(GetDirectX());
 	PostEffect::GetInstance()->SetLUTTexturePath(
 		"Resources/texture/lut/soft_adventure_lut.png");
@@ -254,6 +256,7 @@ void Game::ConfigureInitialPlayState() {
 
 void Game::Finalize() {
 	// シーンとエディタを終了し、エンジン基盤を解放する。
+	// シーンを閉じる前に保留中の進行データを確定し、基盤側の終了へ渡す。
 	GameDataManager::GetInstance()->FlushPendingSave();
 
 	if (sceneManager_) {
@@ -269,7 +272,7 @@ void Game::Finalize() {
 	}
 #endif
 
-	Framework::Finalize();
+	engine::Framework::Finalize();
 }
 
 void Game::Update() {
@@ -280,6 +283,7 @@ void Game::Update() {
 		WinApp::RequestClose();
 	}
 
+	// ウィンドウとEscapeからの要求を一本化し、ImGuiが使える場合は保存確認をエディターに渡す。
 	if (WinApp::ConsumeCloseRequest()) {
 #ifdef USE_IMGUI
 		if (editorController_) {
@@ -297,6 +301,7 @@ void Game::Update() {
 		GetDirectX()->ProcessPendingResize();
 	}
 
+	// 音声回収・振動・ヒットストップの時計は実時間で進めてから、Scene用の時間に換算する。
 	AudioEventSystem::GetInstance()->Update();
 	float deltaTime = CalculateDeltaTime();
 	engine::InputManager::GetInstance()->UpdateRumble(deltaTime);
@@ -337,6 +342,7 @@ void Game::Update() {
     }
 #endif
 	const float feedbackTimeScale = VfxSequencer::GetGameplayTimeScale();
+	// 実時間からゲーム時間を作る。停止中は0秒、再生中は編集側の倍率とヒットストップ側の倍率を掛ける。
 	float finalDeltaTime = isPlaying_ ? deltaTime * timeScale_ * feedbackTimeScale : 0.0f;
 #ifdef USE_IMGUI
 	if (AttackLifecycleRuntimeProbe::WantsPlay(sceneManager_.get()) || RaftRuntimeProbe::WantsPlay(sceneManager_.get()))
@@ -361,6 +367,7 @@ void Game::Update() {
 float Game::CalculateDeltaTime() {
 	// 前フレームからの経過時間を求め、極端に大きい値は固定値へ丸める。
 	auto currentTime = std::chrono::high_resolution_clock::now();
+	// 秒単位へ変換し、ウィンドウ移動などで一時的に止まった後の大きな時間は固定刻みへ置き換える。
 	std::chrono::duration<float> duration = currentTime - lastTime_;
 	float deltaTime = duration.count() > kDeltaTimeClamp ? kFixedDeltaTime : duration.count();
 	lastTime_ = currentTime;
@@ -378,6 +385,7 @@ void Game::UpdateEditorFrame(float deltaTime) {
 		editorController_->ExecuteEditorCommand(EditorCommandId::ViewPortfolio);
 	}
 
+	// 撮影表示では通常のメニューバーを組み立てず、ツール更新と入力状態だけを維持する。
 	if (editorController_->IsPortfolioCaptureMode()) {
 		editorController_->UpdateTools(deltaTime, isPlaying_, timeScale_);
 		editorFrameState_ = {};
@@ -424,12 +432,14 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 	}
 #endif
 
+	// 固定刻みの物理更新を先に消化し、そのあと現在のSceneへフレーム分の更新を渡す。
 	RunFixedUpdates(finalDeltaTime, simulationPaused, sceneTransitioning);
 
 	{
 		PROFILE_SCOPE("シーン");
 
 		if (sceneManager_) {
+			// 遷移画面は停止やヒットストップから独立した時間で進むため、元の経過秒を使う。
 			const float sceneDeltaTime = sceneManager_->IsTransitioning() ? deltaTime : finalDeltaTime;
 
 			if (!simulationPaused || sceneManager_->IsTransitioning()) {
@@ -500,7 +510,7 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 
 	if (!sceneTransitioning) {
 		PROFILE_SCOPE("ライト");
-		LightManager::GetInstance()->Update();
+		engine::LightManager::GetInstance()->Update();
 	}
 
 	if (!sceneTransitioning) {
@@ -529,6 +539,7 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 		Fade::GetInstance()->Update(simulationPaused ? 0.0f : deltaTime);
 	}
 
+	// 後処理の見た目の時計は実時間で進めるが、シミュレーション停止時は保持する。
 	PostEffect::GetInstance()->GetParams()->time += simulationPaused ? 0.0f : deltaTime;
 
 	if (sceneManager_) {
@@ -545,6 +556,7 @@ void Game::UpdateGameSystems(float deltaTime, float finalDeltaTime) {
 }
 
 void Game::RunFixedUpdates(float finalDeltaTime, bool simulationPaused, bool sceneTransitioning) {
+	// 停止・切替中の余った時間は破棄し、再開したシーンへ前のシーンの固定更新を持ち越さない。
 	if (!sceneManager_ || simulationPaused || sceneTransitioning || finalDeltaTime <= 0.0f) {
 		fixedUpdateAccumulator_ = 0.0f;
 		return;
@@ -557,6 +569,7 @@ void Game::RunFixedUpdates(float finalDeltaTime, bool simulationPaused, bool sce
 		return;
 	}
 
+	// ゲーム時間を秒で貯め、固定刻みを一回分確保できるたびに物理更新へ渡す。
 	fixedUpdateAccumulator_ += (std::min)(finalDeltaTime, kDeltaTimeClamp);
 	int stepCount = 0;
 
@@ -587,6 +600,7 @@ void Game::RecordUpdateProfile(const std::chrono::high_resolution_clock::time_po
 void Game::Draw() {
 	// GPUプロファイルを読み戻し、エディタまたは通常実行の描画フローを実行する。
 	PostEffect* postEffect = PostEffect::GetInstance();
+	// 描画指示を記録する前に、GPUから回収できる計測結果を更新する。
 	GetDirectX()->ReadAllGpuProfiles();
 #ifdef USE_IMGUI
 	// 環境変数が指定されたときだけ描画区間の実測値をCSVに記録します。
@@ -628,8 +642,8 @@ void Game::Draw() {
 
 	if (!sceneManager_ || !sceneManager_->IsTransitioning()) {
 		renderStats->SetActiveLightCounts(
-			LightManager::GetInstance()->GetActivePointLightCount(),
-			LightManager::GetInstance()->GetActiveSpotLightCount());
+			engine::LightManager::GetInstance()->GetActivePointLightCount(),
+			engine::LightManager::GetInstance()->GetActiveSpotLightCount());
 	}
 	else {
 		renderStats->SetActiveLightCounts(0, 0);
@@ -661,6 +675,7 @@ void Game::DrawEditorFrame(PostEffect* postEffect) {
 		return;
 	}
 
+	// 先にゲーム画面を別のテクスチャで完成させ、バックバッファではその画像とEditor UIを合成する。
 	DrawSceneToRenderTexture(true);
 	ApplyPostEffectPipeline(postEffect, true);
 
@@ -733,6 +748,7 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 	}
 
 	GetDirectX()->EndGpuProfile("影描画");
+	// 影マップの描画を終了し、続く3D描画では結果を参照する側へ切り替える。
 	GetDirectX()->PostDrawShadow();
 
 	GetDirectX()->StartGpuProfile("メイン描画");
@@ -744,8 +760,8 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 		{
 			engine::ScopedRenderPass renderPass(engine::RenderPass::MainScene);
 			const bool sceneTransitioning = sceneManager_ && sceneManager_->IsTransitioning();
-			ID3D12Resource* pointLight = sceneTransitioning ? nullptr : LightManager::GetInstance()->GetPointLightResource();
-			ID3D12Resource* spotLight = sceneTransitioning ? nullptr : LightManager::GetInstance()->GetSpotLightResource();
+			ID3D12Resource* pointLight = sceneTransitioning ? nullptr : engine::LightManager::GetInstance()->GetPointLightResource();
+			ID3D12Resource* spotLight = sceneTransitioning ? nullptr : engine::LightManager::GetInstance()->GetSpotLightResource();
 
 			if (sceneManager_) {
 				sceneManager_->Draw();
@@ -801,8 +817,8 @@ void Game::DrawSceneToRenderTexture(bool editorMode) {
 				ID3D12Resource* spotLight = nullptr;
 
 				if (!sceneManager_->IsTransitioning()) {
-					pointLight = LightManager::GetInstance()->GetPointLightResource();
-					spotLight = LightManager::GetInstance()->GetSpotLightResource();
+					pointLight = engine::LightManager::GetInstance()->GetPointLightResource();
+					spotLight = engine::LightManager::GetInstance()->GetSpotLightResource();
 					DebrisEffectManager::GetInstance()->Draw(pointLight, spotLight);
 
 					if (MeshEffectManager::GetInstance()->RequiresSceneColorCopy()) {
@@ -857,36 +873,28 @@ void Game::DrawCameraEditorPreview(PostEffect* postEffect) {
 	engine::ScopedRenderPass renderPass(engine::RenderPass::CameraPreview);
 	GetDirectX()->SetCameraPreviewRendering(true);
 
+	// 専用テクスチャへ描画し、SRVに戻してからエディタへ描画完了を通知する。
+	const auto drawPreview = [&](engine::Camera* camera, int textureIndex, int viewIndex) {
+		if (!camera) {
+			return; // カメラを準備できない場合は既存のプレビューを保持する。
+		}
+
+		postEffect->PreDrawSceneWithDepth(commandList, textureIndex, true);
+		if (BaseScene* currentScene = sceneManager_->GetCurrentScene()) {
+			currentScene->DrawCameraPreview(camera, viewIndex);
+		}
+		postEffect->TransitionToSrv(commandList, textureIndex);
+		cameraEditor->NotifyCameraPreviewRendered(viewIndex == 1);
+	};
+
 	if (renderEditorPreview) {
-		if (Camera* previewCamera = cameraEditor->PreparePreviewCamera(16.0f / 9.0f)) {
-			postEffect->PreDrawSceneWithDepth(commandList, PostEffect::kCameraPreviewTextureIndex, true);
-
-			// Camera Previewは通常GameViewとは別のRenderTextureへ描画する。
-			// GrabTexture依存のエフェクトは各Scene側でPreview中だけ抑制する。
-			if (BaseScene* currentScene = sceneManager_->GetCurrentScene()) {
-				currentScene->DrawCameraPreview(previewCamera, 0);
-			}
-
-			postEffect->TransitionToSrv(commandList, PostEffect::kCameraPreviewTextureIndex);
-			cameraEditor->NotifyCameraPreviewRendered(false);
-		}
+		drawPreview(cameraEditor->PreparePreviewCamera(16.0f / 9.0f), PostEffect::kCameraPreviewTextureIndex, 0);
 	}
-
 	if (renderSceneCameraPreview) {
-		Camera* cinematicPreviewCamera = cameraEditor->PrepareCinematicPreviewCamera(16.0f / 9.0f);
-
-		if (cinematicPreviewCamera) {
-			postEffect->PreDrawSceneWithDepth(commandList, PostEffect::kCinematicCameraPreviewTextureIndex, true);
-
-			if (BaseScene* currentScene = sceneManager_->GetCurrentScene()) {
-				currentScene->DrawCameraPreview(cinematicPreviewCamera, 1);
-			}
-
-			postEffect->TransitionToSrv(commandList, PostEffect::kCinematicCameraPreviewTextureIndex);
-			cameraEditor->NotifyCameraPreviewRendered(true);
-		}
+		drawPreview(cameraEditor->PrepareCinematicPreviewCamera(16.0f / 9.0f), PostEffect::kCinematicCameraPreviewTextureIndex, 1);
 	}
 
+	// 二つのプレビューで使った描画フラグを戻し、後続のバックバッファ描画へ持ち越さない。
 	GetDirectX()->SetCameraPreviewRendering(false);
 #else
 	(void)postEffect;
@@ -901,6 +909,7 @@ void Game::ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorG
 	const uint32_t renderTextureHandle = GetDirectX()->GetRenderTextureSrvHandle();
 
 	auto drawFinalComposite = [&](uint32_t sourceHandle) {
+		// EditorはGame Viewの参照用テクスチャ、配布実行はウィンドウのバックバッファを最終出力にする。
 		if (outputForEditorGameView) {
 			postEffect->PreDrawScene(commandList, 1);
 			postEffect->Draw(commandList, sourceHandle, PostEffect::CompositeHdrPipeline);
@@ -924,6 +933,7 @@ void Game::ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorG
 	}
 
 	constexpr std::array<int, 4> kBloomTextureIndices = { 2, 3, 4, 5 };
+	// 有効な段数分だけ、直前に縮小した明部テクスチャから次のレベルを作る。
 	const int bloomLevelCount = postEffect->GetBloomLevelCount();
 
 	postEffect->PreDrawScene(commandList, kBloomTextureIndices[0]);
@@ -941,6 +951,7 @@ void Game::ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorG
 	postEffect->PreDrawScene(commandList, 0);
 	postEffect->Draw(commandList, renderTextureHandle, PostEffect::CopyPipeline);
 
+	// シーン色を入れた合成先をクリアせず、各段の明部を加算するために描画先として開き直す。
 	postEffect->PreDrawScene(commandList, 0, false);
 
 	for (int level = 0; level < bloomLevelCount; ++level) {
@@ -952,6 +963,7 @@ void Game::ApplyPostEffectPipeline(PostEffect* postEffect, bool outputForEditorG
 
 	postEffect->TransitionToSrv(commandList, 0);
 
+	// 明部を加算した画像を入力にして、トーンマッピングと最終出力を行う。
 	drawFinalComposite(postEffect->GetSrvHandle(0));
 
 	GetDirectX()->EndGpuProfile("後処理");
@@ -968,6 +980,7 @@ void Game::RecordDrawProfile(const std::chrono::high_resolution_clock::time_poin
 	ProfilerManager::GetInstance()->RecordCpuTime("描画 (合計)", drawTimeMs_);
 
 	std::chrono::duration<float, std::milli> cmdDuration = prePostDrawTime_ - startDraw;
+	// PostDrawの直前までを命令発行とし、Presentや後続UI処理を含む残り時間を「GPU待機」欄へ記録する。
 	float cmdTimeMs = cmdDuration.count();
 	cpuCmdTimeMs_ = cmdTimeMs;
 

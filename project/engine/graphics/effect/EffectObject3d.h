@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <vector>
 #include <wrl.h>
+#include <nlohmann/json_fwd.hpp>
 
 // 担当：Object3dを土台に、メッシュVFXの寿命・色・拡大・ディゾルブを制御する。
 // 関連：Object3D（共通機能）、MeshEffectManager（生成・再利用）、MeshEffectEditor（編集）
@@ -55,7 +56,7 @@ public:
     /// <summary>エフェクト用パイプラインでメッシュを描画する。</summary>
     void Draw(ID3D12Resource* pointLightResource = nullptr, ID3D12Resource* spotLightResource = nullptr) override;
 
-    void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+    void DrawForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource,
                        ID3D12Resource* spotLightResource, int previewBufferIndex = 0) override;
 
     // エフェクト用マテリアルの描画値。バッファ未作成時の設定は反映されない。
@@ -119,6 +120,7 @@ public:
         return materialData_ && materialData_->enableDistortion != 0 && materialData_->distortionStrength > 0.0f;
     }
 
+    // ピクセルのアルファがこの値以下なら破棄する。歪み描画と通常描画で共通のしきい値。
     void SetAlphaReference(float ref) { if (materialData_) materialData_->alphaReference = ref; }
 
     void SetNoiseTexture(uint32_t handle) { noiseTextureHandle_ = handle; }
@@ -145,6 +147,7 @@ public:
 
     void SetEnableReveal(bool enable) { if (materialData_) materialData_->enableReveal = enable ? 1 : 0; }
 
+    // 0は出現制限なし、1はUV横方向、2は上から時計回りの円弧で見せる。
     void SetRevealMode(int mode) { if (materialData_) materialData_->enableReveal = std::clamp(mode, 0, 2); }
 
     void SetRevealProgress(float progress) { if (materialData_) materialData_->revealProgress = std::clamp(progress, 0.0f, 1.0f); }
@@ -160,8 +163,12 @@ public:
     /// <summary>JSONプリセットから形状とマテリアル設定を読み込む。</summary>
     bool LoadFromJson(const std::string& jsonFilePath);
 
+    // JSONに含まれる形状設定を反映する。省略された項目は現在値を維持し、メッシュの再生成は呼び出し元で行う。
+    void ReadProceduralMeshSettings(const nlohmann::json& json);
+
     void SetTargetObject(engine::Object3D* target) { targetObject_ = target; }
 
+    // 追従先から見たローカル位置差と回転差。描画位置への合成はUpdateで行う。
     void SetOffsets(const engine::Vector3& pos, const engine::Vector3& rot) { offsetPos_ = pos; offsetRot_ = rot; }
 
     engine::Object3D* GetTargetObject() const { return targetObject_; }
@@ -226,11 +233,13 @@ public:
     void SetMeshSettings(const MeshSettings& settings) { meshSettings_ = settings; }
 
     template<class Value>
+    // 指定された形状パラメータだけを書き換えます。編集内容をGPUメッシュへ反映するには UpdateProceduralMesh が必要です。
     void SetMeshSetting(Value MeshSettings::* member, std::type_identity_t<Value> value) {
         meshSettings_.*member = std::move(value);
     }
 
     template<class Vector>
+    // 位置・寸法などの指定成分だけを書き換え、ほかの軸の編集値を保持します。
     void SetMeshComponent(Vector MeshSettings::* member, float Vector::* component, float value) {
         (meshSettings_.*member).*component = value;
     }
@@ -242,6 +251,7 @@ private:
     void DrawWithWvp(ID3D12Resource* wvpResource);
     // エフェクト専用のマテリアルバッファ
     Microsoft::WRL::ComPtr<ID3D12Resource> materialBuffer_;
+    // materialBuffer_ をMapした領域への借用ポインター。バッファがなければ nullptr です。
     EffectMaterial* materialData_ = nullptr;
     engine::Object3D* targetObject_ = nullptr; // 追従するObject。借用参照。
     engine::Vector3 offsetPos_ = engine::Vector3::ZERO; // 追従対象からの位置補正。
@@ -270,8 +280,8 @@ private:
 
     // 動的生成専用のモデル
     // キャッシュした形状は読み取り専用で共有し、再編集時は別Modelへ切り替えます。
-    std::shared_ptr<Model> dynamicModel_;
-    std::vector<Model::VertexData> proceduralVertices_;
+    std::shared_ptr<engine::Model> dynamicModel_;
+    std::vector<engine::Model::VertexData> proceduralVertices_;
     std::vector<uint32_t> proceduralIndices_;
 
     // 以下の Generate* は形状別の頂点・インデックスを proceduralVertices_ / proceduralIndices_ に生成する。

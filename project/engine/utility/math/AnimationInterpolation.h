@@ -35,6 +35,7 @@ inline float ApplyEasing(float value, EasingType type) {
     switch (type) {
     case EasingType::EaseIn:
         return t * t * t;
+    // 残り時間を三乗してから1から引き、開始側の加速曲線を終了側の減速へ反転します。
     case EasingType::EaseOut: {
         const float inv = 1.0f - t;
         return 1.0f - inv * inv * inv;
@@ -43,6 +44,7 @@ inline float ApplyEasing(float value, EasingType type) {
         return t < 0.5f
             ? 4.0f * t * t * t
             : 1.0f - std::pow(-2.0f * t + 2.0f, 3.0f) * 0.5f;
+    // 始点と終点の速度と加速度を0にする五次曲線です。
     case EasingType::SmootherStep:
         return t * t * t * (t * (t * 6.0f - 15.0f) + 10.0f);
     case EasingType::Linear:
@@ -81,6 +83,7 @@ inline float FollowAlpha(float response, float deltaTime) {
     if (deltaTime <= 0.0f || response <= 0.0f) {
         return 0.0f;
     }
+    // 差の残存率を exp(−追従係数×経過秒) とし、1から引いて今回詰める割合を求めます。追従係数の単位は毎秒です。
     return 1.0f - std::exp(-response * deltaTime);
 }
 
@@ -119,6 +122,7 @@ inline engine::Vector3 SlerpEuler(const engine::Vector3& startEuler, const engin
     const engine::Quaternion start = engine::Math::EulerToQuaternion(startEuler);
     const engine::Quaternion end = engine::Math::EulerToQuaternion(endEuler);
     const engine::Quaternion result = engine::Math::Slerp(start, end, Clamp01(rate));
+    // 補間した回転を、姿勢の更新先が使うラジアンのEuler角へ戻します。
     return engine::Math::MatrixToEuler(engine::Math::MakeRotateQuaternionMatrix(result));
 }
 

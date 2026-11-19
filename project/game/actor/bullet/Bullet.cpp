@@ -86,6 +86,7 @@ void Bullet::Update(float deltaTime) {
         return;
     }
 
+    // 尾と弾を覆う炎は別々の間隔で出し、編集プレビューでは尾を省きます。
     trailTimer_ -= deltaTime;
 
     if (!previewOnly_ && trailTimer_ <= 0.0f) {
@@ -101,6 +102,7 @@ void Bullet::Update(float deltaTime) {
         }
     }
 
+    // 寿命が尽きた弾はその場で終了し、このフレームの移動や着弾判定には渡しません。
     lifeTimer_ -= deltaTime;
 
     if (lifeTimer_ <= 0.0f) {
@@ -123,6 +125,7 @@ void Bullet::Update(float deltaTime) {
     }
 
     // 放物線のフレーム間変位を計算し、既存のSphereCastで地形との衝突を調べる。
+    // 一定重力の変位は現在速度×経過秒数に落下加速度の項を足します。次回使う鉛直速度はそのあと更新します。
     const engine::Vector3 displacement = velocity_ * deltaTime + engine::Vector3{0.0f, -0.5f * gravity_ * deltaTime * deltaTime, 0.0f};
     velocity_.y -= gravity_ * deltaTime;
     if (previewOnly_) {
@@ -132,6 +135,7 @@ void Bullet::Update(float deltaTime) {
     }
     const float travelDistance = engine::Math::Length(displacement);
 
+    // 方向を正規化できないほど移動が小さければ掃引を行いません。
     if (travelDistance <= 0.000001f) {
         return;
     }
@@ -158,6 +162,7 @@ void Bullet::Update(float deltaTime) {
             ((attribute & CollisionCategories::Get("enemy_attack")) && (targetAttribute & CollisionCategories::Get("player"))) ||
             ((attribute & (CollisionCategories::Get("player_attack") | CollisionCategories::Get("player_bullet"))) &&
              (targetAttribute & CollisionCategories::Get("enemy")));
+        // 範囲攻撃は Explode() に移し、単発弾は相手が攻撃を受け付けるときだけここで命中させます。
         if (explosionRadius_ > 0.0f)
             Explode(hit.hitObject);
         else if (isDamageTarget && (hit.hitObject->GetCollisionMask() & attribute)) {
@@ -184,6 +189,7 @@ void Bullet::Update(float deltaTime) {
         return;
     }
 
+    // 移動区間に接触がないときだけ、計算したフレーム末尾の位置まで進めます。
     SetTranslate(GetTranslate() + displacement);
 }
 
@@ -292,6 +298,7 @@ void Bullet::EmitImpactVfx() {
         direction = engine::Math::Normalize(direction);
     }
 
+    // 着弾の粒子は進行方向を使う設定と位置だけを使う設定を使い分けます。
     if (auto* particles = GpuParticleManager::GetInstance(); particles && particles->IsInitialized()) {
         for (const std::string* preset : {&impactPreset_, &impactSecondaryPreset_}) {
             if (preset->empty()) {
@@ -306,6 +313,7 @@ void Bullet::EmitImpactVfx() {
         }
     }
 
+    // 破片はキャッシュにあれば設定を再利用し、なければ素材を読めたときだけ生成します。
     if (auto* debris = DebrisEffectManager::GetInstance()) {
         for (const std::string* preset : {&impactDebrisPreset_, &impactDebrisSecondaryPreset_}) {
             if (preset->empty()) {
@@ -330,6 +338,7 @@ void Bullet::EmitImpactVfx() {
             config.spawnBoxHalfExtents = config.spawnBoxHalfExtents * scale;
             config.speedMin *= std::sqrt(scale);
             config.speedMax *= std::sqrt(scale);
+            // 壁面の法線が取れたときは破片を壁から離れる側へ寄せ、飛散幅も狭めます。
             engine::Vector3 scatterDirection = {-direction.x, 0.0f, -direction.z};
             if (engine::Math::Length(impactNormal_) > 0.001f) {
                 engine::Vector3 wallNormal = {impactNormal_.x, 0.0f, impactNormal_.z};
@@ -364,6 +373,7 @@ void Bullet::Explode(engine::Object3D* directHit) {
     const engine::Vector3 center = GetTranslate();
     EmitImpactVfx();
 
+    // 中心の閃光と地面の衝撃波を別の位置に置き、地形がなければどちらも爆発位置を使います。
     if (auto* effects = MeshEffectManager::GetInstance()) {
         const float core = explosionRadius_ / 3.0f;
         const float ring = explosionRadius_ / 5.8f;
@@ -400,8 +410,10 @@ void Bullet::Explode(engine::Object3D* directHit) {
         wallFilter.ignoredObject = this;
         const float distance = engine::Math::Length(delta);
 
+        // 直撃ではない候補だけ、爆発中心と対象の間に遮る地面がないか確認します。
         if (!direct && distance > 0.05f) {
             const auto wall = CollisionManager::GetInstance()->Raycast(center, delta / distance, distance, wallFilter);
+            // 火点のすぐ近くや対象の直前で拾った面を除き、両者の間に壁がある場合は爆風を遮ります。
             if (wall.isHit && wall.distance > 0.05f && wall.distance < distance - 0.1f)
                 return;
         }
@@ -415,6 +427,7 @@ void Bullet::Explode(engine::Object3D* directHit) {
         EventManager::GetInstance()->Dispatch(event);
     };
 
+    // 直撃を先に処理してから範囲を照会し、爆風に含まれる同じ相手を重ねて被弾させません。
     if (hasDirectPlayerHit)
         damageTarget(directHit, true);
     for (const auto& hit : CollisionManager::GetInstance()->OverlapSphere(center, explosionRadius_, filter))

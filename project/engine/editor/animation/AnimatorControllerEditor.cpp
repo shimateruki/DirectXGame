@@ -131,6 +131,7 @@ void AnimatorControllerEditor::SaveController() {
 
     controller_.name = fileNameBuffer_;
 
+    // 未指定の入口を補ってから保存し、利用側がどの状態から開始するか決められるようにする。
     if (controller_.entryState.empty() && !controller_.states.empty()) {
         controller_.entryState = controller_.states.front().name;
     }
@@ -321,6 +322,7 @@ void AnimatorControllerEditor::DrawStateEditor() {
         engine::Object3D* target = ResolvePreviewTarget();
         const char* clipLabel = state.clipName.empty() ? "(なし)" : state.clipName.c_str();
 
+        // 骨格クリップは現在のモデルに含まれるもの、身体変形は別の JSON アセットから選ぶ。
         if (ImGui::BeginCombo("Model Animation Clip", clipLabel)) {
             if (ImGui::Selectable("(なし)", state.clipName.empty()))
                 state.clipName.clear();
@@ -350,6 +352,7 @@ void AnimatorControllerEditor::DrawStateEditor() {
 
         ImGui::TextDisabled("Body Clip未設定時は従来のコードAnimationを使用します。");
 
+        // 素材固有の説明だけを登録元へ依頼し、共通の速度や補間入力はここで描画する。
         if (const auto* binding = engine::AnimatorEditorRegistry::Find(fileNameBuffer_);
             binding && binding->drawStateHelp) {
             binding->drawStateHelp(state);
@@ -399,6 +402,7 @@ void AnimatorControllerEditor::DrawStateEditor() {
             ImGui::PopID();
         }
 
+        // イベントの入力欄をすべて描画してから、削除を予約した一件だけ取り除く。
         if (removeEventIndex >= 0) {
             state.events.erase(state.events.begin() + removeEventIndex);
         }
@@ -530,6 +534,7 @@ void AnimatorControllerEditor::DrawTransitionEditor() {
     if (selectedTransitionIndex_ < 0 || selectedTransitionIndex_ >= static_cast<int>(controller_.transitions.size()))
         return;
     auto& transition = controller_.transitions[selectedTransitionIndex_];
+    // 遷移元だけは全Stateを表すワイルドカードを選べる。行き先は実在するStateの候補から選ぶ。
     const char* fromLabel = transition.fromState.empty() || transition.fromState == "*" ? "Any State" : transition.fromState.c_str();
 
     if (ImGui::BeginCombo("From", fromLabel)) {
@@ -557,6 +562,7 @@ void AnimatorControllerEditor::DrawTransitionEditor() {
     ImGui::DragFloat("Duration", &transition.duration, 0.01f, 0.0f, 5.0f, "%.3f sec");
     ImGui::Combo("Easing", &transition.easing, kEasingNames, IM_ARRAYSIZE(kEasingNames));
     ImGui::Checkbox("Has Exit Time", &transition.hasExitTime);
+    // 遷移の補間は秒で指定し、遷移可能になる時点はクリップ内の割合で指定する。
     if (transition.hasExitTime)
         ImGui::SliderFloat("Exit Time", &transition.exitTime, 0.0f, 1.0f, "%.2f normalized");
 
@@ -582,6 +588,7 @@ void AnimatorControllerEditor::DrawTransitionEditor() {
         int mode = static_cast<int>(condition.mode);
         if (ImGui::Combo("Mode", &mode, kConditionModeNames, IM_ARRAYSIZE(kConditionModeNames)))
             condition.mode = static_cast<AnimatorConditionMode>(mode);
+        // 数値を比較する条件だけしきい値欄を出す。BoolやTriggerの条件では使わない。
         if (condition.mode == AnimatorConditionMode::Greater || condition.mode == AnimatorConditionMode::Less ||
             condition.mode == AnimatorConditionMode::Equals || condition.mode == AnimatorConditionMode::NotEqual) {
             ImGui::DragFloat("Threshold", &condition.threshold, 0.01f);

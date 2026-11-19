@@ -229,6 +229,7 @@ inline void DeserializeSceneCameraSettings(const nlohmann::json& camera, SceneCa
             const float value = data[key].get<float>();
             return std::isfinite(value) ? std::clamp(value, minimum, maximum) : fallback;
         };
+        // 通常は無効の手前バリア透過を、対象の領域だけで設定します。床と境界の高さはワールド単位です。
         if (data.contains("clearForegroundBarriers") && data["clearForegroundBarriers"].is_boolean())
             region.clearForegroundBarriers = data["clearForegroundBarriers"].get<bool>();
         region.barrierFloorHeight = number("barrierFloorHeight", 0.0f, -1000000.0f, 1000000.0f);
@@ -244,6 +245,7 @@ inline void DeserializeSceneCameraSettings(const nlohmann::json& camera, SceneCa
                 if (std::isfinite(value)) destination[i] = std::clamp(value, minimum, maximum);
             }
         };
+        // 経路自体の座標と、終点に使うカメラの識別子を読み込みます。終点解決は実行時に行います。
         if (data.contains("routeEnabled") && data["routeEnabled"].is_boolean()) region.routeEnabled = data["routeEnabled"].get<bool>();
         if (data.contains("endCameraGuid") && data["endCameraGuid"].is_string()) region.endCameraGuid = data["endCameraGuid"].get<std::string>();
         vector("pathStart", &region.pathStart.x, 3, -1000000.0f, 1000000.0f);
@@ -256,6 +258,7 @@ inline void DeserializeSceneCameraSettings(const nlohmann::json& camera, SceneCa
     // 射影行列や追従補間が破綻しない範囲へ、読み取り後にまとめて補正する。
     settings.fovY = std::clamp(settings.fovY, 0.05f, 3.0f);
     settings.nearClip = (std::max)(settings.nearClip, 0.001f);
+    // 近クリップ面より遠クリップ面を奥に置き、投影に必要な正の距離差を確保します。
     settings.farClip = (std::max)(settings.farClip, settings.nearClip + 0.01f);
     settings.eyeFollowResponse = (std::max)(settings.eyeFollowResponse, 0.01f);
     settings.targetFollowResponse = (std::max)(settings.targetFollowResponse, 0.01f);

@@ -41,8 +41,10 @@ void GameSelectScene::BeginUnlockPresentation() {
             issues.emplace_back(std::string("必須 Signal がありません: ") + name);
             return 0.0f;
         };
+        // ゲートの点灯開始・完了の時刻を秒で保持し、再生中の発光の補間に使う。
         unlockGateActivationTime_ = signalTime("gate_activate");
         unlockGateActivationEndTime_ = signalTime("gate_active_full");
+        // 鍵と南京錠は、対象のステージ名に合う既存オブジェクトを動かすトラックに限る。
         const auto hasTrack = [sequence](const engine::Object3D* object) {
             return object && std::any_of(sequence->transformTracks.begin(), sequence->transformTracks.end(),
                                          [object](const CinematicTransformTrack& track) {
@@ -53,6 +55,7 @@ void GameSelectScene::BeginUnlockPresentation() {
         if (!hasTrack(unlockKeyObject_) || !hasTrack(unlockLockObject_)) {
             issues.emplace_back("鍵または南京錠の Transform Track が対象ステージを指していません。");
         }
+        // 同じ対象に表示用クリップも要求する。配置済みの鍵と錠を使うため、生成クリップは対象から外す。
         for (const auto* object : {unlockKeyObject_, unlockLockObject_}) {
             if (!object || !std::any_of(sequence->presentation.objects.begin(),
                     sequence->presentation.objects.end(), [object](const CinematicObjectClip& clip) {
@@ -87,12 +90,12 @@ void GameSelectScene::BeginUnlockPresentation() {
     }
 
     // 再生前の視点を保存する。ムービー中の視点は JSON の Camera Track が制御する。
-    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+    if (engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         unlockCameraStartEye_ = camera->GetEye();
         unlockCameraStartTarget_ = camera->GetTargetPoint();
         camera->SetInputEnabled(false);
         camera->SetFollowTarget(nullptr);
-        camera->SetFollowMode(Camera::FollowMode::FixedPoint);
+        camera->SetFollowMode(engine::Camera::FollowMode::FixedPoint);
         camera->ConfigFixedPoint(unlockCameraStartEye_,
                                  SelectLookAtRotation(unlockCameraStartEye_, unlockCameraStartTarget_));
     }
@@ -103,6 +106,7 @@ void GameSelectScene::BeginUnlockPresentation() {
         return;
     }
 
+    // 発光と完了判定で使う時計を再生器へ渡し、再入場を解錠の全尺と余韻の0.25秒だけ保留する。
     unlockPlayer_.Play(false, &unlockTime_);
     stageDecisionCooldown_ = unlockPlayer_.GetDuration() + 0.25f;
     DebugConsole::GetInstance()->AddLog("Stage Select: crown key unlock cinematic start.");
@@ -113,10 +117,12 @@ void GameSelectScene::StartDebugUnlockPresentation(int stageIndex) {
     // セーブの既読状態を変えず、必要なモデルが揃う場合だけ演出を試す。
     const auto& stages = StageManager::GetInstance()->GetStages();
 
+    // 先頭ステージには解放演出がなく、範囲外の選択も受け付けません。
     if (stageIndex <= 0 || stageIndex >= static_cast<int>(stages.size())) {
         return;
     }
 
+    // ゲートの出入りや報酬の演出中は、同じカメラとプレイヤーを使う再生を重ねません。
     if (gateEntryCinematicActive_ || gateReturnPresentationActive_ || crownCountPresentationActive_ ||
         unlockingStageIndex_ >= 0) {
         return;
@@ -131,6 +137,7 @@ void GameSelectScene::StartDebugUnlockPresentation(int stageIndex) {
         return;
     }
 
+    // プレビュー終了時に選択を元へ戻せるよう、対象ステージへの切り替え前に保存します。
     unlockDebugPreviousSelectedStageIndex_ = selectedStageIndex_;
     unlockPresentationDebugReplay_ = true;
     unlockPresentationInitialized_ = false;
@@ -148,10 +155,12 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
         return;
     }
 
+    // 初回にだけ準備し、シナリオが不正で中断された場合は同じフレームで再生しません。
     BeginUnlockPresentation();
     if (unlockingStageIndex_ < 0) {
         return;
     }
+    // このフレームの分だけ再生器を進めてから同じ時計の経過時間を読む。
     unlockPlayer_.Update(deltaTime);
     selectedStageIndex_ = unlockingStageIndex_;
 
@@ -160,6 +169,7 @@ void GameSelectScene::UpdateUnlockPresentation(float deltaTime) {
         player_->SetVelocity({0.0f, 0.0f, 0.0f});
     }
 
+    // 全尺を再生して初めて完了とし、途中中断では既読にしません。
     if (unlockTime_.Elapsed() >= unlockPlayer_.GetDuration()) {
         FinishUnlockPresentation();
     }
@@ -201,9 +211,11 @@ void GameSelectScene::FinishUnlockPresentation(bool markSeen) {
 
 void GameSelectScene::RestoreUnlockPresentationState() {
     // Director が記録した姿勢を戻し、見た目は現在のゲート状態で更新する。
+    // 鍵や錠の一時状態を片付ける前に、トラックが変更した配置と表示を元に戻す。
     if (unlockTimelineLoaded_) {
         unlockPlayer_.Stop(true);
     }
+    // 復元後も鍵や錠が画面に残らないように隠し、鍵が持っていた粒子も停止します。
     unlockTimelineLoaded_ = false;
     if (unlockKeyObject_) {
         unlockKeyObject_->SetIsVisible(false);
@@ -218,15 +230,17 @@ void GameSelectScene::RestoreUnlockPresentationState() {
         player_->SetVelocity({0.0f, 0.0f, 0.0f});
     }
 
-    if (Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
+    // 再生前の視点を戻してから追従を再接続し、補間を初期化して操作を返します。
+    if (engine::Camera* camera = CameraManager::GetInstance()->GetMainCamera()) {
         camera->SetEye(unlockCameraStartEye_);
         camera->SetTarget(unlockCameraStartTarget_);
         camera->SyncRotationToCurrentView();
         if (player_) {
             camera->SetFollowTarget(player_);
-            camera->SetFollowMode(Camera::FollowMode::Aimable);
+            camera->SetFollowMode(engine::Camera::FollowMode::Aimable);
             camera->ResetFollowSmoothing();
         }
+        // 位置と追従先を整え、補間を初期化した後で初めてカメラ操作を受け付ける。
         camera->SetInputEnabled(true);
     }
 }

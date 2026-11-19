@@ -31,6 +31,7 @@ void PlayerStatePullObject::Enter(Player* player) {
     timer_ = 0.0f;
     pullStarted_ = false;
 
+    // 鞭の見た目を持つ場合は鞭側を更新し、ない場合は共通マーカーを先端に置きます。
     engine::Object3D* marker = player->GetHookMarker();
 
     if (marker && !whipVisual_) {
@@ -85,6 +86,7 @@ void PlayerStatePullObject::Update(Player* player, float deltaTime) {
         return;
     }
 
+    // 接触後は対象の現在位置に表示を追従させ、引き寄せ姿勢の進捗へ接触後の時計を使います。
     if (whipVisual_) whipVisual_->UpdatePull(player, targetObject_->GetWorldPosition(), deltaTime);
     else UpdateRopeMarker(player, targetObject_->GetWorldPosition(), 0.18f);
     player->SetSlimeAnimationMode(PlayerSlimeAnimator::Mode::PullEnemy);
@@ -133,6 +135,7 @@ void PlayerStatePullObject::UpdateRopeMarker(Player* player, const engine::Vecto
 
     engine::Vector3 startPos = player->GetWorldPosition();
     engine::Vector3 diff = endPos - startPos;
+    // 近すぎる二点で奥行きがゼロになることを避け、長さだけに最小値を設けます。
     float length = engine::Math::Length(diff);
     if (length < 0.01f)
         length = 0.01f;

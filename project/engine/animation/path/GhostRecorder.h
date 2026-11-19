@@ -41,6 +41,7 @@ public:
         engine::Vector3 startScale = { 1.0f, 1.0f, 1.0f };
 
         int startEventId = 0;
+        // 始点の姿勢のまま待機する秒数です。移動にかかる秒数には含めません。
         float startWaitTime = 0.0f;
         float startDurationToNext = 1.0f; // 始点から次点へ移動する秒数。
         int startEasingToNext = 0;
@@ -221,8 +222,10 @@ private:
 
     size_t currentFrameIndex_ = 0; // 現在評価中の記録サンプル番号。
     float playbackTimeSeconds_ = 0.0f; // 経路の再生位置（秒）。
+    // 開始予定時刻の姿勢を一度置くまで経過秒を加算しないためのフラグです。
     bool firstPlaybackFramePending_ = false;
     bool playerRiding_ = false;
+    // 最初の乗車を済ませたかを保持し、RideToEndで降りた後も終点まで進めます。
     bool ridePlaybackStarted_ = false;
     bool isLoop_ = false;
     bool isRelative_ = true;
@@ -260,6 +263,7 @@ private:
     GenerationParams uiEditStartState_; // 連続編集を開始した時点の経路設定。
     bool hasUiEditStart_ = false;
     bool historyRegisteredThisFrame_ = false;
+    // Undo・Redoが借りる寿命の目印です。録画器の破棄後は履歴からこのインスタンスへ触れません。
     std::shared_ptr<int> historyLifetime_ = std::make_shared<int>(0);
     bool isDraggingGizmo_ = false;
 };

@@ -21,7 +21,7 @@ inline bool IsStandingOnMovingFloor(engine::Object3D& floor, Character& actor) {
     if (gap < -0.2f || gap > 0.2f || body.max.x <= deck.min.x + 0.02f ||
         body.min.x >= deck.max.x - 0.02f || body.max.z <= deck.min.z + 0.02f ||
         body.min.z >= deck.max.z - 0.02f) return false;
-    const Collider* floorCollider = floor.GetCollider();
+    const engine::Collider* floorCollider = floor.GetCollider();
 
     // 多角形フットプリントがある床はAABB通過後に実形状でも確認する。
     if (floorCollider && floorCollider->GetConfig().footprint.size() >= 3) {

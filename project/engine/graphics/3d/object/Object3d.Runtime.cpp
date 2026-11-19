@@ -74,6 +74,7 @@ std::string Object3D::GeneratePersistentGuid() {
     stream << std::hex << std::setfill('0');
 
     for (std::size_t index = 0; index < bytes.size(); ++index) {
+        // 16バイトを2桁ずつ書き、8-4-4-4-12文字の区切りで保存用の表記に整えます。
         if (index == 4 || index == 6 || index == 8 || index == 10) {
             stream << '-';
         }
@@ -355,7 +356,7 @@ const GameplayLinkComponent* Object3D::GetGameplayLinkComponent() const {
 }
 
 void Object3D::ApplyWorldMatrix(const engine::Matrix4x4& worldMatrix) {
-    // 受け取ったワールド姿勢をTransformへ分解し、描画用行列を再計算する。
+    // 入力行列からローカル姿勢を組み立てます。親付きでワールド姿勢を維持するには、親の逆変換を呼び出し側で適用します。
     Object3DTransformUtils::ApplyMatrixToTransform(transform_, worldMatrix);
     UpdateLocalMatrix();
     UpdateWorldMatrix();
@@ -492,11 +493,12 @@ void Object3D::DrawLocalFog(uint32_t depthSrvHandle) {
     }
 }
 
-MeshRenderer::LocalFogData* Object3D::GetLocalFogData() {
+engine::MeshRenderer::LocalFogData* Object3D::GetLocalFogData() {
     // メッシュが無いオブジェクトではローカルフォグ設定も存在しない。
     return meshRenderer_ ? meshRenderer_->GetLocalFogData() : nullptr;
 }
 
+// 配置設定を写す。Object階層の付け替えはここでは行わず、再生中の表示物も複製しない。
 void Object3D::CopyFrom(const Object3D* other) {
     if (!other)
         return;
@@ -516,6 +518,7 @@ void Object3D::CopyFrom(const Object3D* other) {
     this->itemType_ = other->itemType_;
     this->materialInstancePath_ = other->materialInstancePath_;
     this->decalSettings_ = other->decalSettings_;
+    // 寿命の設定は複製し、再生済みの経過時間は引き継がず先頭から始めます。
     this->decalElapsedTime_ = 0.0f;
     this->decalAuthoredAlpha_ = other->decalAuthoredAlpha_;
     this->isVisible_ = other->isVisible_;
@@ -525,6 +528,7 @@ void Object3D::CopyFrom(const Object3D* other) {
     this->prefabInstanceInfo_ = other->prefabInstanceInfo_;
 
     if (!other->GetModelName().empty()) {
+        // モデルの設定でコライダーと材質の初期値が変わるため、複製元の調整値を戻すより先に設定します。
         this->SetModel(other->GetModelName());
     }
 
@@ -537,7 +541,7 @@ void Object3D::CopyFrom(const Object3D* other) {
         this->SetCollisionAttribute(other->GetCollisionAttribute());
         this->SetCollisionMask(other->GetCollisionMask());
 
-        if (const TerrainCollisionData* terrain = other->GetTerrainCollisionData()) {
+        if (const engine::TerrainCollisionData* terrain = other->GetTerrainCollisionData()) {
             this->SetTerrainCollisionData(*terrain, other->GetTerrainCollisionPath());
         } else {
             terrainCollisionPath_.clear();
@@ -585,6 +589,7 @@ void Object3D::CopyFrom(const Object3D* other) {
     this->InitializeRecorder(nullptr);
 
     if (!this->GetRecordPathName().empty() && this->recorder_) {
+        // 経路設定がある場合は、複製元の時計を引き継がず新しいレコーダーで先頭から再生します。
         bool isCinematic = this->IsCameraObject();
         this->recorder_->Play(
             this->GetRecordPathName(),
@@ -597,6 +602,7 @@ void Object3D::CopyFrom(const Object3D* other) {
     auto myFog = this->GetLocalFogData();
     auto otherFog = const_cast<Object3D*>(other)->GetLocalFogData();
 
+    // 光や霧の見た目を維持するため、複製先・元の両方に定数バッファがある場合だけ設定を移す。
     if (myFog && otherFog) {
         *myFog = *otherFog;
     }

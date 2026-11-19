@@ -20,6 +20,7 @@ inline void ApplyMatrixToTransform(Transform& transform, const engine::Matrix4x4
     engine::Vector3 rowY = { matrix.m[1][0], matrix.m[1][1], matrix.m[1][2] };
     engine::Vector3 rowZ = { matrix.m[2][0], matrix.m[2][1], matrix.m[2][2] };
 
+    // 各倍率に最小値を設けて、縮退した軸でも下の回転復元でゼロ除算しないようにします。
     transform.scale = {
         std::max(engine::Math::Length(rowX), epsilon),
         std::max(engine::Math::Length(rowY), epsilon),
@@ -38,6 +39,7 @@ inline void ApplyMatrixToTransform(Transform& transform, const engine::Matrix4x4
     rotateMatrix.m[2][1] = matrix.m[2][1] / transform.scale.z;
     rotateMatrix.m[2][2] = matrix.m[2][2] / transform.scale.z;
 
+    // クォータニオンを姿勢の基準にし、エディターなどで使うEuler角も同じ回転行列から算出します。
     transform.quaternion = engine::Math::MatrixToQuaternion(rotateMatrix);
     transform.rotate = engine::Math::MatrixToEuler(rotateMatrix);
     transform.isQuaternionMaster = true;

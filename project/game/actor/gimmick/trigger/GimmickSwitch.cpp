@@ -42,21 +42,26 @@ void GimmickSwitch::Update(float deltaTime) {
             contactTimer_ = 0.0f;
     }
 
+    // 現在の接触と前フレームの接触を比較し、押し続けている間の連続切り替えを防ぎます。
     bool isPressed = contactTimer_ > 0.0f;
     bool pressedThisFrame = isPressed && !wasPressed_;
     int mode = GetSwitchMode();
 
     if (mode == 0) {
+        // 保持方式は、接触が途切れたときも接続先へ解除を送ります。
         SendActive(isPressed);
     } else if (mode == 1) {
+        // トグルは踏み始めだけ反転させ、乗り続けても再度切り替えません。
         if (pressedThisFrame) {
             SendActive(!isOutputActive_);
         }
     } else if (mode == 3) {
+        // 一度押して保持する方式は、離れても有効のままにします。
         if (pressedThisFrame)
             SendActive(true);
     } else {
         if (pressedThisFrame) {
+            // 時限方式は押し始めを起点に時間を設定し、次の押下を待たず満了時に解除します。
             timedTimer_ = GetParameters()->interval > 0.0f ? GetParameters()->interval : 3.0f;
             SendActive(true);
         }
@@ -71,6 +76,7 @@ void GimmickSwitch::Update(float deltaTime) {
         }
     }
 
+    // 次の押し始めの判定に使う履歴を残し、見た目には押下と出力を別の色で反映します。
     wasPressed_ = isPressed;
 
     if (isOutputActive_) {

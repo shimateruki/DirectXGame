@@ -59,6 +59,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             return;
         }
 
+        // E入力は別の行動が残っていても短時間だけ預かり、待機に戻った時点で成立条件を確認する。
         if (input.specialTriggered) {
             bounceInputBuffer_ = kBounceInputBufferDuration;
         }
@@ -67,6 +68,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             return;
         }
 
+        // 地上ガードは移動入力を止め、防御判定・姿勢・表示をまとめて開始する。
         if (input.secondaryTriggered && player.IsGrounded() && guardCooldown_ <= 0.0f) {
             state_ = State::Guard;
             guardTimer_ = 1.25f;
@@ -95,6 +97,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
     }
 
     void Update(Player& player, float deltaTime) override {
+        // 攻撃ごとの再使用待ちと接地猶予を先に更新し、この後の状態判断に最新の時間を使う。
         straightCooldown_ = std::max(0.0f, straightCooldown_ - deltaTime);
         bounceCooldown_ = std::max(0.0f, bounceCooldown_ - deltaTime);
         guardCooldown_ = std::max(0.0f, guardCooldown_ - deltaTime);
@@ -111,6 +114,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             return;
         }
 
+        // ガード成功の単発モーションが終わったら、防御のループ姿勢へ戻す。
         const bool guardHitMotionWasActive = guardHitMotionTimer_ > 0.0f;
         guardHitMotionTimer_ = std::max(0.0f, guardHitMotionTimer_ - deltaTime);
 
@@ -131,6 +135,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             storedPowerEffectTimer_ = 0.32f;
         }
 
+        // 右クリックを離した、持続時間が尽きた、または足場を外れた時点でガードを終了する。
         if (state_ == State::Guard) {
             guardTimer_ = std::max(0.0f, guardTimer_ - deltaTime);
 
@@ -149,6 +154,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             return;
         }
 
+        // 飛び上がる前の溜めでは座標を保つため水平速度と上向き速度を抑え、足元へ脈動を重ねる。
         if (state_ == State::BounceCharge) {
             timer_ = std::max(0.0f, timer_ - deltaTime);
             player.SetVelocity({0.0f, std::min(player.GetVelocity().y, 0.0f), 0.0f});
@@ -170,6 +176,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             return;
         }
 
+        // 上昇中は前進を補助し、上昇速度が落ちるか規定時間に達したら突進へ切り替える。
         if (state_ == State::BounceRise) {
             timer_ = std::max(0.0f, timer_ - deltaTime);
             engine::Vector3 velocity = player.GetVelocity();
@@ -188,6 +195,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             return;
         }
 
+        // 突進は前へ進みながら専用の重力で降下し、経過時間で水平速度を少しずつ落とす。
         if (state_ == State::BounceRush) {
             timer_ = std::max(0.0f, timer_ - deltaTime);
             const float rushProgress = 1.0f - timer_ / std::max(duration_, 0.001f);
@@ -204,6 +212,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Dash, direction_);
             DamageRush(player);
 
+            // 突進の発生位置から後方へ軌跡を引き、命中判定とは別の周期で更新する。
             if (effectTimer_ <= 0.0f) {
                 const engine::Vector3 trailPosition =
                     player.GetWorldPosition() - direction_ * 0.62f + engine::Vector3{0.0f, 0.52f, 0.0f};
@@ -224,6 +233,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             return;
         }
 
+        // 着地後は短い硬直を消化してから操作を返し、突進判定は更新しない。
         if (state_ == State::BounceRecovery) {
             timer_ = std::max(0.0f, timer_ - deltaTime);
 
@@ -325,6 +335,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             }
         }
 
+        // 段末で予約と接地を確認し、次の段か通常操作への復帰を選ぶ。
         if (timer_ <= 0.0f) {
             if (comboQueued_ && comboStage_ < 2 && player.IsGrounded()) {
                 BeginElasticStrike(player, comboStage_ + 1);
@@ -373,6 +384,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         direction_ = NormalizePlanar(sourcePosition - player.GetWorldPosition());
         player.SetMoveYaw(std::atan2(direction_.x, direction_.z));
         player.PlaySlimeAbilityMotion("player_ability_pink_guard_hit", false, 1.0f, 0.015f, 0.045f);
+        // 防御で受けた向きの体表に接触点を置き、中央と両脇へ衝撃を出す。
         const Aabb bounds = player.GetAabb();
         const float radius = std::max(0.35f, (bounds.max.x - bounds.min.x) * 0.5f);
         const engine::Vector3 contact = player.GetWorldPosition() + direction_ * radius +
@@ -475,6 +487,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         effectTimer_ = 0.0f;
         player.SetIsControlActive(false);
         player.SetMoveYaw(std::atan2(direction_.x, direction_.z));
+        // 蓄えた弾性を上昇と前進の初速へ反映する。既に速く上昇していればその速度を保つ。
         const float launchForwardSpeed = 7.5f + activeBouncePower_ * 1.8f;
         const float launchVerticalSpeed = 19.5f + activeBouncePower_ * 4.0f;
         player.SetVelocity({direction_.x * launchForwardSpeed, std::max(player.GetVelocity().y, launchVerticalSpeed),
@@ -506,6 +519,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
         player.SetVelocity(velocity);
         player.SetIsControlActive(false);
         player.SetMoveYaw(std::atan2(direction_.x, direction_.z));
+        // 降下突進の開始と同時に無敵と専用モーションへ切り替え、軌跡の発生を始める。
         player.SetDashInvincible(true);
         player.StartEvasionInvincibility(duration_ + 0.12f);
         player.ForceSlimeAnimationModeForNextUpdate(PlayerSlimeAnimator::Mode::Dash, direction_);
@@ -563,6 +577,7 @@ class PinkSlimeCopyAbility final : public ICopyAbilitySession {
             guardCooldown_ = std::max(guardCooldown_, 0.82f);
         }
 
+        // 攻撃中に停止した操作と一時フラグを戻し、残った水平速度を減らして通常状態にする。
         player.SetGuarding(false);
         player.SetDashInvincible(false);
         player.SetSlimeAbilityPose(PlayerSlimeAnimator::AbilityPose::None);

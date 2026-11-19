@@ -90,6 +90,7 @@ public:
             return E_POINTER;
         if (!currentFile_)
             return E_FAIL;
+        // 列挙済みの現在ファイルを返し、呼び出し側が解放できる COM 参照を加える。
         return currentFile_.CopyTo(fontFile);
     }
 
@@ -116,6 +117,7 @@ public:
         auto enumerator = Microsoft::WRL::Make<ResourceFontFileEnumerator>(factory, collectionKey, collectionKeySize);
         if (!enumerator)
             return E_OUTOFMEMORY;
+        // COMの参照カウントを維持したまま、列挙器を解放する責任を呼び出し側へ移します。
         *fontFileEnumerator = enumerator.Detach();
         return S_OK;
     }
@@ -638,7 +640,7 @@ void TextSpriteGenerator::Initialize(SceneManager* sceneManager, DebugEditor* ed
 
 void TextSpriteGenerator::Update() {
 #ifdef USE_IMGUI
-    // 通知の寿命と自動プレビュー更新をEditorのフレームで進めます。
+    // 通知の残りは秒で保持し、このツールでは1更新を固定の1/60秒として扱います。
     if (exportNoticeTimer_ > 0.0f) {
         exportNoticeTimer_ = std::max(0.0f, exportNoticeTimer_ - (1.0f / 60.0f));
     }
@@ -691,11 +693,13 @@ void TextSpriteGenerator::DrawPreview() {
         return;
     }
 
+    // 生成済み PNG がない場合は ImGui のフォントを使い、編集中の余白と装飾を近似する。
     ImFont* font = ImGui::GetFont();
     ImVec2 sourceTextSize = font->CalcTextSizeA(sourceFontSize, FLT_MAX, 0.0f, textBuffer_);
     float outlinePad = outlineEnabled_ ? std::max(0.0f, outlineWidth_) : 0.0f;
     float shadowPadX = shadowEnabled_ ? std::abs(shadowOffset_[0]) : 0.0f;
     float shadowPadY = shadowEnabled_ ? std::abs(shadowOffset_[1]) : 0.0f;
+    // 左右・上下の余白と縁取りに加え、影が片側へ伸びる分だけ自動キャンバスを広げる。
     float extraPadX = padding_ * 2.0f + outlinePad * 2.0f + shadowPadX;
     float extraPadY = padding_ * 2.0f + outlinePad * 2.0f + shadowPadY;
 
@@ -732,6 +736,7 @@ void TextSpriteGenerator::DrawPreview() {
     }
 
     if (outlineEnabled_ && outlineWidth_ > 0.0f) {
+        // 周囲に文字を重ねて縁取りを近似する。画面のピクセルへ換算し、重ね描きの半径を制限する。
         int radius = std::clamp(static_cast<int>(std::ceil(outlineWidth_ * drawScale)), 1, 16);
         ImU32 outlineColor = ToImGuiColor(outlineColor_);
 
@@ -926,10 +931,11 @@ void TextSpriteGenerator::DrawImGui() {
 }
 
 bool TextSpriteGenerator::EnsureFactories() {
-    // COMを既存のスレッド初期化と共存させ、必要なWICだけ遅延生成します。
+    // 既存のスレッドでCOMを使い、WIC・Direct2D・DirectWriteの未生成のFactoryを順に用意します。
     if (!wicFactory_) {
         HRESULT hr = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
 
+        // 成功時は既に初期化済みでも対応する解放が必要。既存のスレッド方式が異なる場合はそのまま利用する。
         if (hr == S_OK || hr == S_FALSE) {
             ownsCom_ = true;
         } else if (hr != RPC_E_CHANGED_MODE) {
@@ -1169,6 +1175,7 @@ bool TextSpriteGenerator::RenderToFile(const std::string& fullPath, int& outWidt
         << "}\n";
     request.close();
 
+    // 要求 JSON を閉じてから外部ツールを起動し、完全に書き出した内容を読み込ませる。
     const std::wstring commandLine =
         QuoteCommandArg(toolExe.wstring()) +
         L" render -config " + QuoteCommandArg(std::filesystem::absolute(requestPath, ec).wstring()) +
@@ -1214,6 +1221,7 @@ void TextSpriteGenerator::TickPreviewAutoUpdate() {
         previewDelayTimer_ = 0.12f;
     }
 
+    // 待ち時間の単位は秒です。通知表示と同様に、1更新あたり固定の1/60秒ずつ減らします。
     previewDelayTimer_ = std::max(0.0f, previewDelayTimer_ - (1.0f / 60.0f));
 
     if (previewDelayTimer_ <= 0.0f) {
@@ -1249,6 +1257,7 @@ void TextSpriteGenerator::UpdatePreviewTexture() {
         return;
     }
 
+    // 仮ファイル名を使い回しても古い画像が残らないよう再読み込みし、成功後にだけ表示を切り替える。
     uint32_t handle = TextureManager::GetInstance()->Load(path.generic_string(), false, false, true);
 
     if (handle == 0) {
@@ -1314,6 +1323,7 @@ void TextSpriteGenerator::AddPendingSpriteToScene() {
     sprite->Initialize(scene->GetSpriteCommon(), handle);
     sprite->SetTextureName(pendingSpriteRelativePath_);
     sprite->SetName(std::filesystem::path(pendingSpriteRelativePath_).stem().generic_string());
+    // プレビューと同じ中央アンカーを使い、生成画像の画像寸法と倍率を実際の配置へ引き継ぐ。
     sprite->SetAnchorPoint({ 0.5f, 0.5f });
     sprite->SetPosition(previewPosition_);
     sprite->SetSize({ pendingSpriteWidth_ * previewScale_, pendingSpriteHeight_ * previewScale_ });

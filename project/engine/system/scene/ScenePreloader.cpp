@@ -156,74 +156,6 @@ void AddAudioDependency(ScenePreloadData& data, std::string path) {
     RecordDependency(data, SceneDependencyType::Audio, path);
 }
 
-// 共通のParticle画像ディレクトリを走査し、起動後に使う画像を先読み対象へ加えます。
-void CollectSharedParticleTextures(ScenePreloadData& data) {
-    // パーティクルが実行中に初めて使う画像も、シーン開始前にまとめて準備する。
-    const std::filesystem::path directory = "Resources/sprite/particle";
-    std::error_code error;
-
-    if (!std::filesystem::exists(directory, error) || error) {
-        return;
-    }
-
-    for (std::filesystem::directory_iterator iterator(
-             directory,
-             std::filesystem::directory_options::skip_permission_denied,
-             error), end;
-         iterator != end;
-         iterator.increment(error)) {
-        if (error) {
-            error.clear();
-            continue;
-        }
-
-        if (!iterator->is_regular_file(error) || error || !IsTextureFile(iterator->path())) {
-            error.clear();
-            continue;
-        }
-
-        SceneLoadManifest::TextureRequest request;
-        request.path = NormalizePath(PathToUtf8(iterator->path()));
-        AddUnique(data.textures, std::move(request), [](const SceneLoadManifest::TextureRequest& item) {
-            return item.path + (item.linear ? "|linear" : "|color");
-        });
-    }
-}
-
-// 画面遷移の王冠アイリス画像を共有の先読み対象へ加えます。
-void CollectSharedFadeTextures(ScenePreloadData& data) {
-    // 画面遷移中の王冠アイリス素材をシーン共通の先読み対象へ加える。
-    const std::filesystem::path directory = "Resources/sprite/fade/crown_iris";
-    std::error_code error;
-
-    if (!std::filesystem::exists(directory, error) || error) {
-        return;
-    }
-
-    for (std::filesystem::directory_iterator iterator(
-             directory,
-             std::filesystem::directory_options::skip_permission_denied,
-             error), end;
-         iterator != end;
-         iterator.increment(error)) {
-        if (error) {
-            error.clear();
-            continue;
-        }
-
-        if (!iterator->is_regular_file(error) || error || !IsTextureFile(iterator->path())) {
-            error.clear();
-            continue;
-        }
-
-        SceneLoadManifest::TextureRequest request;
-        request.path = NormalizePath(PathToUtf8(iterator->path()));
-        AddUnique(data.textures, std::move(request), [](const SceneLoadManifest::TextureRequest& item) {
-            return item.path + (item.linear ? "|linear" : "|color");
-        });
-    }
-}
-
 // 色空間の違いも識別して共有画像パスの重複を避けます。
 void AddSharedTexture(
     ScenePreloadData& data,
@@ -234,6 +166,34 @@ void AddSharedTexture(
     AddUnique(data.textures, std::move(request), [](const SceneLoadManifest::TextureRequest& item) {
         return item.path + (item.linear ? "|linear" : "|color");
     });
+}
+
+// 指定ディレクトリ直下の画像だけを共有の先読みリストに加える。
+void CollectSharedTextures(ScenePreloadData& data, const std::filesystem::path& directory) {
+    std::error_code error;
+
+    if (!std::filesystem::exists(directory, error) || error) {
+        return;
+    }
+
+    for (std::filesystem::directory_iterator iterator(
+             directory,
+             std::filesystem::directory_options::skip_permission_denied,
+             error), end;
+         iterator != end;
+         iterator.increment(error)) {
+        if (error) {
+            error.clear();
+            continue;
+        }
+
+        if (!iterator->is_regular_file(error) || error || !IsTextureFile(iterator->path())) {
+            error.clear();
+            continue;
+        }
+
+        AddSharedTexture(data, PathToUtf8(iterator->path()));
+    }
 }
 
 // JSONを再帰的に走査し、画像・音声・JSONなどの参照先を種別ごとに集めます。
@@ -252,6 +212,7 @@ void CollectDependencies(
             const std::string presetName =
                 NormalizePath(value["presetName"].get<std::string>());
             if (!presetName.empty()) {
+                // VFXイベントの種別番号で、粒子・メッシュ・音声のどの保存先から同名の素材を探すか決める。
                 if (eventType == 0) {
                     AddJsonDependency(
                         data,
@@ -285,6 +246,7 @@ void CollectDependencies(
         return;
     }
 
+    // 配列の要素名は省略されるため、親プロパティの名前を渡して同じ種類として調べる。
     if (value.is_array()) {
         for (const auto& element : value) {
             CollectDependencies(element, propertyName, data, spriteTexturePaths);
@@ -312,6 +274,7 @@ void CollectDependencies(
         return;
     }
 
+    // モデル名はModelManagerが解決するキーで、ここではファイルパスとして存在確認しない。
     if (lowerKey == "modelname") {
         AddUniquePath(data.modelNames, stringValue);
         RecordDependency(data, SceneDependencyType::Model, stringValue, false);
@@ -373,6 +336,7 @@ void CollectDependencies(
         return;
     }
 
+    // 拡張子のない演出名もJSON参照として解決し、依存探索の対象にする。
     if (lowerKey.find("cinematic") != std::string::npos) {
         std::filesystem::path cinematicPath = PathFromUtf8(stringValue);
 
@@ -418,6 +382,7 @@ void ExpandObjectLayoutPaths(const std::string& path, std::vector<std::string>& 
         }
     }
 
+    // 分割配置が一つでも見つかれば存在する分割ファイルを使い、旧単一ファイルとは重複して読まない。
     if (!hasSplitFile) {
         AddUniquePath(jsonPaths, path);
         return;
@@ -606,6 +571,7 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
                 }
             }
 
+            // 既に見たパスは追加されない。新規分だけを総件数へ足し、循環参照で同じJSONを読み直さない。
             if (progress && jsonPaths.size() > previousCount) {
                 progress->AddTasks(jsonPaths.size() - previousCount);
             }
@@ -619,6 +585,7 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
         }
     }
 
+    // JSONの走査で見つからない明示指定も、同じリストへ重複なく取り込む。
     for (const std::string& modelName : manifest.modelNames) {
         AddUniquePath(result->modelNames, modelName);
     }
@@ -643,13 +610,14 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
     }
 
     if (manifest.includeSharedParticleTextures) {
-        CollectSharedParticleTextures(*result);
+        CollectSharedTextures(*result, "Resources/sprite/particle");
     }
 
-    CollectSharedFadeTextures(*result);
+    CollectSharedTextures(*result, "Resources/sprite/fade/crown_iris");
     AddSharedTexture(*result, "Resources/sprite/effect/noise0.png", true);
     AddSharedTexture(*result, "Resources/texture/lut/soft_adventure_lut.png");
 
+    // 探索で素材を見つけた順序に依存しないよう、準備する順序を名前で固定する。
     std::sort(result->modelNames.begin(), result->modelNames.end());
     std::sort(result->textures.begin(), result->textures.end(), [](const auto& left, const auto& right) {
         if (left.path == right.path) {
@@ -702,6 +670,7 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
         prepareAsset(modelName, [&] { return ModelManager::GetInstance()->PrepareModel(modelName); });
     }
 
+    // 音声はここで再生を開始せず、後から使える読込ハンドルだけを準備する。
     for (const std::string& audioPath : result->audioPaths) {
         prepareAsset(audioPath, [&] {
             AudioPlayer::GetInstance()->LoadSoundFile(audioPath);
@@ -709,6 +678,7 @@ std::shared_ptr<ScenePreloadData> ScenePreloader::Prepare(
         });
     }
 
+    // このワーカーでCOM初期化が成功した場合だけ、画像の事前デコードを終えてから対応する登録を解除する。
     if (SUCCEEDED(comResult)) {
         CoUninitialize();
     }

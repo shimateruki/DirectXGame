@@ -19,6 +19,7 @@ inline void ApplyPreviouslyCollected(engine::Object3D& object) {
     const auto collider = object.GetColliderConfig();
     object.SetModel(kSilverModel);
     object.SetColliderConfig(collider);
+    // 銀モデルへの変更と併せて、元の金用の反射・粒子設定を掃き出し、取得済み用の輝きにそろえます。
     object.SetTexture("Resources/sprite/common/white.png");
     object.SetOrmMap("");
     object.SetMaterialType(0);
@@ -34,6 +35,7 @@ inline void ApplyPreviouslyCollected(engine::Object3D& object) {
 inline void RestoreUncollectedIfSilver(engine::Object3D& object) {
     if (!IsSilver(object))
         return;
+    // 見た目だけを未取得の金へ戻し、配置時の取得範囲は残します。
     const auto collider = object.GetColliderConfig();
     object.SetModel(kGoldModel);
     object.SetColliderConfig(collider);

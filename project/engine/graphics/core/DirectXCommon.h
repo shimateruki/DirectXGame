@@ -12,6 +12,8 @@
 
 class WinApp;
 
+namespace engine {
+
 // 担当：DirectX 12のデバイス・描画先・コマンド実行・GPU同期を管理する。
 // 関連：Framework（初期化と寿命）、WinApp（ウィンドウ）、SrvManager（記述子）
 // 主な入口：Initialize / PreDraw / PostDraw / WaitForGpuIdle / Finalize
@@ -46,7 +48,7 @@ public:
 
     uint32_t GetFrameCount() const { return frameCount_; }
 
-    // SRVの最大数。
+    // 一部の描画経路でSRVハンドルを検証する上限。実際のヒープ容量はSrvManagerが持ちます。
     static const uint32_t kMaxSrvCount = 512;
 
     /// <summary>固定FPS用の基準時刻を初期化する。</summary>
@@ -88,7 +90,7 @@ public:
     /// </summary>
     static std::wstring ConvertString(const std::string& str);
 
-    /// <summary>送信済みコマンドの完了を待つ。</summary>
+    /// <summary>記録中のリストを閉じて送信し、キューの完了を待つ。既に閉じたリストは再送信しない。</summary>
     /// <param name="reset">完了後にコマンドリストを再利用可能にするか。</param>
     void FlushCommandQueue(bool reset = true);
 
@@ -118,6 +120,7 @@ public:
 
     ID3D12Fence* GetFence() const { return fence_.Get(); }
 
+    // このクラスが最後にキューへ発行した値を返します。GPUが到達済みかはGetCompletedValueで確認します。
     uint64_t GetFenceValue() const { return fenceValue_; }
 
     HANDLE GetFenceEvent() const { return fenceEvent_; }
@@ -191,7 +194,7 @@ public:
 
     bool IsCameraPreviewRendering() const { return cameraPreviewRendering_; }
 
-    /// <summary>ウィンドウサイズに合わせてSwapChainとRTV/DSVを作り直す。</summary>
+    /// <summary>実ウィンドウに合わせてSwapChainとバックバッファRTVを作り直す。ゲーム用深度の寸法は維持する。</summary>
     void ResizeSwapChain(int32_t width, int32_t height);
 
     /// <summary>描画中の直接再生成を避けるため、リサイズを予約する。</summary>
@@ -263,10 +266,11 @@ private:
 
     // GPU同期用。
     Microsoft::WRL::ComPtr<ID3D12Fence> fence_ = nullptr;
-    uint64_t fenceValue_ = 0; // 次のGPU同期で待つフェンス値。
+    uint64_t fenceValue_ = 0; // グラフィックスキューへ最後に発行したフェンス値。
     HANDLE fenceEvent_ = nullptr; // GPU処理の完了待機用イベント。
 
     // 描画領域。
+    // 固定解像度のゲーム映像用。最終表示のビューポートは実ウィンドウ寸法から別に設定します。
     D3D12_VIEWPORT viewport_{};
     D3D12_RECT scissorRect_{};
     bool cameraPreviewRendering_ = false; // カメラプレビュー用の描画経路か。
@@ -296,6 +300,7 @@ private:
     // GPU計測。
     static const uint32_t kMaxGpuQueries = 128;
     Microsoft::WRL::ComPtr<ID3D12QueryHeap> queryHeap_;
+    // フレーム末尾にResolveしたタイムスタンプをCPUから読むためのReadbackバッファです。
     Microsoft::WRL::ComPtr<ID3D12Resource> queryResultBuffer_;
     uint64_t gpuFrequency_ = 0; // GPUタイムスタンプの毎秒カウント数。
     float gpuDrawTimeMs_ = 0.0f; // GPU描画時間（ミリ秒）。
@@ -308,3 +313,5 @@ private:
     uint32_t frameCount_ = 0; // PreDrawを呼んだ回数。
     bool commandListOpen_ = false; // 作成・Resetで開始、Closeで終了する記録状態。
 };
+
+} // namespace engine

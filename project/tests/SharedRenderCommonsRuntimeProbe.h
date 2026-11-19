@@ -35,7 +35,7 @@ inline bool CheckAfterDraw(SceneManager* manager, const std::string& path) {
         if (!initialized) {
             // Sceneで使う実体とは別の未描画資源で、Release向け軽量準備も実Device上で検証する。
             engine::RenderCommonResources local;
-            local.Initialize(DirectXCommon::GetInstance());
+            local.Initialize(engine::DirectXCommon::GetInstance());
             local.Prepare(engine::RenderPreparation::SpritesOnly);
             auto* localSprite = local.GetSpriteCommon();
             require(localSprite && !local.GetObject3DCommon(), "loading profile initialized unnecessary 3D resources");
@@ -55,7 +55,7 @@ inline bool CheckAfterDraw(SceneManager* manager, const std::string& path) {
                     local.PrepareStep(engine::RenderPreparation::Minimal), "repeated preparation did not finish immediately");
             log << "PASS sprites-only -> minimal -> full; retained instances and skybox GPU resources" << std::endl;
             engine::RenderCommonResources interrupted;
-            interrupted.Initialize(DirectXCommon::GetInstance());
+            interrupted.Initialize(engine::DirectXCommon::GetInstance());
             interrupted.PrepareStep(engine::RenderPreparation::Full);
             interrupted.PrepareStep(engine::RenderPreparation::Full);
             interrupted.Prepare(engine::RenderPreparation::Minimal);

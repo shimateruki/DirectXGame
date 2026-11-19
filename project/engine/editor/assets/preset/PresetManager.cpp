@@ -31,7 +31,7 @@ void PresetManager::Initialize() {
         needsMigration = true;
     }
 
-    // 移行に失敗しても例外にしないが、旧ファイルの削除は保存後に試みる。
+    // 統合保存を呼んだ後に旧ファイルを削除します。書き込みの成否はここでは判定せず、削除のエラーは例外にしません。
     if (needsMigration) {
         SaveAll();
         std::error_code error;
@@ -260,7 +260,7 @@ bool PresetManager::CreatePrefabVariant(
         return false;
     }
 
-    // 自分自身へ戻る派生関係は作らず、既存の解決済みRootを初期表示へ使います。
+    // 新しい素材IDで派生関係を作り、元のルートを初期表示に使います。固有の差分は空の状態から始めます。
     json asset;
     asset["version"] = 3;
     asset["assetId"] = MakeUniqueId("prefab");
@@ -331,6 +331,7 @@ PresetManager::PrefabStructureOverrideSummary PresetManager::GetPrefabStructureO
         }
     }
 
+    // 追加した根だけでなく、その下にまとめて追加した子も変更数に含める。
     if (asset.contains("addedChildren") && asset["addedChildren"].is_array()) {
         for (const auto& entry : asset["addedChildren"]) {
             if (entry.is_object() && entry.contains("node")) {
@@ -376,6 +377,7 @@ std::vector<std::unique_ptr<engine::Object3D>> PresetManager::CreateObjectsFromP
             targetIds.insert(object->GetTargetId());
     }
 
+    // 発信側と受信側の両方に現れた ID だけを内部接続として扱い、片側だけのシーン向け参照を維持する。
     std::vector<int> internalIds;
     for (int id : eventIds) {
         if (targetIds.contains(id))
@@ -397,6 +399,7 @@ std::vector<std::unique_ptr<engine::Object3D>> PresetManager::CreateObjectsFromP
             }
         }
 
+        // 配置先のシーンで使われている番号も避け、旧 ID の昇順に新しい ID を割り当てる。
         std::unordered_map<int, int> remappedIds;
         int nextId = 10000;
         for (int sourceId : internalIds) {

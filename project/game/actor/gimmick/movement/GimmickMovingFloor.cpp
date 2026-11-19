@@ -41,8 +41,8 @@ bool HasCurvedSupportBelow(engine::Object3D& floor, const Player& player) {
         Transform queryTransform;
         queryTransform.translate = (bounds.min + bounds.max) * 0.5f;
         queryTransform.UpdateMatrix();
-        Collider query(&queryTransform);
-        ColliderConfig config;
+        engine::Collider query(&queryTransform);
+        engine::ColliderConfig config;
         config.type = ColliderType::Aabb;
         config.size = (bounds.max - bounds.min) * 0.5f;
         query.SetConfig(config);
@@ -121,6 +121,7 @@ void GimmickMovingFloor::Update(float deltaTime) {
         return;
     }
 
+    // 乗車用のタイムラインがあれば専用コントローラーが運行を担当し、以降の手続き移動は実行しません。
     if (IsRidePlatform()) {
         if (!ride_)
             ride_ = std::make_unique<RidingPlatformController>();
@@ -129,6 +130,7 @@ void GimmickMovingFloor::Update(float deltaTime) {
         return;
     }
 
+    // 床を動かす前に接地中の乗員を記録し、移動後の床と位置がずれても乗員を見失わないようにします。
     std::vector<Character*> passengers;
     bool playerRidingPath = false;
     auto* scene = SceneManager::GetInstance()->GetCurrentScene();
@@ -205,6 +207,7 @@ void GimmickMovingFloor::Update(float deltaTime) {
     if (!hasCapturedStartTransform_) {
         startPosition_ = GetTransform()->translate;
         startRotation_ = GetTransform()->rotate;
+        // 配置の水平位置から一周分の位相を作り、似た床を並べても初動をずらします。乱数は使わず配置ごとに固定です。
         phaseOffset_ = std::fmod(std::abs(startPosition_.x * 0.037f + startPosition_.z * 0.061f), kTwoPi);
         hasCapturedStartTransform_ = true;
     }
@@ -261,6 +264,7 @@ void GimmickMovingFloor::Update(float deltaTime) {
         transform->translate.y += std::sin(waveTime) * kLegacyMoveRange;
     }
 
+    // 床の姿勢と一緒に今回の移動量を確定し、床の更新後に乗員へ同じ変位を渡します。
     frameDelta_ = hasCapturedStartTransform_ ? transform->translate - previousPosition : engine::Vector3{};
     SetLocalTransform(transformValue);
 

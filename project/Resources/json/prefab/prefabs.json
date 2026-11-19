@@ -425,6 +425,1648 @@
                 "type": "Model"
             },
             "version": 3
+        },
+        "ギミック/サンゴのトゲ球": {
+            "addedChildren": [],
+            "assetId": "prefab-coral-spike-orb",
+            "baseAssetId": "",
+            "componentOverrides": {},
+            "nodeOverrides": {},
+            "propertyOverrides": {},
+            "removedObjectIds": [],
+            "reparentedObjects": [],
+            "root": {
+                "castShadow": true,
+                "children": [],
+                "collider": {
+                    "center": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "size": [
+                        1.15,
+                        1.15,
+                        1.15
+                    ],
+                    "type": 1
+                },
+                "collisionAttribute": 16,
+                "collisionAttributeIds": [
+                    "trigger"
+                ],
+                "collisionMask": 1,
+                "collisionMaskIds": [
+                    "player"
+                ],
+                "color": [
+                    1,
+                    1,
+                    1,
+                    1
+                ],
+                "enableLighting": true,
+                "gimmickType": "ContactHazard",
+                "isStatic": true,
+                "modelName": "Gimmicks/coral_spike_orb/coral_spike_orb.obj",
+                "name": "CoralSpikeOrb",
+                "param": {
+                    "attackPower": 1,
+                    "gimmickType": "ContactHazard",
+                    "moveAmount": 4
+                },
+                "prefabObjectId": "object-coral-spike-orb-root",
+                "presetDescription": "触れるとHPが1減り、ダッシュパネルの加速が解除されるトゲ球。",
+                "presetDisplayName": "サンゴのトゲ球",
+                "presetFavorite": true,
+                "presetUsage": "ギミック",
+                "rotate": [
+                    0,
+                    0,
+                    0
+                ],
+                "saveCategory": "Object",
+                "scale": [
+                    1,
+                    1,
+                    1
+                ],
+                "translate": [
+                    0,
+                    0,
+                    0
+                ],
+                "type": "Gimmick"
+            },
+            "version": 3
+        },
+        "ギミック/ダッシュ解除パネル（青）": {
+            "addedChildren": [],
+            "assetId": "prefab-dash-panel-stop",
+            "baseAssetId": "",
+            "componentOverrides": {},
+            "nodeOverrides": {},
+            "propertyOverrides": {},
+            "removedObjectIds": [],
+            "reparentedObjects": [],
+            "root": {
+                "animation": {
+                    "animName": "",
+                    "animatorController": "",
+                    "isAnimLoop": true
+                },
+                "autoTextureTiling": false,
+                "blendMode": 1,
+                "castShadow": true,
+                "children": [],
+                "collider": {
+                    "center": [
+                        0.0,
+                        -0.07999999821186066,
+                        0.0
+                    ],
+                    "rotation": [
+                        0.0,
+                        0.0,
+                        0.0
+                    ],
+                    "size": [
+                        8.350000381469727,
+                        0.20000000298023224,
+                        2.5199999809265137
+                    ],
+                    "type": 3
+                },
+                "collisionAttribute": 16,
+                "collisionAttributeIds": [
+                    "trigger"
+                ],
+                "collisionAttributeUnknownBits": 0,
+                "collisionMask": 1,
+                "collisionMaskIds": [
+                    "player"
+                ],
+                "collisionMaskUnknownBits": 0,
+                "color": [
+                    0.04,
+                    0.38,
+                    1,
+                    1
+                ],
+                "emissive": 1.2,
+                "enableEnvMap": false,
+                "enableLighting": true,
+                "enableNormalMap": false,
+                "enemyType": "",
+                "envIntensity": 1.0,
+                "eventID": 0,
+                "gimmickType": "DashPanelStop",
+                "gpuParticleName": "",
+                "isStatic": false,
+                "itemType": "",
+                "layer": "Default",
+                "localFog": {
+                    "color": [
+                        0.20000000298023224,
+                        0.800000011920929,
+                        0.5,
+                        1.0
+                    ],
+                    "density": 0.5,
+                    "edgeFade": 0.0,
+                    "noiseScale": 0.0,
+                    "noiseSpeed": 0.0,
+                    "scatteringG": 0.0,
+                    "scatteringIntensity": 0.0
+                },
+                "materialType": 0,
+                "meshDrawIndex": -1,
+                "meshEffect1": "",
+                "meshEffect2": "",
+                "metallic": 0.2800000011920929,
+                "modelName": "Stages/star_garden_dash_panel",
+                "myEventID": -1,
+                "name": "ダッシュ解除パネル（青）",
+                "normalMapPath": "",
+                "ormMapPath": "",
+                "param": {
+                    "actionMode": 0,
+                    "attackPower": 1.0,
+                    "cinematicPath": "",
+                    "colorType": 0,
+                    "copyMemoryActivationRadius": 0.8999999761581421,
+                    "copyMemoryEssenceScale": 1.0,
+                    "copyMemoryGlow": 0.44999998807907104,
+                    "copyMemoryHoverAmount": 0.10000000149011612,
+                    "copyMemoryTypeA": "FireSlime",
+                    "copyMemoryTypeB": "ThunderSlime",
+                    "copyMemoryTypeC": "WindSlime",
+                    "copyMemoryTypeD": "",
+                    "copyMemoryUnlimitedDuration": true,
+                    "detectionRange": 20.0,
+                    "editorPreviewFiring": true,
+                    "enemyType": "",
+                    "fallDuration": 2.0,
+                    "gimmickType": "DashPanelStop",
+                    "gravity": 50.0,
+                    "healAmount": 1.0,
+                    "hp": 100.0,
+                    "interval": 0.800000011920929,
+                    "itemType": "",
+                    "jumpPower": 38.0,
+                    "maxCount": 5,
+                    "maxFallSpeed": 60.0,
+                    "maxHp": 100.0,
+                    "morphDuration": 5.0,
+                    "morphLimited": true,
+                    "moveAmount": 10.0,
+                    "moveSpeed": 6.0,
+                    "projectileLifetime": 2.0,
+                    "returnOnOff": true,
+                    "ringWaveSpeed": 1.0,
+                    "shakeDuration": 1.0,
+                    "speed": 12.0,
+                    "startActive": false,
+                    "switchMode": 0,
+                    "targetScene": "SELECT",
+                    "volumeBlendDuration": 0.75,
+                    "volumeMode": 0,
+                    "volumePayload": "",
+                    "volumeRearmDelay": 0.0,
+                    "volumeTriggerOnExit": false,
+                    "volumeTriggerOnce": true
+                },
+                "particleName": "",
+                "prefabObjectId": "object-dash-panel-stop-root",
+                "presetDescription": "踏むとダッシュパネルの加速状態を解除します。",
+                "presetDisplayName": "ダッシュ解除パネル（青）",
+                "presetFavorite": true,
+                "presetUsage": "ギミック",
+                "quaternion": [
+                    0,
+                    0,
+                    0,
+                    1
+                ],
+                "recorder": {
+                    "isRecordLoop": false,
+                    "isRecordRelative": false,
+                    "recordPathName": ""
+                },
+                "rotate": [
+                    0,
+                    0,
+                    0
+                ],
+                "roughness": 0.41999998688697815,
+                "saveCategory": "Object",
+                "scale": [
+                    1,
+                    1,
+                    1
+                ],
+                "shaderMaterialId": "dash_panel_stop",
+                "tag": "",
+                "targetID": -1,
+                "texturePath": "",
+                "textureTiling": [
+                    1.0,
+                    1.0
+                ],
+                "translate": [
+                    0,
+                    0,
+                    0
+                ],
+                "type": "Gimmick"
+            },
+            "version": 3
+        },
+        "ギミック/白ガラス（ダッシュパネル専用・大型）": {
+            "addedChildren": [],
+            "assetId": "prefab-dash-panel-white-glass-large",
+            "baseAssetId": "",
+            "componentOverrides": {},
+            "nodeOverrides": {},
+            "propertyOverrides": {},
+            "removedObjectIds": [],
+            "reparentedObjects": [],
+            "root": {
+                "blendMode": 1,
+                "castShadow": false,
+                "children": [],
+                "collider": {
+                    "center": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "rotation": [
+                        0,
+                        0,
+                        0
+                    ],
+                    "size": [
+                        0.5,
+                        0.5,
+                        0.08
+                    ],
+                    "type": 3
+                },
+                "color": [
+                    0.98,
+                    0.99,
+                    1,
+                    0.09
+                ],
+                "enableEnvMap": true,
+                "enableLighting": true,
+                "envIntensity": 1,
+                "gimmickType": "DashPanelWhiteGlass",
+                "materialType": 10,
+                "modelName": "Stages/star_garden_glass_panel",
+                "name": "DashPanelWhiteGlassLarge",
+                "param": {
+                    "actionMode": 8,
+                    "gimmickType": "DashPanelWhiteGlass"
+                },
+                "prefabObjectId": "object-dash-panel-white-glass-large-root",
+                "presetDescription": "ダッシュパネルの加速中だけ割れる、奥が見える大型の白ガラス。",
+                "presetDisplayName": "白ガラス（ダッシュパネル専用・大型）",
+                "presetFavorite": true,
+                "presetUsage": "ギミック",
+                "rotate": [
+                    0,
+                    0,
+                    0
+                ],
+                "saveCategory": "Object",
+                "scale": [
+                    10,
+                    7,
+                    1
+                ],
+                "translate": [
+                    0,
+                    0,
+                    0
+                ],
+                "type": "Gimmick",
+                "waterParam": {
+                    "effectIntensity": 0.04,
+                    "effectScale": 0.3,
+                    "effectScaleX": 0.5,
+                    "effectScaleY": 0.5,
+                    "effectScaleZ": 0.08,
+                    "effectSoftness": 0.58,
+                    "effectType": 1
+                }
+            },
+            "version": 3
+        },
+        "ギミック/石門と白ガラスの二択セット": {
+            "addedChildren": [],
+            "assetId": "prefab-stage1-glass-fork",
+            "baseAssetId": "",
+            "componentOverrides": {},
+            "nodeOverrides": {},
+            "propertyOverrides": {},
+            "removedObjectIds": [],
+            "reparentedObjects": [],
+            "root": {
+                "children": [
+                    {
+                        "castShadow": true,
+                        "collider": {
+                            "center": [
+                                0,
+                                4.45,
+                                0.03
+                            ],
+                            "rotation": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "size": [
+                                3.05,
+                                4.45,
+                                0.74
+                            ],
+                            "type": 3
+                        },
+                        "collisionAttribute": 4,
+                        "collisionAttributeIds": [
+                            "ground"
+                        ],
+                        "collisionMask": 1,
+                        "collisionMaskIds": [
+                            "player"
+                        ],
+                        "color": [
+                            0.86,
+                            0.81,
+                            0.66,
+                            1
+                        ],
+                        "enableLighting": true,
+                        "isStatic": true,
+                        "modelName": "Stages/high_crown/high_crown_wall.obj",
+                        "name": "Stage1_GlassFork_StoneWing_Thorns",
+                        "prefabObjectId": "glass-fork-StoneWing_Thorns",
+                        "quaternion": [
+                            0,
+                            0.7071067811865476,
+                            0,
+                            0.7071067811865476
+                        ],
+                        "rotate": [
+                            0,
+                            1.5707963267948966,
+                            0
+                        ],
+                        "saveCategory": "Object",
+                        "scale": [
+                            0.63,
+                            0.91,
+                            1.35
+                        ],
+                        "translate": [
+                            0,
+                            0,
+                            -15.700000000000003
+                        ],
+                        "type": "Model"
+                    },
+                    {
+                        "castShadow": true,
+                        "collider": {
+                            "center": [
+                                0,
+                                4.45,
+                                0.03
+                            ],
+                            "rotation": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "size": [
+                                3.05,
+                                4.45,
+                                0.74
+                            ],
+                            "type": 3
+                        },
+                        "collisionAttribute": 4,
+                        "collisionAttributeIds": [
+                            "ground"
+                        ],
+                        "collisionMask": 1,
+                        "collisionMaskIds": [
+                            "player"
+                        ],
+                        "color": [
+                            0.86,
+                            0.81,
+                            0.66,
+                            1
+                        ],
+                        "enableLighting": true,
+                        "isStatic": true,
+                        "modelName": "Stages/high_crown/high_crown_wall.obj",
+                        "name": "Stage1_GlassFork_StoneWing_Clear",
+                        "prefabObjectId": "glass-fork-StoneWing_Clear",
+                        "quaternion": [
+                            0,
+                            0.7071067811865476,
+                            0,
+                            0.7071067811865476
+                        ],
+                        "rotate": [
+                            0,
+                            1.5707963267948966,
+                            0
+                        ],
+                        "saveCategory": "Object",
+                        "scale": [
+                            0.63,
+                            0.91,
+                            1.35
+                        ],
+                        "translate": [
+                            0,
+                            0,
+                            15.7
+                        ],
+                        "type": "Model"
+                    },
+                    {
+                        "animation": {
+                            "animName": "",
+                            "animatorController": "",
+                            "isAnimLoop": true
+                        },
+                        "autoTextureTiling": false,
+                        "blendMode": 1,
+                        "castShadow": true,
+                        "collider": {
+                            "center": [
+                                0.0,
+                                -0.07999999821186066,
+                                0.0
+                            ],
+                            "rotation": [
+                                0.0,
+                                0.0,
+                                0.0
+                            ],
+                            "size": [
+                                8.350000381469727,
+                                0.20000000298023224,
+                                2.5199999809265137
+                            ],
+                            "type": 3
+                        },
+                        "collisionAttribute": 16,
+                        "collisionAttributeIds": [
+                            "trigger"
+                        ],
+                        "collisionAttributeUnknownBits": 0,
+                        "collisionMask": 1,
+                        "collisionMaskIds": [
+                            "player"
+                        ],
+                        "collisionMaskUnknownBits": 0,
+                        "color": [
+                            1.0,
+                            0.3799999952316284,
+                            0.03999999910593033,
+                            1.0
+                        ],
+                        "emissive": 3.2745449542999268,
+                        "enableEnvMap": false,
+                        "enableLighting": true,
+                        "enableNormalMap": false,
+                        "enemyType": "",
+                        "envIntensity": 1.0,
+                        "eventID": 0,
+                        "gimmickType": "DashPanel",
+                        "gpuParticleName": "",
+                        "isStatic": false,
+                        "itemType": "",
+                        "layer": "Default",
+                        "localFog": {
+                            "color": [
+                                0.20000000298023224,
+                                0.800000011920929,
+                                0.5,
+                                1.0
+                            ],
+                            "density": 0.5,
+                            "edgeFade": 0.0,
+                            "noiseScale": 0.0,
+                            "noiseSpeed": 0.0,
+                            "scatteringG": 0.0,
+                            "scatteringIntensity": 0.0
+                        },
+                        "materialType": 24,
+                        "meshDrawIndex": -1,
+                        "meshEffect1": "",
+                        "meshEffect2": "",
+                        "metallic": 0.2800000011920929,
+                        "modelName": "Stages/star_garden_dash_panel",
+                        "myEventID": -1,
+                        "name": "Stage1_GlassFork_EntryDash",
+                        "normalMapPath": "",
+                        "ormMapPath": "",
+                        "param": {
+                            "actionMode": 0,
+                            "attackPower": 1.0,
+                            "cinematicPath": "",
+                            "colorType": 0,
+                            "copyMemoryActivationRadius": 0.8999999761581421,
+                            "copyMemoryEssenceScale": 1.0,
+                            "copyMemoryGlow": 0.44999998807907104,
+                            "copyMemoryHoverAmount": 0.10000000149011612,
+                            "copyMemoryTypeA": "FireSlime",
+                            "copyMemoryTypeB": "ThunderSlime",
+                            "copyMemoryTypeC": "WindSlime",
+                            "copyMemoryTypeD": "",
+                            "copyMemoryUnlimitedDuration": true,
+                            "detectionRange": 20.0,
+                            "editorPreviewFiring": true,
+                            "enemyType": "",
+                            "fallDuration": 2.0,
+                            "gimmickType": "DashPanel",
+                            "gravity": 50.0,
+                            "healAmount": 1.0,
+                            "hp": 100.0,
+                            "interval": 0.800000011920929,
+                            "itemType": "",
+                            "jumpPower": 38.0,
+                            "maxCount": 5,
+                            "maxFallSpeed": 60.0,
+                            "maxHp": 100.0,
+                            "morphDuration": 5.0,
+                            "morphLimited": true,
+                            "moveAmount": 10.0,
+                            "moveSpeed": 6.0,
+                            "projectileLifetime": 2.0,
+                            "returnOnOff": true,
+                            "ringWaveSpeed": 1.0,
+                            "shakeDuration": 1.0,
+                            "speed": 12.0,
+                            "startActive": false,
+                            "switchMode": 0,
+                            "targetScene": "SELECT",
+                            "volumeBlendDuration": 0.75,
+                            "volumeMode": 0,
+                            "volumePayload": "",
+                            "volumeRearmDelay": 0.0,
+                            "volumeTriggerOnExit": false,
+                            "volumeTriggerOnce": true
+                        },
+                        "particleName": "",
+                        "prefabObjectId": "glass-fork-EntryDash",
+                        "quaternion": [
+                            0,
+                            0.7071067811865476,
+                            0,
+                            0.7071067811865476
+                        ],
+                        "recorder": {
+                            "isRecordLoop": false,
+                            "isRecordRelative": false,
+                            "recordPathName": ""
+                        },
+                        "rotate": [
+                            0,
+                            1.5707963267948966,
+                            0
+                        ],
+                        "roughness": 0.41999998688697815,
+                        "saveCategory": "Object",
+                        "scale": [
+                            1.82,
+                            1,
+                            1
+                        ],
+                        "tag": "",
+                        "targetID": -1,
+                        "texturePath": "",
+                        "textureTiling": [
+                            1.0,
+                            1.0
+                        ],
+                        "translate": [
+                            -20,
+                            0.3800000000000008,
+                            0
+                        ],
+                        "type": "Gimmick"
+                    },
+                    {
+                        "castShadow": true,
+                        "collider": {
+                            "type": 0
+                        },
+                        "collisionAttribute": 4,
+                        "collisionAttributeIds": [
+                            "ground"
+                        ],
+                        "collisionMask": 1,
+                        "collisionMaskIds": [
+                            "player"
+                        ],
+                        "enableLighting": true,
+                        "isStatic": true,
+                        "modelName": "Stages/entry_meadow/ruin_gateway.obj",
+                        "name": "Stage1_GlassFork_StoneGate_Thorns",
+                        "prefabObjectId": "glass-fork-StoneGate_Thorns",
+                        "quaternion": [
+                            0,
+                            0.7071067811865476,
+                            0,
+                            0.7071067811865476
+                        ],
+                        "rotate": [
+                            0,
+                            1.5707963267948966,
+                            0
+                        ],
+                        "saveCategory": "Object",
+                        "scale": [
+                            1.4,
+                            1.4,
+                            1.2
+                        ],
+                        "translate": [
+                            0,
+                            0,
+                            -7
+                        ],
+                        "type": "Model"
+                    },
+                    {
+                        "blendMode": 1,
+                        "castShadow": false,
+                        "children": [],
+                        "collider": {
+                            "center": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "rotation": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "size": [
+                                0.5,
+                                0.5,
+                                0.08
+                            ],
+                            "type": 3
+                        },
+                        "collisionAttribute": 4,
+                        "collisionAttributeIds": [
+                            "ground"
+                        ],
+                        "collisionMask": 1,
+                        "collisionMaskIds": [
+                            "player"
+                        ],
+                        "color": [
+                            0.98,
+                            0.99,
+                            1,
+                            0.09
+                        ],
+                        "enableEnvMap": true,
+                        "enableLighting": true,
+                        "envIntensity": 1,
+                        "gimmickType": "DashPanelWhiteGlass",
+                        "isStatic": true,
+                        "materialType": 10,
+                        "modelName": "Stages/star_garden_glass_panel",
+                        "name": "Stage1_GlassFork_WhiteGlass_Thorns",
+                        "param": {
+                            "actionMode": 8,
+                            "gimmickType": "DashPanelWhiteGlass"
+                        },
+                        "prefabObjectId": "glass-fork-WhiteGlass_Thorns",
+                        "quaternion": [
+                            0,
+                            0.7071067811865476,
+                            0,
+                            0.7071067811865476
+                        ],
+                        "rotate": [
+                            0,
+                            1.5707963267948966,
+                            0
+                        ],
+                        "saveCategory": "Object",
+                        "scale": [
+                            9.25,
+                            6.86,
+                            1
+                        ],
+                        "translate": [
+                            0,
+                            3.4299999999999997,
+                            -7
+                        ],
+                        "type": "Gimmick",
+                        "waterParam": {
+                            "effectIntensity": 0.04,
+                            "effectScale": 0.3,
+                            "effectScaleX": 0.5,
+                            "effectScaleY": 0.5,
+                            "effectScaleZ": 0.08,
+                            "effectSoftness": 0.58,
+                            "effectType": 1
+                        }
+                    },
+                    {
+                        "castShadow": true,
+                        "collider": {
+                            "center": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "rotation": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "size": [
+                                1.18,
+                                3.5,
+                                1.15
+                            ],
+                            "type": 3
+                        },
+                        "collisionAttribute": 4,
+                        "collisionAttributeIds": [
+                            "ground"
+                        ],
+                        "collisionMask": 1,
+                        "collisionMaskIds": [
+                            "player"
+                        ],
+                        "enableLighting": true,
+                        "isStatic": true,
+                        "name": "Stage1_GlassFork_Jamb_Thorns_-1",
+                        "prefabObjectId": "glass-fork-Jamb_Thorns_-1",
+                        "quaternion": [
+                            0,
+                            0.7071067811865476,
+                            0,
+                            0.7071067811865476
+                        ],
+                        "rotate": [
+                            0,
+                            1.5707963267948966,
+                            0
+                        ],
+                        "saveCategory": "Object",
+                        "scale": [
+                            1,
+                            1,
+                            1
+                        ],
+                        "translate": [
+                            0,
+                            3.5,
+                            -12.780000000000001
+                        ],
+                        "type": "InvisibleBox"
+                    },
+                    {
+                        "castShadow": true,
+                        "collider": {
+                            "center": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "rotation": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "size": [
+                                1.18,
+                                3.5,
+                                1.15
+                            ],
+                            "type": 3
+                        },
+                        "collisionAttribute": 4,
+                        "collisionAttributeIds": [
+                            "ground"
+                        ],
+                        "collisionMask": 1,
+                        "collisionMaskIds": [
+                            "player"
+                        ],
+                        "enableLighting": true,
+                        "isStatic": true,
+                        "name": "Stage1_GlassFork_Jamb_Thorns_1",
+                        "prefabObjectId": "glass-fork-Jamb_Thorns_1",
+                        "quaternion": [
+                            0,
+                            0.7071067811865476,
+                            0,
+                            0.7071067811865476
+                        ],
+                        "rotate": [
+                            0,
+                            1.5707963267948966,
+                            0
+                        ],
+                        "saveCategory": "Object",
+                        "scale": [
+                            1,
+                            1,
+                            1
+                        ],
+                        "translate": [
+                            0,
+                            3.5,
+                            -1.2199999999999989
+                        ],
+                        "type": "InvisibleBox"
+                    },
+                    {
+                        "castShadow": true,
+                        "collider": {
+                            "center": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "rotation": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "size": [
+                                7,
+                                0.96,
+                                1.15
+                            ],
+                            "type": 3
+                        },
+                        "collisionAttribute": 4,
+                        "collisionAttributeIds": [
+                            "ground"
+                        ],
+                        "collisionMask": 1,
+                        "collisionMaskIds": [
+                            "player"
+                        ],
+                        "enableLighting": true,
+                        "isStatic": true,
+                        "name": "Stage1_GlassFork_Lintel_Thorns",
+                        "prefabObjectId": "glass-fork-Lintel_Thorns",
+                        "quaternion": [
+                            0,
+                            0.7071067811865476,
+                            0,
+                            0.7071067811865476
+                        ],
+                        "rotate": [
+                            0,
+                            1.5707963267948966,
+                            0
+                        ],
+                        "saveCategory": "Object",
+                        "scale": [
+                            1,
+                            1,
+                            1
+                        ],
+                        "translate": [
+                            0,
+                            7.899999999999999,
+                            -7
+                        ],
+                        "type": "InvisibleBox"
+                    },
+                    {
+                        "castShadow": true,
+                        "collider": {
+                            "type": 0
+                        },
+                        "collisionAttribute": 4,
+                        "collisionAttributeIds": [
+                            "ground"
+                        ],
+                        "collisionMask": 1,
+                        "collisionMaskIds": [
+                            "player"
+                        ],
+                        "enableLighting": true,
+                        "isStatic": true,
+                        "modelName": "Stages/entry_meadow/ruin_gateway.obj",
+                        "name": "Stage1_GlassFork_StoneGate_Clear",
+                        "prefabObjectId": "glass-fork-StoneGate_Clear",
+                        "quaternion": [
+                            0,
+                            0.7071067811865476,
+                            0,
+                            0.7071067811865476
+                        ],
+                        "rotate": [
+                            0,
+                            1.5707963267948966,
+                            0
+                        ],
+                        "saveCategory": "Object",
+                        "scale": [
+                            1.4,
+                            1.4,
+                            1.2
+                        ],
+                        "translate": [
+                            0,
+                            0,
+                            7
+                        ],
+                        "type": "Model"
+                    },
+                    {
+                        "blendMode": 1,
+                        "castShadow": false,
+                        "children": [],
+                        "collider": {
+                            "center": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "rotation": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "size": [
+                                0.5,
+                                0.5,
+                                0.08
+                            ],
+                            "type": 3
+                        },
+                        "collisionAttribute": 4,
+                        "collisionAttributeIds": [
+                            "ground"
+                        ],
+                        "collisionMask": 1,
+                        "collisionMaskIds": [
+                            "player"
+                        ],
+                        "color": [
+                            0.98,
+                            0.99,
+                            1,
+                            0.09
+                        ],
+                        "enableEnvMap": true,
+                        "enableLighting": true,
+                        "envIntensity": 1,
+                        "gimmickType": "DashPanelWhiteGlass",
+                        "isStatic": true,
+                        "materialType": 10,
+                        "modelName": "Stages/star_garden_glass_panel",
+                        "name": "Stage1_GlassFork_WhiteGlass_Clear",
+                        "param": {
+                            "actionMode": 8,
+                            "gimmickType": "DashPanelWhiteGlass"
+                        },
+                        "prefabObjectId": "glass-fork-WhiteGlass_Clear",
+                        "quaternion": [
+                            0,
+                            0.7071067811865476,
+                            0,
+                            0.7071067811865476
+                        ],
+                        "rotate": [
+                            0,
+                            1.5707963267948966,
+                            0
+                        ],
+                        "saveCategory": "Object",
+                        "scale": [
+                            9.25,
+                            6.86,
+                            1
+                        ],
+                        "translate": [
+                            0,
+                            3.4299999999999997,
+                            7
+                        ],
+                        "type": "Gimmick",
+                        "waterParam": {
+                            "effectIntensity": 0.04,
+                            "effectScale": 0.3,
+                            "effectScaleX": 0.5,
+                            "effectScaleY": 0.5,
+                            "effectScaleZ": 0.08,
+                            "effectSoftness": 0.58,
+                            "effectType": 1
+                        }
+                    },
+                    {
+                        "castShadow": true,
+                        "collider": {
+                            "center": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "rotation": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "size": [
+                                1.18,
+                                3.5,
+                                1.15
+                            ],
+                            "type": 3
+                        },
+                        "collisionAttribute": 4,
+                        "collisionAttributeIds": [
+                            "ground"
+                        ],
+                        "collisionMask": 1,
+                        "collisionMaskIds": [
+                            "player"
+                        ],
+                        "enableLighting": true,
+                        "isStatic": true,
+                        "name": "Stage1_GlassFork_Jamb_Clear_-1",
+                        "prefabObjectId": "glass-fork-Jamb_Clear_-1",
+                        "quaternion": [
+                            0,
+                            0.7071067811865476,
+                            0,
+                            0.7071067811865476
+                        ],
+                        "rotate": [
+                            0,
+                            1.5707963267948966,
+                            0
+                        ],
+                        "saveCategory": "Object",
+                        "scale": [
+                            1,
+                            1,
+                            1
+                        ],
+                        "translate": [
+                            0,
+                            3.5,
+                            1.2199999999999989
+                        ],
+                        "type": "InvisibleBox"
+                    },
+                    {
+                        "castShadow": true,
+                        "collider": {
+                            "center": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "rotation": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "size": [
+                                1.18,
+                                3.5,
+                                1.15
+                            ],
+                            "type": 3
+                        },
+                        "collisionAttribute": 4,
+                        "collisionAttributeIds": [
+                            "ground"
+                        ],
+                        "collisionMask": 1,
+                        "collisionMaskIds": [
+                            "player"
+                        ],
+                        "enableLighting": true,
+                        "isStatic": true,
+                        "name": "Stage1_GlassFork_Jamb_Clear_1",
+                        "prefabObjectId": "glass-fork-Jamb_Clear_1",
+                        "quaternion": [
+                            0,
+                            0.7071067811865476,
+                            0,
+                            0.7071067811865476
+                        ],
+                        "rotate": [
+                            0,
+                            1.5707963267948966,
+                            0
+                        ],
+                        "saveCategory": "Object",
+                        "scale": [
+                            1,
+                            1,
+                            1
+                        ],
+                        "translate": [
+                            0,
+                            3.5,
+                            12.780000000000001
+                        ],
+                        "type": "InvisibleBox"
+                    },
+                    {
+                        "castShadow": true,
+                        "collider": {
+                            "center": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "rotation": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "size": [
+                                7,
+                                0.96,
+                                1.15
+                            ],
+                            "type": 3
+                        },
+                        "collisionAttribute": 4,
+                        "collisionAttributeIds": [
+                            "ground"
+                        ],
+                        "collisionMask": 1,
+                        "collisionMaskIds": [
+                            "player"
+                        ],
+                        "enableLighting": true,
+                        "isStatic": true,
+                        "name": "Stage1_GlassFork_Lintel_Clear",
+                        "prefabObjectId": "glass-fork-Lintel_Clear",
+                        "quaternion": [
+                            0,
+                            0.7071067811865476,
+                            0,
+                            0.7071067811865476
+                        ],
+                        "rotate": [
+                            0,
+                            1.5707963267948966,
+                            0
+                        ],
+                        "saveCategory": "Object",
+                        "scale": [
+                            1,
+                            1,
+                            1
+                        ],
+                        "translate": [
+                            0,
+                            7.899999999999999,
+                            7
+                        ],
+                        "type": "InvisibleBox"
+                    },
+                    {
+                        "castShadow": true,
+                        "collider": {
+                            "center": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "rotation": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "size": [
+                                1.15,
+                                1.15,
+                                1.15
+                            ],
+                            "type": 1
+                        },
+                        "collisionAttribute": 16,
+                        "collisionAttributeIds": [
+                            "trigger"
+                        ],
+                        "collisionMask": 1,
+                        "collisionMaskIds": [
+                            "player"
+                        ],
+                        "color": [
+                            1,
+                            1,
+                            1,
+                            1
+                        ],
+                        "enableLighting": true,
+                        "gimmickType": "ContactHazard",
+                        "isStatic": true,
+                        "modelName": "Gimmicks/coral_spike_orb/coral_spike_orb.obj",
+                        "name": "Stage1_GlassFork_CoralSpike_-30.2",
+                        "param": {
+                            "attackPower": 1,
+                            "gimmickType": "ContactHazard",
+                            "moveAmount": 4
+                        },
+                        "prefabObjectId": "glass-fork-CoralSpike_-30.2",
+                        "quaternion": [
+                            0,
+                            0.0,
+                            0,
+                            1.0
+                        ],
+                        "rotate": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "saveCategory": "Object",
+                        "scale": [
+                            1.26,
+                            1.26,
+                            1.26
+                        ],
+                        "translate": [
+                            7.5,
+                            1.4000000000000004,
+                            -10.2
+                        ],
+                        "type": "Gimmick"
+                    },
+                    {
+                        "castShadow": true,
+                        "collider": {
+                            "center": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "rotation": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "size": [
+                                1.15,
+                                1.15,
+                                1.15
+                            ],
+                            "type": 1
+                        },
+                        "collisionAttribute": 16,
+                        "collisionAttributeIds": [
+                            "trigger"
+                        ],
+                        "collisionMask": 1,
+                        "collisionMaskIds": [
+                            "player"
+                        ],
+                        "color": [
+                            1,
+                            1,
+                            1,
+                            1
+                        ],
+                        "enableLighting": true,
+                        "gimmickType": "ContactHazard",
+                        "isStatic": true,
+                        "modelName": "Gimmicks/coral_spike_orb/coral_spike_orb.obj",
+                        "name": "Stage1_GlassFork_CoralSpike_-27",
+                        "param": {
+                            "attackPower": 1,
+                            "gimmickType": "ContactHazard",
+                            "moveAmount": 4
+                        },
+                        "prefabObjectId": "glass-fork-CoralSpike_-27",
+                        "quaternion": [
+                            0,
+                            0.0,
+                            0,
+                            1.0
+                        ],
+                        "rotate": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "saveCategory": "Object",
+                        "scale": [
+                            1.26,
+                            1.26,
+                            1.26
+                        ],
+                        "translate": [
+                            7.5,
+                            1.4000000000000004,
+                            -7
+                        ],
+                        "type": "Gimmick"
+                    },
+                    {
+                        "castShadow": true,
+                        "collider": {
+                            "center": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "rotation": [
+                                0,
+                                0,
+                                0
+                            ],
+                            "size": [
+                                1.15,
+                                1.15,
+                                1.15
+                            ],
+                            "type": 1
+                        },
+                        "collisionAttribute": 16,
+                        "collisionAttributeIds": [
+                            "trigger"
+                        ],
+                        "collisionMask": 1,
+                        "collisionMaskIds": [
+                            "player"
+                        ],
+                        "color": [
+                            1,
+                            1,
+                            1,
+                            1
+                        ],
+                        "enableLighting": true,
+                        "gimmickType": "ContactHazard",
+                        "isStatic": true,
+                        "modelName": "Gimmicks/coral_spike_orb/coral_spike_orb.obj",
+                        "name": "Stage1_GlassFork_CoralSpike_-23.8",
+                        "param": {
+                            "attackPower": 1,
+                            "gimmickType": "ContactHazard",
+                            "moveAmount": 4
+                        },
+                        "prefabObjectId": "glass-fork-CoralSpike_-23.8",
+                        "quaternion": [
+                            0,
+                            0.0,
+                            0,
+                            1.0
+                        ],
+                        "rotate": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "saveCategory": "Object",
+                        "scale": [
+                            1.26,
+                            1.26,
+                            1.26
+                        ],
+                        "translate": [
+                            7.5,
+                            1.4000000000000004,
+                            -3.8000000000000007
+                        ],
+                        "type": "Gimmick"
+                    },
+                    {
+                        "animation": {
+                            "animName": "",
+                            "animatorController": "",
+                            "isAnimLoop": true
+                        },
+                        "autoTextureTiling": false,
+                        "blendMode": 1,
+                        "castShadow": true,
+                        "collider": {
+                            "center": [
+                                0.0,
+                                -0.07999999821186066,
+                                0.0
+                            ],
+                            "rotation": [
+                                0.0,
+                                0.0,
+                                0.0
+                            ],
+                            "size": [
+                                8.350000381469727,
+                                0.20000000298023224,
+                                2.5199999809265137
+                            ],
+                            "type": 3
+                        },
+                        "collisionAttribute": 16,
+                        "collisionAttributeIds": [
+                            "trigger"
+                        ],
+                        "collisionAttributeUnknownBits": 0,
+                        "collisionMask": 1,
+                        "collisionMaskIds": [
+                            "player"
+                        ],
+                        "collisionMaskUnknownBits": 0,
+                        "color": [
+                            0.04,
+                            0.38,
+                            1,
+                            1
+                        ],
+                        "emissive": 1.2,
+                        "enableEnvMap": false,
+                        "enableLighting": true,
+                        "enableNormalMap": false,
+                        "enemyType": "",
+                        "envIntensity": 1.0,
+                        "eventID": 0,
+                        "gimmickType": "DashPanelStop",
+                        "gpuParticleName": "",
+                        "isStatic": false,
+                        "itemType": "",
+                        "layer": "Default",
+                        "localFog": {
+                            "color": [
+                                0.20000000298023224,
+                                0.800000011920929,
+                                0.5,
+                                1.0
+                            ],
+                            "density": 0.5,
+                            "edgeFade": 0.0,
+                            "noiseScale": 0.0,
+                            "noiseSpeed": 0.0,
+                            "scatteringG": 0.0,
+                            "scatteringIntensity": 0.0
+                        },
+                        "materialType": 0,
+                        "meshDrawIndex": -1,
+                        "meshEffect1": "",
+                        "meshEffect2": "",
+                        "metallic": 0.2800000011920929,
+                        "modelName": "Stages/star_garden_dash_panel",
+                        "myEventID": -1,
+                        "name": "Stage1_GlassFork_ExitDashStop",
+                        "normalMapPath": "",
+                        "ormMapPath": "",
+                        "param": {
+                            "actionMode": 0,
+                            "attackPower": 1.0,
+                            "cinematicPath": "",
+                            "colorType": 0,
+                            "copyMemoryActivationRadius": 0.8999999761581421,
+                            "copyMemoryEssenceScale": 1.0,
+                            "copyMemoryGlow": 0.44999998807907104,
+                            "copyMemoryHoverAmount": 0.10000000149011612,
+                            "copyMemoryTypeA": "FireSlime",
+                            "copyMemoryTypeB": "ThunderSlime",
+                            "copyMemoryTypeC": "WindSlime",
+                            "copyMemoryTypeD": "",
+                            "copyMemoryUnlimitedDuration": true,
+                            "detectionRange": 20.0,
+                            "editorPreviewFiring": true,
+                            "enemyType": "",
+                            "fallDuration": 2.0,
+                            "gimmickType": "DashPanelStop",
+                            "gravity": 50.0,
+                            "healAmount": 1.0,
+                            "hp": 100.0,
+                            "interval": 0.800000011920929,
+                            "itemType": "",
+                            "jumpPower": 38.0,
+                            "maxCount": 5,
+                            "maxFallSpeed": 60.0,
+                            "maxHp": 100.0,
+                            "morphDuration": 5.0,
+                            "morphLimited": true,
+                            "moveAmount": 10.0,
+                            "moveSpeed": 6.0,
+                            "projectileLifetime": 2.0,
+                            "returnOnOff": true,
+                            "ringWaveSpeed": 1.0,
+                            "shakeDuration": 1.0,
+                            "speed": 12.0,
+                            "startActive": false,
+                            "switchMode": 0,
+                            "targetScene": "SELECT",
+                            "volumeBlendDuration": 0.75,
+                            "volumeMode": 0,
+                            "volumePayload": "",
+                            "volumeRearmDelay": 0.0,
+                            "volumeTriggerOnExit": false,
+                            "volumeTriggerOnce": true
+                        },
+                        "particleName": "",
+                        "prefabObjectId": "glass-fork-ExitDashStop",
+                        "quaternion": [
+                            0,
+                            0.7071067811865476,
+                            0,
+                            0.7071067811865476
+                        ],
+                        "recorder": {
+                            "isRecordLoop": false,
+                            "isRecordRelative": false,
+                            "recordPathName": ""
+                        },
+                        "rotate": [
+                            0,
+                            1.5707963267948966,
+                            0
+                        ],
+                        "roughness": 0.41999998688697815,
+                        "saveCategory": "Object",
+                        "scale": [
+                            1.82,
+                            1,
+                            1
+                        ],
+                        "shaderMaterialId": "dash_panel_stop",
+                        "tag": "",
+                        "targetID": -1,
+                        "texturePath": "",
+                        "textureTiling": [
+                            1.0,
+                            1.0
+                        ],
+                        "translate": [
+                            17,
+                            0.3800000000000008,
+                            0
+                        ],
+                        "type": "Gimmick"
+                    }
+                ],
+                "collider": {
+                    "type": 0
+                },
+                "collisionAttribute": 0,
+                "collisionMask": 0,
+                "isStatic": true,
+                "modelName": "",
+                "name": "石門と白ガラスの二択セット",
+                "prefabObjectId": "object-glass-fork-root",
+                "presetDescription": "石門、白ガラス2枚、片側のトゲ球、入口の加速パネルと出口の青い解除パネルをまとめて配置します。進行方向はローカルの+Xです。",
+                "presetDisplayName": "石門と白ガラスの二択セット",
+                "presetFavorite": true,
+                "presetUsage": "ギミック",
+                "quaternion": [
+                    0,
+                    0,
+                    0,
+                    1
+                ],
+                "rotate": [
+                    0,
+                    0,
+                    0
+                ],
+                "saveCategory": "Object",
+                "scale": [
+                    1,
+                    1,
+                    1
+                ],
+                "translate": [
+                    0,
+                    0,
+                    0
+                ],
+                "type": "Model"
+            },
+            "version": 3
         }
     },
     "version": 3

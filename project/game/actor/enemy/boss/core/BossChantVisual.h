@@ -308,7 +308,7 @@ class BossChantVisual {
         DrawEffect(glow_.get(), pointLightResource, spotLightResource);
     }
 
-    void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource,
+    void DrawForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource,
                        ID3D12Resource* spotLightResource, int previewBufferIndex) {
         if (!camera) return;
         // 本編と同じ層順で、Editorの表示カメラへ詠唱を描画する。

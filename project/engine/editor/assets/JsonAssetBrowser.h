@@ -22,7 +22,7 @@ public:
 
     /// <summary>指定ルートを表示する。保存コールバックには一時ファイルと確定後の表示名を渡す。</summary>
     void Draw(const char* title, const Path& root, const Read& read, const Write& write,
-        const std::function<void()>& reset, const std::function<void(const Path&)>& onSaved = {});
+        const std::function<void()>& reset, const std::function<void(const Path&)>& onSaved = {}, bool unsaved = false);
     /// <summary>他の編集ツールから読み込んだ場合も保存対象を同期する。空なら新規文書。</summary>
     void SetDocument(const Path& relative);
 

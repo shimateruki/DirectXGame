@@ -52,6 +52,7 @@ void RidingPlatformController::Reset(GimmickMovingFloor& floor, BaseScene& scene
         }
     }
 
+    // 乗り込み演出の途中状態を消し、動かせる敵だけを元の位置と衝突へ戻します。
     for (auto& boarder : boarders_) {
         boarder.active = false;
         boarder.released = false;
@@ -93,6 +94,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
             return;
         }
 
+        // 床そのものの絶対座標トラックがあれば、最初のキーを乗り場の基準に使います。
         for (const auto& track : sequence_.transformTracks) {
             if (track.enabled && !track.muted && !track.relative && !track.anchorRelative &&
                 track.binding.targetName == floor.GetName() && !track.keys.empty()) {
@@ -104,6 +106,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
         player_.Initialize(manager);
         player_.SetSequence(&sequence_);
 
+        // 乗り込む敵ごとに初期位置と判定を退避し、信号の設定値から移動時間・高さ・着地点を取り込みます。
         for (const auto& signal : sequence_.signals) {
             if (!signal.enabled || signal.signal != "ride.board")
                 continue;
@@ -133,6 +136,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
             boarders_.push_back(boarder);
         }
 
+        // 再生中の信号で水柱・飛沫・火山弾を起動し、乗り込み通知は対象の敵を進行可能にします。
         player_.SetSignalCallback([this, &floor](engine::Object3D* target, const CinematicSignalMarker& signal, bool preview) {
             if (preview || !target)
                 return;
@@ -202,6 +206,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
         return;
     }
 
+    // 床に乗るまでは再生を開始しません。
     if (!running_ && riderOnDeck) {
         player_.Play(false);
         running_ = true;
@@ -252,6 +257,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
             player_.Update(step);
     }
 
+    // 床の前後位置の差を、再生を進める前に集めた乗員に一度ずつ適用します。
     const auto displacement = floor.GetTranslate() - previous;
 
     for (auto* actor : passengers) {
@@ -277,6 +283,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
         enemy->SetDormant(true);
         if (!boarder.active)
             continue;
+        // 移動中の敵は衝突させず、落下指定では加速する軌道、通常は弧を描く軌道で床に向かわせます。
         enemy->SetCollisionAttribute(0);
         enemy->SetCollisionMask(0);
         boarder.elapsed += deltaTime;
@@ -289,6 +296,7 @@ void RidingPlatformController::Update(GimmickMovingFloor& floor, float deltaTime
         else position.y += 4.0f * boarder.height * t * (1.0f - t);
         enemy->SetTranslate(position);
 
+        // 着地後は乗り込みの制御を終了し、敵の当たり判定と通常更新を戻します。
         if (t >= 1) {
             boarder.released = true;
             enemy->SetDormant(false);

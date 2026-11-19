@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "e5dc6f0c1dc639bce817c1bc9374ebd9",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/ui/control_guide/book/video_frame_rounded.png",
+  "version": 1
+}

@@ -34,6 +34,7 @@ engine::Vector3 SelectLookAtRotation(const engine::Vector3& eye, const engine::V
     direction.y *= invLength;
     direction.z *= invLength;
 
+    // 視線の上下角は正規化したY成分から求め、真上・真下付近まで回し切らない。左右角はXZの向きを使う。
     const float pitch = -std::asin(std::clamp(direction.y, -0.98f, 0.98f));
     const float yaw = std::atan2(direction.x, direction.z);
     return {pitch, yaw, 0.0f};
@@ -64,6 +65,7 @@ float SelectResolveGateReturnGroundY(const engine::Vector3& probePosition, const
                                      const engine::Object3D* ignoredObject) {
     // ゲートの原点や縁は浮いていることがあるため、帰還演出の接地Yにはそのまま使いません。
     // まず着地予定XZから下向きレイを飛ばし、本当に床として登録されている位置を優先します。
+    // 床が見つからない場合は既知の基準高さの最小値を使い、レイは全ての候補より上から始めます。
     const float gateBasedGroundY = gatePos.y - kGateReturnGroundOffsetFromGateOrigin;
     const float fallbackGroundY = (std::min)({stageNodePosition.y, playerPosition.y, gateBasedGroundY});
     const float rayStartY =
@@ -74,6 +76,7 @@ float SelectResolveGateReturnGroundY(const engine::Vector3& probePosition, const
     bool foundGround = false;
     float resolvedGroundY = fallbackGroundY;
 
+    // 予定位置の中心と周囲を調べ、ゲート自身を除いた床のうち最も高い位置を採用します。
     for (const engine::Vector3& offset : sampleOffsets) {
         const engine::Vector3 rayStart = {probePosition.x + offset.x, rayStartY, probePosition.z + offset.z};
         const RaycastHit hit = CollisionManager::GetInstance()->Raycast(rayStart, {0.0f, -1.0f, 0.0f},
@@ -105,6 +108,7 @@ engine::Vector3 SelectGateEntryDirection(engine::Object3D* gateObject, const eng
         return fallback;
     }
 
+    // 配置済みモデルのワールド行列から各軸を取り出し、移動経路に最も近い水平軸を探します。
     const engine::Matrix4x4& world = transform->matWorld;
     engine::Vector3 candidates[] = {SelectNormalizeGateDirectionXZ({world.m[0][0], world.m[0][1], world.m[0][2]}, fallback),
                             SelectNormalizeGateDirectionXZ({world.m[1][0], world.m[1][1], world.m[1][2]}, fallback),
@@ -114,6 +118,7 @@ engine::Vector3 SelectGateEntryDirection(engine::Object3D* gateObject, const eng
     float bestDot = -1.0f;
 
     for (const engine::Vector3& candidate : candidates) {
+        // 逆向きの軸も候補なので、内積の絶対値で同じ直線を向く軸を選ぶ。符号は選んだ後で合わせる。
         const float dot = std::fabs(candidate.x * fallback.x + candidate.z * fallback.z);
 
         if (dot > bestDot) {
@@ -122,6 +127,7 @@ engine::Vector3 SelectGateEntryDirection(engine::Object3D* gateObject, const eng
         }
     }
 
+    // 対応する軸が逆向きの場合は符号をそろえ、ゲートを通る向きを保ちます。
     const float dot = gateAxis.x * fallback.x + gateAxis.z * fallback.z;
 
     if (dot < 0.0f) {
@@ -135,6 +141,7 @@ engine::Vector3 SelectGateEntryDirection(engine::Object3D* gateObject, const eng
 SelectGateEntryRoute SelectBuildGateEntryRoute(const engine::Vector3& gatePos, const engine::Vector3& direction, float entryY) {
     // ゲート面を基準に前後の通過点を作り、入場経路を配置向きへ合わせる。
     const engine::Vector3 entryDirection = SelectNormalizeGateDirectionXZ(direction, {0.0f, 0.0f, 1.0f});
+    // 表面は入場方向の手前、内部は奥に置く。三点のYは同じ高さに固定し、地面への着地は呼出側で扱う。
     return {{gatePos.x - entryDirection.x * kGateEntrySurfaceOffset, entryY,
              gatePos.z - entryDirection.z * kGateEntrySurfaceOffset},
             {gatePos.x, entryY, gatePos.z},
@@ -196,10 +203,12 @@ engine::Vector4 GetStageIslandColor(int stageIndex, bool unlocked, bool selected
         return {0.16f, 0.17f, 0.20f, 0.78f};
     }
 
+    // 解放中は島固有の色より金色を優先して、演出中の島を識別できるようにします。
     if (unlocking) {
         return {0.88f, 0.66f + pulse * 0.18f, 0.28f, 1.0f};
     }
 
+    // 選択時は各島の色系統を変えず、通常時より明るい色を使います。
     if (selected) {
         switch (stageIndex) {
         case 0:

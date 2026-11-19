@@ -28,27 +28,32 @@ void GimmickDashPanel::Initialize(engine::Object3DCommon* common, const std::str
     // 編集項目の宣言です。動作処理と旧paramの保存キーは変更しません。
     using Self = GimmickDashPanel;
     engine::ObjectPropertyDefinition<Self> properties(*this, kTypeId, "ダッシュパネル",
-        "上面を踏んだプレイヤーを加速します。配置と向きはTransform、発光や色は材質欄で調整します。");
+        "上面を踏むと、ダッシュパネルは加速し、ダッシュ解除パネルはパネル加速を解除します。配置と向きはTransformで調整します。");
 }
 
 void GimmickDashPanel::Update(float deltaTime) {
-    // 編集済みの基準色を最初に保存し、短い加速パルスの後に戻す。
+    // 編集済みの基準色を最初に保存し、短い発光パルスの後に戻す。
     if (!visualBaseCaptured_) {
         baseColor_ = GetColor();
         baseEmissive_ = (std::max)(1.2f, GetEmissive());
         visualBaseCaptured_ = true;
     }
 
+    // 再発動の待ち時間と点灯の減衰を別々に数え、表示の長さで次の発動を決めない。
     visualTime_ += deltaTime;
     activationCooldown_ = (std::max)(0.0f, activationCooldown_ - deltaTime);
     activationPulse_ = (std::max)(0.0f, activationPulse_ - deltaTime / 0.38f);
 
+    // 待機時の明滅に発動の光を重ね、二乗で発動直後から滑らかに弱める。
     const float easedPulse = activationPulse_ * activationPulse_;
     const float idlePulse = 0.08f + std::sin(visualTime_ * 5.8f) * 0.045f;
     SetEmissive(baseEmissive_ + idlePulse + easedPulse * 3.4f);
 
+    // 点灯の色で停止パネルと加速パネルを見分けられるようにし、透明度は配置時の値を使う。
     const float flashBlend = easedPulse * 0.62f;
-    const engine::Vector4 flashColor = {1.0f, 0.86f, 0.30f, baseColor_.w};
+    const engine::Vector4 flashColor = GetGimmickType() == kStopTypeId
+        ? engine::Vector4{0.30f, 0.86f, 1.0f, baseColor_.w}
+        : engine::Vector4{1.0f, 0.86f, 0.30f, baseColor_.w};
     SetColor({
         baseColor_.x + (flashColor.x - baseColor_.x) * flashBlend,
         baseColor_.y + (flashColor.y - baseColor_.y) * flashBlend,
@@ -59,9 +64,9 @@ void GimmickDashPanel::Update(float deltaTime) {
     BaseGimmick::Update(deltaTime);
 }
 
-// 上面に乗ったプレイヤーへ加速を与え、発光パルスは短いクールダウンで抑えます。
+// 上面を踏んだプレイヤーのパネル加速を更新し、発光パルスは短いクールダウンで抑えます。
 bool GimmickDashPanel::OnCollision(engine::Object3D* other) {
-    // 上面から踏んだプレイヤーだけを加速し、接触し続けても発光を連射しない。
+    // 側面と裏面の接触では加速状態を変更しない。
     Player* player = dynamic_cast<Player*>(other);
     if (!player)
         return true;
@@ -69,7 +74,12 @@ bool GimmickDashPanel::OnCollision(engine::Object3D* other) {
     CollisionInfo info = CheckCollision(other);
 
     if (info.isColliding && info.normal.y < -0.5f) {
-        player->ApplyDashPanelBoost(0.9f, 2.15f, 0.32f);
+        // 上面への接触が続く間はパネル種別に応じて加速を更新し、表示の再点灯だけを間引きます。
+        if (GetGimmickType() == kStopTypeId) {
+            player->CancelDashPanelBoost();
+        } else {
+            player->ApplyDashPanelBoost(0.9f, 2.15f, 0.32f);
+        }
 
         if (activationCooldown_ <= 0.0f) {
             activationPulse_ = 1.0f;

@@ -86,6 +86,7 @@ void GimmickGameplayVolume::Update(float deltaTime) {
 
     rearmTimer_ = (std::max)(0.0f, rearmTimer_ - (std::max)(0.0f, deltaTime));
 
+    // 前回の走査で衝突の通知がなくなったときだけ離脱を処理し、次の走査のため観測フラグをリセットします。
     if (occupied_ && !collisionObserved_) {
         HandleExit(occupant_);
     }
@@ -214,6 +215,7 @@ void GimmickGameplayVolume::Activate(Player* player) {
     BaseScene* scene = SceneManager::GetInstance() ? SceneManager::GetInstance()->GetCurrentScene() : nullptr;
 
     switch (GetMode()) {
+    // 滞在中だけ有効な設定は Target ID をオンにし、それ以外は単発イベントとして通知します。
     case Mode::Event:
         if (scene && GetTargetId() > 0) {
             if (GetParameters()->returnOnOff && !GetParameters()->volumeTriggerOnExit) {
@@ -225,6 +227,7 @@ void GimmickGameplayVolume::Activate(Player* player) {
 
         break;
 
+    // 領域の中心を再開地点に使い、同じ地点から再開しただけなら残機と回復を重ねません。
     case Mode::Checkpoint:
         if (player) {
             const engine::Vector3 checkpointPosition = GetWorldPosition();
@@ -251,6 +254,7 @@ void GimmickGameplayVolume::Activate(Player* player) {
 
         break;
 
+    // その場で別の死亡処理を実装せず、既存の落下死判定までプレイヤーを下げます。
     case Mode::FallDeath:
         if (player && !player->IsDead()) {
             engine::Vector3 position = player->GetTranslate();
@@ -261,6 +265,7 @@ void GimmickGameplayVolume::Activate(Player* player) {
 
         break;
 
+    // 指定された演出を領域の中心から一度再生します。
     case Mode::FeedbackCue:
         if (!GetParameters()->volumePayload.empty()) {
             VfxSequencer::PlayOneShot(GetParameters()->volumePayload, GetWorldPosition());
@@ -268,6 +273,7 @@ void GimmickGameplayVolume::Activate(Player* player) {
 
         break;
 
+    // 設定された曲をゲームの音声管理へ渡します。
     case Mode::Bgm:
         if (!GetParameters()->volumePayload.empty()) {
             GameAudioSettings::GetInstance()->PlayBGM(GetParameters()->volumePayload);
@@ -275,16 +281,18 @@ void GimmickGameplayVolume::Activate(Player* player) {
 
         break;
 
+    // 現在の照明・環境を退避し、指定秒数で新しいプロファイルに切り替えます。
     case Mode::Environment:
         if (!GetParameters()->volumePayload.empty()) {
-            previousEnvironment_ = LightManager::GetInstance()->CaptureEnvironmentProfile();
+            previousEnvironment_ = engine::LightManager::GetInstance()->CaptureEnvironmentProfile();
             hasPreviousEnvironment_ = true;
-            LightManager::GetInstance()->ApplyEnvironmentProfile(GetParameters()->volumePayload, GetParameters()->volumeBlendDuration);
+            engine::LightManager::GetInstance()->ApplyEnvironmentProfile(GetParameters()->volumePayload, GetParameters()->volumeBlendDuration);
         }
 
         break;
     }
 
+    // 用途別の処理が終わった時点で発動済みとし、繰り返しを許す場合にも再発動間隔を適用します。
     triggered_ = true;
     rearmTimer_ = (std::max)(0.0f, GetParameters()->volumeRearmDelay);
 }
@@ -302,7 +310,7 @@ void GimmickGameplayVolume::Deactivate() {
     } else if (GetMode() == Mode::Bgm && !GetParameters()->volumePayload.empty()) {
         GameAudioSettings::GetInstance()->Stop(GetParameters()->volumePayload);
     } else if (GetMode() == Mode::Environment && hasPreviousEnvironment_) {
-        LightManager::GetInstance()->ApplyEnvironmentProfile(previousEnvironment_, GetParameters()->volumeBlendDuration);
+        engine::LightManager::GetInstance()->ApplyEnvironmentProfile(previousEnvironment_, GetParameters()->volumeBlendDuration);
         hasPreviousEnvironment_ = false;
     }
 }

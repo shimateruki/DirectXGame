@@ -25,7 +25,7 @@ class GimmickMagmaGeyser : public BaseGimmick {
     void Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource) override;
 
     /// 指定カメラのプレビューへ噴出口を描画する。
-    void DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource,
+    void DrawForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource,
                        int previewBufferIndex = 0) override;
 
     /// 接触対象への攻撃判定を処理する。
@@ -44,7 +44,7 @@ class GimmickMagmaGeyser : public BaseGimmick {
     void DrawOwnedSpecialMaterialVisuals(uint32_t depthSrvHandle, uint32_t grabSrvHandle) override;
 
     /// 噴出表示をプレビューカメラの特殊材質パスへ描く。
-    void DrawOwnedSpecialMaterialVisualsForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
+    void DrawOwnedSpecialMaterialVisualsForCamera(engine::Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle,
                                                   int previewBufferIndex = 0) override;
 
     /// 配置用の噴出口複製を作る。
@@ -102,7 +102,7 @@ class GimmickMagmaGeyser : public BaseGimmick {
     /// 攻撃予告段階へ切り替える。
     void BeginWarning();
 
-    /// 噴出段階へ切り替え、当たり判定を有効にする。
+    /// 噴出段階へ切り替え、火山弾か噴出直後の演出を出す。接触判定は UpdateEruptionVisual() が決める。
     void BeginEruption();
 
     /// 指定時間の休止段階へ切り替える。

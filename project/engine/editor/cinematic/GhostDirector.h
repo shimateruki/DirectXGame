@@ -5,6 +5,7 @@
 #include "engine/animation/cinematic/CinematicSequence.h"
 #include "IEditable.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -178,6 +179,11 @@ class GhostDirector : public IEditable {
 
     /// トラック、キー、現在時刻を編集するキャンバスを描画する。
     void DrawTimelineCanvas();
+    void DrawTimelineVfxPalette();
+    void AddVfxTrack(const std::string& assetKey, float startTime);
+    bool showTimelineVfxPalette_ = false;
+    char timelineVfxSearch_[128]{};
+    std::vector<std::string> timelineVfxAssets_;
 
     /// 演出対象の参照先を選ぶ UI を描画し、変更があれば true を返す。
     bool DrawObjectBindingEditor(const char* label, CinematicObjectBinding& binding, bool cameraOnly, bool allowWorld);
@@ -208,6 +214,27 @@ class GhostDirector : public IEditable {
 
     // プレビュー時刻とタイムラインの UI 状態は、演出データには保存しません。
     float currentScrubTime_ = 0.0f;
+    // キーはマウスを離すまで移動先だけを表示し、確定時に履歴へ記録する。
+    struct TimelineKeyDrag {
+        int track = -1;
+        int key = -1;
+        float pixelsPerSecond = 0.0f;
+        float proposedTime = 0.0f;
+        float originalTime = 0.0f;
+        bool moved = false;
+        int clipKind = 0; // 0は移動キー。1、2、4はVFX、カメラ、音。
+    } timelineKeyDrag_;
+    bool timelineScrubbing_ = false;
+    std::shared_ptr<int> timelineDocument_ = std::make_shared<int>(0);
+    void ResetTimelineInteraction();
+    void CommitTimelineKeyDrag();
+    float* GetEditableClipStart(int kind, int index);
+    void CaptureSavedDocument();
+    void UpdateDocumentDirty();
+    std::string savedDocumentJson_;
+    double nextDirtyCheck_ = 0.0; // 次の比較を許可するImGui時刻（秒）。
+    bool documentDirty_ = false;
+
     float timelinePixelsPerSecond_ = 100.0f;
     bool isLooping_ = false;
     bool autoKeyEnabled_ = false;

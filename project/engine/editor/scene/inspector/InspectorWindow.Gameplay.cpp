@@ -48,6 +48,7 @@ void InspectorWindow::DrawPathMoverSection(engine::Object3D *selectedObject) {
   if (ImGui::BeginCombo("パスデータ", currentRecordPreview.c_str())) {
     bool isNoneSelected = selectedObject->GetRecordPathName().empty();
 
+    // 割り当てパスを空にして以後の読み込みを止めるだけでなく、現在の再生も終了します。
     if (ImGui::Selectable("(なし)", isNoneSelected)) {
       selectedObject->SetRecordPathName("");
       if (selectedObject->GetRecorder())
@@ -129,6 +130,7 @@ void InspectorWindow::DrawPathMoverSection(engine::Object3D *selectedObject) {
 
   ImGui::TextDisabled("OFF: パスJSONの固定座標 / ON: Objectの配置位置 + パス内の移動量");
 
+  // 開始位相は秒ではなくループ全体に対する割合です。変更時は再生を始め直して適用します。
   float phaseOffset = pathSettings->GetPhaseOffset();
   if (ImGui::SliderFloat("開始タイミング##Record", &phaseOffset, 0.0f, 0.99f, "周期の %.2f")) {
     pathSettings->SetPhaseOffset(phaseOffset);

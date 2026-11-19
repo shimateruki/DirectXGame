@@ -74,6 +74,7 @@ void PlayerSlimeAnimator::Reset(const engine::Vector3& baseScale, Player* player
 }
 
 void PlayerSlimeAnimator::SetMode(Mode mode) {
+    // 同じ状態が毎フレーム通知されても、動作時刻や遷移をリセットしません。
     if (mode_ == mode) {
         return;
     }
@@ -96,6 +97,7 @@ void PlayerSlimeAnimator::SetMode(Mode mode) {
         modeTransitionTimer_ = kModeTransitionBlendDuration;
     }
 
+    // 次回更新で切り替え前の姿勢を退避し、遷移の始点に使います。
     modeTransitionCapturePending_ = true;
     mode_ = mode;
     modeTimer_ = 0.0f;
@@ -127,6 +129,7 @@ void PlayerSlimeAnimator::TriggerJumpTakeoff() {
 }
 
 void PlayerSlimeAnimator::TriggerLanding(float impactRate) {
+    // 衝撃がない接地では反応を始めず、着地の保持・潰れ・反発を順に再生する時間を設定します。
     if (impactRate <= 0.0f) {
         return;
     }
@@ -160,6 +163,7 @@ bool PlayerSlimeAnimator::PlayAbilityMotion(const std::string& clipName, bool lo
     const std::string& bodyClipName = state && !state->bodyClipName.empty() ? state->bodyClipName : clipName;
     const float assetSpeed = state ? (std::max)(state->speed, 0.01f) : 1.0f;
     const float effectiveSpeed = (std::max)(playbackSpeed * assetSpeed, 0.01f);
+    // 同じ能力クリップを続けて要求された場合は、先頭へ巻き戻さず再生速度とループ指定だけ変えます。
     if (abilityMotionActive_ && abilityMotionName_ == clipName &&
         abilityMotionClipAssetName_ == bodyClipName && !abilityMotionStopping_) {
         abilityMotionLoop_ = loop;
@@ -173,6 +177,7 @@ bool PlayerSlimeAnimator::PlayAbilityMotion(const std::string& clipName, bool lo
         return false;
     }
 
+    // 新しい素材を読み込めた時点で現在のクリップを差し替え、開始・終了時に使う補間時間を設定します。
     abilityMotionClip_ = std::move(clip);
     abilityMotionName_ = clipName;
     abilityMotionClipAssetName_ = bodyClipName;
@@ -221,6 +226,7 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
         return;
     }
 
+    // 状態が切り替わった直後の姿勢を一度だけ保存し、新しい姿勢への補間をここから始めます。
     if (modeTransitionCapturePending_) {
         modeTransitionStartScale_ = player->GetScale();
         modeTransitionStartRotation_ = player->GetRotation();
@@ -247,6 +253,7 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
         modeTimer_ += deltaTime;
     }
 
+    // 地上を走った実移動の距離だけを走行クリップの時刻へ換算し、速度に応じて揺れの強さを変えます。
     const bool isGrounded = player->IsGrounded();
     const engine::Vector3 position = player->GetTranslate();
     const float runBlend = 1.0f - std::exp(-18.0f * deltaTime);
@@ -283,6 +290,7 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
         ClearAbilityMotion(player);
     }
 
+    // 着地の保持・潰れ・反発を同時に消費せず、前の段階が終わってから次の時計を進めます。
     if (landingHoldTimer_ > 0.0f) {
         landingHoldTimer_ = (std::max)(0.0f, landingHoldTimer_ - deltaTime);
     } else if (landingSquashTimer_ > 0.0f) {
@@ -295,6 +303,7 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
         jumpTakeoffStretchTimer_ = (std::max)(0.0f, jumpTakeoffStretchTimer_ - deltaTime);
     }
 
+    // 編集した本体クリップを優先し、素材を評価できない状態だけコードの基本姿勢を使います。
     engine::Vector3 targetScale;
     engine::Vector3 targetRotation;
     engine::Vector3 visualOffset{};
@@ -318,6 +327,7 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
         targetScale.z *= 1.0f - rebound * 0.45f;
     }
 
+    // 一時的な衝撃変形を重ね、残り時間が短くなるにつれて基本姿勢へ戻します。
     if (impulseTimer_ > 0.0f) {
         impulseTimer_ = (std::max)(0.0f, impulseTimer_ - deltaTime);
         const float t = impulseTimer_ / (std::max)(impulseDuration_, 0.01f);
@@ -364,6 +374,7 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
         const auto affine = engine::Math::MakeAffineMatrix(abilityVisualScale, abilityVisualRotation, {});
         visualOffset = foot - engine::Math::Transform(foot, affine);
     }
+    // 能力クリップと鞭の最終姿勢を描画側へ渡し、位置オフセットやせん断を当たり判定へ反映しません。
     if (player->GetMeshRenderer()) {
         player->GetMeshRenderer()->SetVisualTransform(abilityVisualScale, abilityVisualRotation, visualOffset);
         player->GetMeshRenderer()->SetVisualShear(abilityVisualShear, abilityShearPivotY);
@@ -376,6 +387,7 @@ void PlayerSlimeAnimator::Update(Player* player, float deltaTime) {
     const bool landingActive = landingSquashTimer_ > 0.0f || landingReboundTimer_ > 0.0f;
     const bool controllerTransition = controllerLoaded_ && controllerRuntime_.IsTransitioning();
 
+    // 状態遷移中は開始姿勢から補間し、通常更新では着地や踏み切りの強さに応じて追従速度を変えます。
     if (controllerTransition || modeTransitionTimer_ > 0.0f) {
         float blend = controllerTransition ? controllerRuntime_.GetTransitionWeight() : 1.0f;
 
@@ -472,6 +484,7 @@ void PlayerSlimeAnimator::UpdateAbilityMotion(float deltaTime, engine::Vector3& 
     const float clipDuration = abilityMotionClip_.GetDuration();
     BodyAnimationClip::Sample sample;
 
+    // 指定時刻を評価できない素材は、描画へ古いキーを渡さず終了します。
     if (!abilityMotionClip_.Evaluate(abilityMotionTimer_, abilityMotionLoop_, sample)) {
         ClearAbilityMotion();
         return;
@@ -479,6 +492,7 @@ void PlayerSlimeAnimator::UpdateAbilityMotion(float deltaTime, engine::Vector3& 
 
     float weight = std::clamp(abilityMotionTimer_ / abilityMotionBlendInDuration_, 0.0f, 1.0f);
 
+    // 明示停止は停止要求からの実時間で弱め、通常の非ループ再生はクリップ終端までの残り秒で弱めます。
     if (abilityMotionStopping_) {
         abilityMotionStopTimer_ = (std::max)(0.0f, abilityMotionStopTimer_ - deltaTime);
         weight *= abilityMotionStopTimer_ / (std::max)(abilityMotionStopDuration_, 0.01f);
@@ -488,6 +502,7 @@ void PlayerSlimeAnimator::UpdateAbilityMotion(float deltaTime, engine::Vector3& 
         weight *= std::clamp(remainingSeconds / abilityMotionBlendOutDuration_, 0.0f, 1.0f);
     }
 
+    // 補間済みの拡縮・回転・位置・せん断を描画用の参照引数へ書き込みます。
     visualScale = {engine::Math::Lerp(1.0f, sample.scale.x, weight), engine::Math::Lerp(1.0f, sample.scale.y, weight),
                    engine::Math::Lerp(1.0f, sample.scale.z, weight)};
     visualRotation = sample.rotate * weight;
@@ -554,6 +569,7 @@ void PlayerSlimeAnimator::ReloadBodyClips() {
 
 bool PlayerSlimeAnimator::TryBuildAuthoredBodyPose(Player* player, engine::Vector3& scaleOut, engine::Vector3& rotationOut,
                                                    engine::Vector3& visualOffsetOut) const {
+    // 対象、状態、参照クリップのどれかが欠ける場合は、呼び出し元へ手続き姿勢の使用を任せます。
     if (!player || !controllerLoaded_) {
         return false;
     }
@@ -572,6 +588,7 @@ bool PlayerSlimeAnimator::TryBuildAuthoredBodyPose(Player* player, engine::Vecto
 
     float sampleTime = mode_ == Mode::Run ? runMotionTime_ : modeTimer_;
 
+    // ジャンプは時間でループせず、溜め・上昇・下降を鉛直速度からクリップ上の位置へ対応させます。
     if (mode_ == Mode::Jump) {
         if (jumpChargeRate_ > 0.0f) {
             sampleTime = 0.0f;
@@ -595,6 +612,7 @@ bool PlayerSlimeAnimator::TryBuildAuthoredBodyPose(Player* player, engine::Vecto
         return false;
     }
 
+    // 実移動がほぼない場合は、走行クリップを再生していても拡縮と傾きの寄与を弱めます。
     if (mode_ == Mode::Run) {
         const float weight = std::clamp(runSpeedRate_, 0.0f, 1.0f);
         sample.scale.x = engine::Math::Lerp(1.0f, sample.scale.x, weight);
@@ -735,6 +753,7 @@ engine::Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaT
         break;
     }
 
+    // 開始直後の縦方向の押し潰れを強くし、奥行きの伸びと振動で勢いを見せます。
     case Mode::Dash: {
         const float startKick = 1.0f - std::clamp(modeTimer_ / 0.18f, 0.0f, 1.0f);
         const float flutter = std::sin(modeTimer_ * 42.0f) * 0.072f;
@@ -744,6 +763,7 @@ engine::Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaT
         break;
     }
 
+    // 照準中は低い姿勢を保ち、止まった輪郭に小さな呼吸を重ねます。
     case Mode::AimHook: {
         const float breath = std::sin(modeTimer_ * 7.0f) * 0.035f;
         scale.x = baseScale_.x * (1.13f + breath);
@@ -752,6 +772,7 @@ engine::Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaT
         break;
     }
 
+    // 発射直後だけ体を大きく広げ、短い反動を入れます。
     case Mode::ShootHook: {
         const float kick = 1.0f - std::clamp(modeTimer_ / 0.16f, 0.0f, 1.0f);
         scale.x = baseScale_.x * (1.12f + kick * 0.18f);
@@ -760,6 +781,7 @@ engine::Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaT
         break;
     }
 
+    // 引き合いの細かな揺れと強い引きの山を重ね、完了に近づくと一部の揺れを弱めます。
     case Mode::PullEnemy: {
         const float strainPulse = std::abs(std::sin(modeTimer_ * 32.0f));
         const float tugWave = std::sin(modeTimer_ * 20.0f);
@@ -773,6 +795,7 @@ engine::Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaT
         break;
     }
 
+    // 運搬中は横に広がった形を基準に、小さな上下動と力みを加えます。
     case Mode::Carry: {
         const float wobble = std::sin(modeTimer_ * 11.0f) * 0.075f;
         const float strain = std::abs(std::sin(modeTimer_ * 5.5f)) * 0.045f;
@@ -799,6 +822,7 @@ engine::Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaT
         break;
     }
 
+    // モードの基本姿勢に、踏み切りと着地の短い反応を追加します。
     if (jumpTakeoffStretchTimer_ > 0.0f) {
         const float t = jumpTakeoffStretchTimer_ / kJumpTakeoffStretchDuration;
         const float stretch = t * t * 0.34f;
@@ -822,6 +846,7 @@ engine::Vector3 PlayerSlimeAnimator::BuildModeScale(Player* player, float deltaT
         scale.z *= 1.0f - rebound * 0.45f;
     }
 
+    // 極端な変形が重なっても表示の各軸が潰れ切らないよう下限を設けます。
     scale.x = (std::max)(scale.x, 0.25f);
     scale.y = (std::max)(scale.y, 0.25f);
     scale.z = (std::max)(scale.z, 0.25f);
@@ -841,6 +866,7 @@ engine::Vector3 PlayerSlimeAnimator::BuildModeRotation(Player* player) const {
         rotation.z = std::cos(modeTimer_ * 2.0f) * 0.014f;
         break;
 
+    // 走行とダッシュは同じ軸へ傾け、ダッシュでは速度にかかわらず強めに傾けます。
     case Mode::Run:
     case Mode::Dash: {
         engine::Vector3 dir = speed > 0.01f ? NormalizeOrForward(velocity) : motionDirection_;
@@ -850,6 +876,7 @@ engine::Vector3 PlayerSlimeAnimator::BuildModeRotation(Player* player) const {
         break;
     }
 
+    // 移動方向への傾きに、鉛直速度が小さい頂点付近で強まる揺れを足します。
     case Mode::Jump: {
         engine::Vector3 dir = speed > 0.01f ? NormalizeOrForward(velocity) : motionDirection_;
         const float lean = std::clamp(speed * 0.008f, 0.0f, 0.12f);
@@ -859,6 +886,7 @@ engine::Vector3 PlayerSlimeAnimator::BuildModeRotation(Player* player) const {
         break;
     }
 
+    // 照準が決めた前後の傾きだけ維持し、横のロールは戻します。
     case Mode::AimHook:
         rotation.x = current.x;
         rotation.z = 0.0f;
@@ -869,6 +897,7 @@ engine::Vector3 PlayerSlimeAnimator::BuildModeRotation(Player* player) const {
         rotation.z = motionDirection_.x * 0.08f;
         break;
 
+    // 敵を引く間は正面を保ち、踏ん張りと引き込みを前後の動きで見せます。
     case Mode::PullEnemy: {
         const float yankWave = (std::max)(0.0f, std::sin(modeTimer_ * 18.0f));
         const float yankPulse = yankWave * yankWave * (1.0f - pullProgress_ * 0.45f);
@@ -884,6 +913,7 @@ engine::Vector3 PlayerSlimeAnimator::BuildModeRotation(Player* player) const {
         rotation.z = std::cos(modeTimer_ * 6.0f) * 0.025f;
         break;
 
+    // ゲートから出た方向に沿って、出現直後の傾きを減衰させます。
     case Mode::GateReturn: {
         const float t = std::clamp(modeTimer_ / kGateReturnSlimeDuration, 0.0f, 1.0f);
         const float lean = std::sin(std::clamp(t / 0.70f, 0.0f, 1.0f) * kPi) * (1.0f - t * 0.55f) * 0.16f;

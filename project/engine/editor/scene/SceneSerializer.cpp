@@ -10,6 +10,7 @@
 #include <fstream>
 #include <filesystem>
 #include <initializer_list>
+#include <string_view>
 #include <system_error>
 #include <unordered_map>
 #include <unordered_set>
@@ -20,12 +21,39 @@ using json = nlohmann::json;
 namespace {
 constexpr const char* kSceneObjectDirectory = "Resources/json/3Dobject";
 constexpr const char* kSceneSpriteDirectory = "Resources/json/sprite";
-constexpr const char* kSceneCategorySuffixes[] = {
-    "_player.json",
-    "_enemy.json",
-    "_object.json",
-    "_camera.json"
+// 分割保存のファイル名と表示名。全体保存にはこの順序で並べる。
+struct ObjectSaveCategory {
+    SaveMode mode;
+    const char* label;
+    const char* suffix;
 };
+
+constexpr ObjectSaveCategory kDefaultObjectSaveCategory{SaveMode::Object, "Object", "_object.json"};
+constexpr ObjectSaveCategory kObjectSaveCategories[] = {
+    {SaveMode::Player, "Player", "_player.json"},
+    {SaveMode::Enemy, "Enemy", "_enemy.json"},
+    kDefaultObjectSaveCategory,
+    {SaveMode::Camera, "Camera", "_camera.json"},
+};
+
+// 実体がカメラなら、オブジェクトに保存された分類より優先する。
+const ObjectSaveCategory& ResolveObjectSaveCategory(bool isCamera, std::string_view category) {
+    if (isCamera) {
+        category = "Camera";
+    }
+    for (const auto& format : kObjectSaveCategories) {
+        if (category == format.label) {
+            return format;
+        }
+    }
+    // 分類なしと独自分類は通常のObjectファイルに置く。
+    return kDefaultObjectSaveCategory;
+}
+
+// 保存入口では従来どおり最初の「.json」より前をベース名にする。
+std::string GetSaveBaseName(const std::string& filename) {
+    return filename.substr(0, filename.find(".json"));
+}
 
 std::string GetSceneBaseName(std::string filename) {
     // ディレクトリと拡張子を除き、分割されたScene JSONに共通のIDを取り出す。
@@ -44,7 +72,8 @@ std::string GetSceneBaseName(std::string filename) {
 
 bool HasSceneCategorySuffix(const std::string& filename) {
     // 分割ファイルを独立したシーンとして一覧へ重複登録しないための判定。
-    for (const char* suffix : kSceneCategorySuffixes) {
+    for (const auto& format : kObjectSaveCategories) {
+        const char* suffix = format.suffix;
         const size_t suffixLength = std::char_traits<char>::length(suffix);
         if (filename.size() >= suffixLength &&
             filename.compare(filename.size() - suffixLength, suffixLength, suffix) == 0) {
@@ -204,6 +233,7 @@ json MakeEmptyObjectLayout() {
 json MakeEmptySpriteLayout() {
     json data;
     data["designResolution"] = { 1920.0f, 1080.0f };
+    // 追加するSpriteの座標は1920×1080を基準とし、実ウィンドウサイズへの倍率を有効にする。
     data["scaleToWindow"] = true;
     data["sprites"] = json::array();
     return data;
@@ -249,13 +279,11 @@ void ApplySceneAssetMetadata(
 std::vector<fs::path> BuildObjectAssetPaths(const std::string& sceneId) {
     // 単一ファイルと種類別ファイルを同じ順序で列挙し、複製・削除で取りこぼさない。
     const fs::path base = fs::path(kSceneObjectDirectory) / sceneId;
-    return {
-        fs::path(base.string() + ".json"),
-        fs::path(base.string() + "_player.json"),
-        fs::path(base.string() + "_enemy.json"),
-        fs::path(base.string() + "_object.json"),
-        fs::path(base.string() + "_camera.json")
-    };
+    std::vector<fs::path> paths{base.string() + ".json"};
+    for (const auto& format : kObjectSaveCategories) {
+        paths.emplace_back(base.string() + format.suffix);
+    }
+    return paths;
 }
 
 bool AnySceneDestinationExists(const std::string& sceneId) {
@@ -373,20 +401,14 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSceneSaveTargets(
     if (!editor_->GetSceneManager() || !editor_->GetSceneManager()->GetCurrentScene())
         return targets;
 
-    // 同じベース名からカテゴリ別 JSON とメタデータのパスを組み立てる。
-    std::string baseName = currentFilename;
-    size_t extPos = baseName.find(".json");
-    if (extPos != std::string::npos)
-        baseName = baseName.substr(0, extPos);
+    const std::string baseName = GetSaveBaseName(currentFilename);
+    const std::string basePath = std::string(kSceneObjectDirectory) + "/" + baseName;
 
-    std::string basePath = "Resources/json/3Dobject/" + baseName;
-
-    // カテゴリ別の箱
-    json playerSceneData, enemySceneData, objectSceneData, cameraSceneData;
-    playerSceneData["objects"] = json::array();
-    enemySceneData["objects"] = json::array();
-    objectSceneData["objects"] = json::array();
-    cameraSceneData["objects"] = json::array();
+    // 対象が0件のカテゴリも空配列を保存し、以前の配置が残らないようにする。
+    std::unordered_map<SaveMode, json> objectsByCategory;
+    for (const auto& format : kObjectSaveCategories) {
+        objectsByCategory[format.mode] = json::array();
+    }
 
     BaseScene* currentScene = editor_->GetSceneManager()->GetCurrentScene();
 
@@ -401,32 +423,17 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSceneSaveTargets(
         if (obj->IsEditorInternal() || obj->GetClassName() == "EditorOnly" || obj->GetName().rfind("__Editor_", 0) == 0)
             continue;
 
-        json d = SerializeObject(obj.get());
-
-        // SaveCategoryを見て振り分け
-        std::string cat = obj->GetSaveCategory();
-        if (obj->IsCameraObject() || cat == "Camera")
-            cameraSceneData["objects"].push_back(d);
-        else if (cat == "Player") playerSceneData["objects"].push_back(d);
-        else if (cat == "Enemy") enemySceneData["objects"].push_back(d);
-        else objectSceneData["objects"].push_back(d);
+        json objectData = SerializeObject(obj.get());
+        const auto& format = ResolveObjectSaveCategory(obj->IsCameraObject(), obj->GetSaveCategory());
+        objectsByCategory.at(format.mode).push_back(std::move(objectData));
     }
 
-    // モードに応じた書き出し
-    if (mode == SaveMode::All || mode == SaveMode::Player) {
-        targets.push_back({ "Player", basePath + "_player.json", playerSceneData, false });
-    }
-
-    if (mode == SaveMode::All || mode == SaveMode::Enemy) {
-        targets.push_back({ "Enemy", basePath + "_enemy.json", enemySceneData, false });
-    }
-
-    if (mode == SaveMode::All || mode == SaveMode::Object) {
-        targets.push_back({ "Object", basePath + "_object.json", objectSceneData, false });
-    }
-
-    if (mode == SaveMode::All || mode == SaveMode::Camera) {
-        targets.push_back({ "Camera", basePath + "_camera.json", cameraSceneData, false });
+    // 指定カテゴリだけ保存するときも、全体保存と同じ分類・接尾辞を使う。
+    for (const auto& format : kObjectSaveCategories) {
+        if (mode == SaveMode::All || mode == format.mode) {
+            targets.push_back({format.label, basePath + format.suffix,
+                {{"objects", std::move(objectsByCategory.at(format.mode))}}, false});
+        }
     }
 
     // メタデータファイルの作成。既存の表示名などは保存後も維持します。
@@ -455,19 +462,11 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSingleObjectSaveT
     if (!object)
         return targets;
 
-    // 1. ファイル名の自動振り分け
-    std::string baseName = filename;
-    size_t extPos = baseName.find(".json");
-    if (extPos != std::string::npos)
-        baseName = baseName.substr(0, extPos);
-
-    std::string cat = object->GetSaveCategory();
-    std::string targetFilename;
-    if (object->IsCameraObject() || cat == "Camera")
-        targetFilename = "Resources/json/3Dobject/" + baseName + "_camera.json";
-    else if (cat == "Player") targetFilename = "Resources/json/3Dobject/" + baseName + "_player.json";
-    else if (cat == "Enemy") targetFilename = "Resources/json/3Dobject/" + baseName + "_enemy.json";
-    else targetFilename = "Resources/json/3Dobject/" + baseName + "_object.json";
+    // 保存先の分類は全体保存と共通。表示名には元のカテゴリを使う。
+    const std::string cat = object->GetSaveCategory();
+    const auto& format = ResolveObjectSaveCategory(object->IsCameraObject(), cat);
+    const std::string targetFilename = std::string(kSceneObjectDirectory) + "/" +
+        GetSaveBaseName(filename) + format.suffix;
 
     // 2. 既存JSONの読み込み
     json sceneData;
@@ -512,6 +511,7 @@ std::vector<SceneSerializer::SaveTarget> SceneSerializer::BuildSingleObjectSaveT
     }
 
     if (!found) {
+        // 保存済み配置と一致する行がなければ、今回のObjectを新規行として追記する。
         sceneData["objects"].push_back(currentData);
     }
 
@@ -549,6 +549,7 @@ nlohmann::json SceneSerializer::SerializeObject(engine::Object3D* obj) {
     json scene = json::object();
     auto& snapshotFields = snapshot.get_ref<json::object_t&>();
     auto& sceneFields = scene.get_ref<json::object_t&>();
+    // Object全体のスナップショットから、シーン形式が扱うキーだけを移す。
     const auto moveFields = [&](std::initializer_list<const char*> keys) {
         for (const char* key : keys) {
             if (const auto field = snapshotFields.find(key); field != snapshotFields.end()) {
@@ -572,6 +573,7 @@ nlohmann::json SceneSerializer::SerializeObject(engine::Object3D* obj) {
     scene["recorder"].erase("phaseOffset");
     auto* parent = obj->GetParent();
     scene["parentName"] = parent ? parent->GetName() : "";
+    // 親は改名に備えて GUID も保存する。未発行の場合はここで割り当てる。
     scene["parentGuid"] = parent ? parent->EnsurePersistentGuid() : "";
 
     if (obj->IsCameraObject()) {
@@ -581,6 +583,7 @@ nlohmann::json SceneSerializer::SerializeObject(engine::Object3D* obj) {
         return scene;
     }
 
+    // カメラ専用項目を返した後は通常配置を処理する。非表示の判定箱には描画モデル名を保存しない。
     if (className != "InvisibleBox") {
         moveFields({"modelName"});
     }
@@ -593,6 +596,7 @@ nlohmann::json SceneSerializer::SerializeObject(engine::Object3D* obj) {
                 "particleName", "gpuParticleName", "meshEffect1", "meshEffect2", "localFog", "waterParam"});
     scene["eventID"] = snapshot.at("eventType");
 
+    // ゲーム側の型別パラメータは専用変換へ委ね、値があるときだけ配置 JSON へ追加する。
     const json parameter = SceneEntityParameterCodec::Serialize(*obj);
     if (!parameter.empty()) {
         scene["param"] = parameter;
@@ -880,6 +884,7 @@ bool SceneSerializer::DuplicateSceneAsset(
     }
 
     const std::string sourceSpritePath = ResolveExistingSpritePath(sourceId);
+    // 現行・旧形式のどちらから複製しても、出力先は現在の Sprite 配置名へ揃える。
     const fs::path destinationSpritePath = fs::path(kSceneSpriteDirectory) / (newSceneId + "_sprite.json");
 
     if (!sourceSpritePath.empty()) {
@@ -1078,6 +1083,7 @@ bool SceneSerializer::DeleteSceneAsset(const std::string& filename, std::string&
 
     const fs::path spritePaths[] = {
         fs::path(kSceneSpriteDirectory) / (sceneId + "_sprite.json"),
+        // 接尾辞を付けなかった旧形式も、残っていれば同じSceneの関連ファイルとして削除する。
         fs::path(kSceneSpriteDirectory) / (sceneId + ".json")
     };
 
@@ -1205,6 +1211,7 @@ SceneSerializer::SceneAssetValidationResult SceneSerializer::ValidateSceneAsset(
         result.warnings.push_back("旧形式Sceneです。実行設定を保存するとScene Asset形式へ更新されます。");
     }
 
+    // リソースの空欄は既定値を使うため、指定済みのパスだけ存在を検査する。
     if (!asset->bgmPath.empty() && !fs::exists(asset->bgmPath)) {
         result.warnings.push_back("BGMが見つかりません: " + asset->bgmPath);
     }
@@ -1278,6 +1285,7 @@ SceneSerializer::SceneAssetValidationResult SceneSerializer::ValidateSceneAsset(
         }
     }
 
+    // 名前の重複は実行クラスにかかわらず警告へ追加し、必須条件のエラーと区別する。
     for (const std::string& duplicateName : duplicateNames) {
         result.warnings.push_back("Object名が重複しています: " + duplicateName);
     }

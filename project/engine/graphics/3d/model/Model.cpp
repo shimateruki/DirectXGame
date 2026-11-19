@@ -19,6 +19,8 @@
 #include <DebugConsole.h>
 #include <LightManager.h>
 
+namespace engine {
+
 namespace {
 constexpr const char* kDefaultWhiteTexture = "Resources/sprite/common/white.png";
 
@@ -78,6 +80,7 @@ void Model::InitializeFromCpuData(
 
     // 1. ワーカースレッドまたは同期経路で読み込んだCPUデータを受け取る
     modelData_ = std::move(modelData);
+    // 頂点・インデックスのどちらかがないメッシュをあらかじめ除き、描画と境界計算を有効な形状だけに絞ります。
     modelData_.meshes.erase(
         std::remove_if(modelData_.meshes.begin(), modelData_.meshes.end(),
             [](const Mesh& mesh) {
@@ -124,6 +127,7 @@ void Model::InitializeFromCpuData(
         material.textureHandle = TextureManager::GetInstance()->Load(
             material.textureFilePath.empty() ? kDefaultWhiteTexture : material.textureFilePath,
             TextureManager::TextureColorSpace::SRGB);
+        // 法線やORMは色ではなくベクトルや係数のデータなので、sRGB変換なしで読みます。
         if (material.hasNormalMap && !material.normalMapPath.empty()) {
             material.normalMapHandle = TextureManager::GetInstance()->Load(
                 material.normalMapPath,
@@ -260,6 +264,7 @@ void Model::CreateBoneBuffer() {
     }
 
     // 1. リソース作成
+    // StructuredBufferで関節一つにつき一要素として扱います。GPUへ渡す要素間隔も同じ型のバイト数を使います。
     UINT sizeInBytes = sizeof(BoneForGpu) * static_cast<UINT>(modelData_.bones.size());
     boneResource_ = dxCommon->CreateBufferResource(sizeInBytes);
 
@@ -313,6 +318,7 @@ void Model::UpdateBoneBuffer() {
         return;
     }
 
+    // スキニングもノードアニメーションの代替処理も使わないモデルでは、頂点を変形しない単位行列で埋めます。
     if (!modelData_.hasSkinning && !modelData_.usesNodeAnimationProxy) {
         for (size_t i = 0; i < modelData_.bones.size(); ++i) {
             boneMappedData_[i].finalMatrix = math_.MakeIdentity4x4();
@@ -329,6 +335,7 @@ void Model::UpdateBoneBuffer() {
 
         // FinalMatrix = InverseBindPose * SkeletonSpaceMatrix
         if (it != modelData_.skeleton.jointMap.end()) {
+            // バインド姿勢を一度打ち消し、現在のジョイント姿勢を適用する順に掛けます。
             const Joint& joint = modelData_.skeleton.joints[it->second];
             boneMappedData_[i].finalMatrix =
                 math_.Multiply(modelData_.bones[i].inverseBindPoseMatrix, joint.skeletonSpaceMatrix);
@@ -489,6 +496,7 @@ bool Model::PrepareComputeSkinning() {
         dispatched = true;
     }
 
+    // 有効な計算命令を記録できた場合だけ、以後の同一フレームの描画で結果バッファを使います。
     computeSkinningOutputReady_ = dispatched;
     computeSkinningDirty_ = !dispatched;
     return dispatched;
@@ -582,6 +590,7 @@ void Model::Draw(
         const MaterialData* primaryMaterial = GetPrimaryMaterialData();
         const bool usesModelTexture =
             overrideTextureHandle == 0 || overrideTextureHandle >= DirectXCommon::kMaxSrvCount;
+        // 基準材質からの色と粗さを倍率で、金属度を差で渡し、メッシュごとの材質差を復元します。
         if (usesModelTexture && meshMaterial && primaryMaterial) {
             meshMaterialFactors[0] = CalculateMaterialMultiplier(
                 meshMaterial->baseColorFactor.x, primaryMaterial->baseColorFactor.x);
@@ -602,6 +611,7 @@ void Model::Draw(
             meshMaterialFactors.data(),
             0);
 
+        // オブジェクト側の上書きを優先し、なければメッシュ材質、どちらも使えなければ共有の白画像を束縛します。ORMも同じ優先順です。
         uint32_t meshNormalHandle = normalMapHandle;
         if ((meshNormalHandle == 0 || meshNormalHandle >= DirectXCommon::kMaxSrvCount) &&
             meshMaterial && meshMaterial->hasNormalMap &&
@@ -669,3 +679,5 @@ uint32_t Model::GetPolygonCount() const {
 // ==========================================
 // 読み込み: Assimpのメッシュごとにデータを分ける
 // ==========================================
+
+} // namespace engine

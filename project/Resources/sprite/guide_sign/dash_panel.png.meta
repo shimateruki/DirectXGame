@@ -1,0 +1,11 @@
+{
+  "assetType": "Texture",
+  "guid": "d417b4c3ca42b6737aafd914cace5019",
+  "importSettings": {
+    "colorSpace": "Auto",
+    "generateMipmaps": true
+  },
+  "importer": "TextureImporter",
+  "source": "Resources/sprite/guide_sign/dash_panel.png",
+  "version": 1
+}

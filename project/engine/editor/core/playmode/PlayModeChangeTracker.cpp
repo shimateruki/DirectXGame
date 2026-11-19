@@ -58,11 +58,13 @@ bool PlayModeChangeTracker::IsRuntimeDrivenTransform(const engine::Object3D* obj
 }
 
 bool PlayModeChangeTracker::IsIdentityKey(const std::string& key) {
+    // 同じ Object を追跡する識別情報と親子関係は持ち帰り対象外とし、停止時に復元したシーンの値を使う。
     return key == "guid" || key == "name" || key == "type" || key == "saveCategory" ||
         key == "parentName" || key == "parentGuid";
 }
 
 bool PlayModeChangeTracker::IsTransformKey(const std::string& key) {
+    // 回転は Euler 角と Quaternion の両方を姿勢の比較対象に含める。設定値だけを持ち帰る場合は両方保持する。
     return key == "translate" || key == "scale" || key == "rotate" || key == "quaternion";
 }
 
@@ -128,6 +130,7 @@ void PlayModeChangeTracker::CaptureRuntimeChanges() {
         if (!IsEligible(object.get()))
             continue;
         const auto baseline = baselineByGuid_.find(object->GetPersistentGuid());
+        // Play 開始前に存在しなかった Object は、停止後の持ち帰り候補から除く。
         if (baseline == baselineByGuid_.end())
             continue;
         const nlohmann::json runtimeState = editor_->CaptureObjectState(object.get());
@@ -180,6 +183,7 @@ void PlayModeChangeTracker::ApplySelectedChanges() {
         if (!object)
             continue;
         const nlohmann::json beforeApply = editor_->CaptureObjectState(object);
+        // 設定値を持ち帰るときは Play 中の JSON を土台にする。姿勢だけなら、停止後の設定値を保持したまま差分を重ねる。
         nlohmann::json merged = candidate.applyProperties ? candidate.runtimeState : beforeApply;
 
         // GUID・名前・親子識別子は復元後の編集シーンのものを維持する。
@@ -197,6 +201,7 @@ void PlayModeChangeTracker::ApplySelectedChanges() {
             }
         }
 
+        // 再描画で新しい姿勢を使えるようローカル・ワールド行列を更新して、適用前の状態を Undo 用に登録する。
         object->ImportFromJson(merged);
         object->UpdateLocalMatrix();
         object->UpdateWorldMatrix();

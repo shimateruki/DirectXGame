@@ -5,6 +5,7 @@
 #include <random>
 
 void GimmickChikuwaBlock::Initialize(engine::Object3DCommon* common, const std::string& modelName) {
+    // 配置位置を復帰先として保持し、待機中にプレイヤーを支える地面として登録します。
     BaseGimmick::Initialize(common, modelName);
     SetClassName("Gimmick");
     SetGimmickType("ChikuwaBlock");
@@ -31,11 +32,12 @@ void GimmickChikuwaBlock::Initialize(engine::Object3DCommon* common, const std::
 void GimmickChikuwaBlock::Update(float deltaTime) {
     // 状態更新
     switch (state_) {
+    // まだ踏まれていない間だけ、編集中に移動した配置を復帰位置へ反映します。
     case State::Idle:
-        // 待機中は常に開始位置を最新に更新（エディタでの移動に対応するため）
         startPos_ = GetTransform()->translate;
         break;
 
+    // 足場のまま横方向だけ震わせ、予告時間が尽きたら落下へ移します。
     case State::Shaking:
         timer_ += deltaTime;
 
@@ -54,6 +56,7 @@ void GimmickChikuwaBlock::Update(float deltaTime) {
 
         break;
 
+    // 毎フレーム鉛直速度へ重力を積分し、落下時間が尽きたら表示を消す段階へ進みます。
     case State::Falling:
         timer_ += deltaTime;
         velocityY_ -= GetGravity() * deltaTime;
@@ -69,6 +72,7 @@ void GimmickChikuwaBlock::Update(float deltaTime) {
 
         break;
 
+    // 非表示のまま復帰時間を待ち、開始地点に戻す処理を ChangeState() に任せます。
     case State::Hidden:
         timer_ += deltaTime;
 
@@ -102,10 +106,12 @@ bool GimmickChikuwaBlock::OnCollision(engine::Object3D* other) {
 }
 
 void GimmickChikuwaBlock::ChangeState(State newState) {
+    // 各段階の時計は遷移時にリセットし、衝突や表示をその場で切り替えます。
     state_ = newState;
     timer_ = 0.0f;
 
     switch (state_) {
+    // 復帰時は衝突と表示を戻し、次の落下に前回の回転や速度を持ち越しません。
     case State::Idle:
         SetIsVisible(true);
         SetCollisionAttribute(CollisionCategories::Get("ground")); // 衝突判定を元に戻す
@@ -115,7 +121,7 @@ void GimmickChikuwaBlock::ChangeState(State newState) {
         break;
 
     case State::Shaking:
-        // 震え開始
+        // 予告中は表示と地面属性を維持し、足場から離れる猶予を残します。
         break;
 
     case State::Falling:
@@ -123,6 +129,7 @@ void GimmickChikuwaBlock::ChangeState(State newState) {
         SetCollisionAttribute(0);
         break;
 
+    // 落下が終わった実体は透明化ではなく非表示にし、復帰まで接触を無効にします。
     case State::Hidden:
         SetIsVisible(false);
         SetCollisionAttribute(0);

@@ -84,6 +84,7 @@ void AssetReferenceExplorer::DrawSelectedAssetDetails() {
 
     ImGui::Separator();
 
+    // 編集中の名前は毎フレーム戻さず、選択した GUID が変わったときだけ初期化する。
     if (renameBufferGuid_ != asset->guid) {
         renameBufferGuid_ = asset->guid;
         const std::string filename = fs::path(asset->sourcePath).filename().generic_string();
@@ -98,6 +99,7 @@ void AssetReferenceExplorer::DrawSelectedAssetDetails() {
         std::string error;
         const std::string previousPath = asset->sourcePath;
 
+        // 名前変更後のファイルを次回の索引から選び直す。参照の検出も新しいパスでやり直す。
         if (AssetDatabase::GetInstance()->RenameAsset(previousPath, renameBuffer_, &error)) {
             statusMessage_ = "名前を変更しました。.metaのGUIDは維持されます。Path参照は一覧で確認してください。";
             requestedAssetPath_ = (fs::path(previousPath).parent_path() / renameBuffer_).generic_string();
@@ -136,6 +138,7 @@ void AssetReferenceExplorer::DrawSelectedAssetDetails() {
             std::string recovered;
             std::string error;
 
+            // 退避が成功したときにだけ選択を解除し、次回描画で索引を作り直す。
             if (AssetDatabase::GetInstance()->MoveAssetToTrash(asset->sourcePath, &recovered, &error)) {
                 statusMessage_ = "Assetを復元可能なゴミ箱へ移動しました: " + recovered;
                 selectedGuid_.clear();
@@ -163,6 +166,7 @@ void AssetReferenceExplorer::DrawSelectedObjectReferences() {
     }
 
     std::unordered_map<std::string, std::vector<Usage>> objectUsages;
+    // 選択中Objectは確認用に走査し、ディスク上の未解決参照一覧には加えない。
     VisitJson(object->ExportToJson(), "Object: " + object->GetName(), "", "", objectUsages, false);
     ImGui::Text("%s が参照しているAsset", object->GetName().c_str());
     int count = 0;
@@ -204,6 +208,7 @@ void AssetReferenceExplorer::DrawMissingReferences() {
         if (missing.candidateGuids.empty()) {
             ImGui::TextDisabled("近い修復候補なし");
         } else {
+            // 候補名を描画する直前に GUID を引き直し、更新済みの索引から消えた候補を無理に表示しない。
             const EditorAssetRecord* preview = AssetDatabase::GetInstance()->FindByGuid(missing.candidateGuids[missing.selectedCandidate]);
 
             if (ImGui::BeginCombo("修復候補", preview ? preview->sourcePath.c_str() : "候補なし")) {
@@ -237,6 +242,7 @@ void AssetReferenceExplorer::Draw() {
     AssetDatabase* database = AssetDatabase::GetInstance();
     if (rescanRequested_ || indexedGeneration_ != database->GetGeneration())
         RefreshIndex();
+    // パス指定で開いた場合は、索引の更新確認の後に対象を選択する。
     if (!requestedAssetPath_.empty()) {
         SelectAssetByPath(requestedAssetPath_);
         requestedAssetPath_.clear();

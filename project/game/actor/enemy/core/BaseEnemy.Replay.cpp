@@ -40,6 +40,7 @@ void BaseEnemy::CaptureReplayCustomState(json& state) const {
     state["enemyDamageReactionStrength"] = damageReactionStrength_;
     state["enemyDamageReactionDirection"] = ToJson(damageReactionLocalDirection_);
     state["enemyDefaultColor"] = ToJson(defaultColor_);
+    // 捕獲・投擲・移動先の乱数を記録し、巻き戻し後の経路を再現できるようにします。
     state["enemyCarried"] = isCarried_;
     state["enemyDormant"] = isDormant_;
     state["enemyThrowRecoveryTimer"] = throwRecoveryTimer_;
@@ -57,6 +58,7 @@ void BaseEnemy::CaptureReplayCustomState(json& state) const {
     state["enemySlamCooldown"] = slamImpactCooldownTimer_;
     state["enemySlamCount"] = slamImpactCount_;
     state["enemyRotationRecovering"] = isThrowRotationRecovering_;
+    // 撃破演出の段階とドロップ済みかどうかを保存し、再開しても演出やコインを重複させません。
     state["enemyDefeatPlaying"] = isDefeatEffectPlaying_;
     state["enemyDefeatFinished"] = isDefeatEffectFinished_;
     state["enemyCoinDropsSpawned"] = hasSpawnedDefeatCoinDrops_;
@@ -94,6 +96,7 @@ void BaseEnemy::RestoreReplayCustomState(const json& state) {
 
     if (state.contains("enemyDefaultColor"))
         defaultColor_ = ReadVector4(state["enemyDefaultColor"], defaultColor_);
+    // 姿勢に続いて捕獲・投擲・徘徊の状態を戻し、途中からでも同じ速度や移動先で再開できるようにします。
     isCarried_ = state.value("enemyCarried", isCarried_);
     isDormant_ = state.value("enemyDormant", isDormant_);
     throwRecoveryTimer_ = state.value("enemyThrowRecoveryTimer", throwRecoveryTimer_);
@@ -120,6 +123,7 @@ void BaseEnemy::RestoreReplayCustomState(const json& state) {
     wasTargetDetected_ = state.value("enemyTargetDetected", wasTargetDetected_);
     bossTargetEngaged_ = state.value("enemyBossTargetEngaged", bossTargetEngaged_);
     isNoticeReactionActive_ = state.value("enemyNoticeActive", isNoticeReactionActive_);
+    // 反応種別がない旧録画では、反応中フラグが立っていれば発見として読み替えます。
     const int noticeKindValue = state.value("enemyNoticeKind", isNoticeReactionActive_ ? 1 : 0);
 
     switch (noticeKindValue) {
@@ -155,6 +159,7 @@ void BaseEnemy::RestoreReplayCustomState(const json& state) {
     if (state.contains("enemyDefeatBaseColor"))
         defeatBaseColor_ = ReadVector4(state["enemyDefeatBaseColor"], defeatBaseColor_);
 
+    // 保存データからリアクション用の表示を構成し、リプレイで除外された敵のマークは表示しません。
     if (isNoticeReactionActive_) {
         ConfigureNoticeMarkForReaction();
     }

@@ -1381,7 +1381,7 @@
             "scale": [
                 2.0,
                 1.0,
-                2.7
+                2.700000047683716
             ],
             "tag": "",
             "targetID": -1,
@@ -1472,7 +1472,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                240.0,
+                502.5,
                 -13.0,
                 -25.0
             ],
@@ -1495,7 +1495,7 @@
             "roughness": 0.6200000047683716,
             "saveCategory": "Object",
             "scale": [
-                1450.0,
+                1975.0,
                 3.5,
                 850.0
             ],
@@ -2260,121 +2260,6 @@
                     0.0
                 ],
                 "size": [
-                    12.0,
-                    0.800000011920929,
-                    13.0
-                ],
-                "type": 0
-            },
-            "collisionAttribute": 0,
-            "collisionAttributeIds": [],
-            "collisionAttributeUnknownBits": 0,
-            "collisionMask": 0,
-            "collisionMaskIds": [],
-            "collisionMaskUnknownBits": 0,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableLighting": true,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 1.0,
-            "eventID": 0,
-            "gimmickType": "",
-            "gpuParticleName": "",
-            "guid": "a84cb09b-32a6-528d-939f-65621c4e64e5",
-            "isStatic": true,
-            "itemType": "",
-            "layer": "Default",
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 0,
-            "meshDrawIndex": -1,
-            "meshEffect1": "",
-            "meshEffect2": "",
-            "metallic": 0.0,
-            "myEventID": -1,
-            "name": "Stage1_Collision_V4_ArenaEntry",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentGuid": "20a07a3e-74c3-5373-9728-6b774b8abfed",
-            "parentName": "Stage1_MidbossTerrain_EntryBridge",
-            "particleName": "",
-            "position": [
-                0.0,
-                9.199999809265137,
-                0.0
-            ],
-            "quaternion": [
-                0.0,
-                0.028536517173051834,
-                0.0,
-                0.9995927214622498
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.05708078294992447,
-                0.0
-            ],
-            "roughness": 0.6200000047683716,
-            "saveCategory": "Object",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "tag": "",
-            "targetID": -1,
-            "texturePath": "",
-            "textureTiling": [
-                1.0,
-                1.0
-            ],
-            "type": "InvisibleBox"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "animatorController": "",
-                "isAnimLoop": true
-            },
-            "autoTextureTiling": false,
-            "blendMode": 1,
-            "castShadow": false,
-            "collider": {
-                "center": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    0.0,
-                    0.0
-                ],
-                "size": [
                     36.0,
                     0.800000011920929,
                     30.0
@@ -2605,9 +2490,9 @@
                     0.0
                 ],
                 "size": [
-                    20.0,
+                    76.0,
                     0.800000011920929,
-                    11.0
+                    33.0
                 ],
                 "type": 0
             },
@@ -5325,21 +5210,6 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
-            "lod": {
-                "enabled": false,
-                "levels": [
-                    {
-                        "distance": 35.0,
-                        "level": 1,
-                        "modelName": "Gimmicks/star/star_lod1.gltf"
-                    },
-                    {
-                        "distance": 70.0,
-                        "level": 2,
-                        "modelName": "Gimmicks/star/star_lod2.gltf"
-                    }
-                ]
-            },
             "materialType": 0,
             "meshDrawIndex": -1,
             "meshEffect1": "",
@@ -6106,9 +5976,9 @@
             ],
             "quaternion": [
                 0.0,
-                -0.3794642686843872,
+                0.9066753387451172,
                 0.0,
-                0.9252063632011414
+                0.4218291938304901
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -6117,7 +5987,7 @@
             },
             "rotation": [
                 0.0,
-                -0.7784343957901001,
+                2.2706689834594727,
                 0.0
             ],
             "roughness": 0.6000000238418579,
@@ -7224,21 +7094,6 @@
                 "noiseSpeed": 0.0,
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
-            },
-            "lod": {
-                "enabled": false,
-                "levels": [
-                    {
-                        "distance": 35.0,
-                        "level": 1,
-                        "modelName": "Gimmicks/star/star_lod1.gltf"
-                    },
-                    {
-                        "distance": 70.0,
-                        "level": 2,
-                        "modelName": "Gimmicks/star/star_lod2.gltf"
-                    }
-                ]
             },
             "materialType": 0,
             "meshDrawIndex": -1,
@@ -8500,7 +8355,7 @@
                 0.03999999910593033,
                 1.0
             ],
-            "emissive": 3.0345451831817627,
+            "emissive": 3.2745449542999268,
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
@@ -8588,7 +8443,7 @@
             "parentName": "Stage1_MidbossTerrain_DashStart",
             "particleName": "",
             "position": [
-                12.0,
+                68.0,
                 10.380000114440918,
                 0.0
             ],
@@ -8667,7 +8522,7 @@
                 0.03999999910593033,
                 1.0
             ],
-            "emissive": 3.0345451831817627,
+            "emissive": 3.2745449542999268,
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
@@ -8755,15 +8610,15 @@
             "parentName": "Stage1_TerrainPart_DashRunA",
             "particleName": "",
             "position": [
-                10.0,
+                -2.36639404296875,
                 0.38000011444091797,
                 0.0
             ],
             "quaternion": [
                 0.0,
-                0.7071067690849304,
+                0.7071066498756409,
                 0.0,
-                0.7071067690849304
+                0.70710688829422
             ],
             "recorder": {
                 "isRecordLoop": false,
@@ -8772,15 +8627,15 @@
             },
             "rotation": [
                 0.0,
-                1.5707963705062866,
+                1.5707958936691284,
                 0.0
             ],
             "roughness": 0.41999998688697815,
             "saveCategory": "Object",
             "scale": [
+                0.9999995827674866,
                 1.0,
-                1.0,
-                1.0
+                0.999992847442627
             ],
             "tag": "",
             "targetID": -1,
@@ -8834,7 +8689,7 @@
                 0.03999999910593033,
                 1.0
             ],
-            "emissive": 3.0345451831817627,
+            "emissive": 3.2745449542999268,
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
@@ -8922,7 +8777,7 @@
             "parentName": "Stage1_TerrainPart_DashRunB",
             "particleName": "",
             "position": [
-                9.0,
+                65.0,
                 0.38000011444091797,
                 0.0
             ],
@@ -9089,7 +8944,7 @@
             "parentName": "Stage1_TerrainPart_DashRunA",
             "particleName": "",
             "position": [
-                -29.0,
+                -109.0,
                 2.1999998092651367,
                 0.0
             ],
@@ -9256,7 +9111,7 @@
             "parentName": "Stage1_TerrainPart_DashRunA",
             "particleName": "",
             "position": [
-                -24.0,
+                -102.0,
                 4.038477897644043,
                 0.0
             ],
@@ -9423,7 +9278,7 @@
             "parentName": "Stage1_TerrainPart_DashRunA",
             "particleName": "",
             "position": [
-                -19.0,
+                -87.0,
                 4.800000190734863,
                 0.0
             ],
@@ -9590,7 +9445,7 @@
             "parentName": "Stage1_TerrainPart_DashRunA",
             "particleName": "",
             "position": [
-                -14.0,
+                -72.0,
                 4.038477897644043,
                 0.0
             ],
@@ -9757,7 +9612,7 @@
             "parentName": "Stage1_TerrainPart_DashRunA",
             "particleName": "",
             "position": [
-                -9.0,
+                -65.0,
                 2.1999998092651367,
                 0.0
             ],
@@ -9924,7 +9779,7 @@
             "parentName": "Stage1_TerrainPart_DashRunA",
             "particleName": "",
             "position": [
-                13.0,
+                69.0,
                 2.1999998092651367,
                 0.0
             ],
@@ -10091,7 +9946,7 @@
             "parentName": "Stage1_TerrainPart_DashRunA",
             "particleName": "",
             "position": [
-                17.75,
+                81.66666412353516,
                 4.038477897644043,
                 0.0
             ],
@@ -10258,7 +10113,7 @@
             "parentName": "Stage1_TerrainPart_DashRunA",
             "particleName": "",
             "position": [
-                22.5,
+                94.33333587646484,
                 4.800000190734863,
                 0.0
             ],
@@ -10425,7 +10280,7 @@
             "parentName": "Stage1_TerrainPart_DashRunA",
             "particleName": "",
             "position": [
-                27.25,
+                107.0,
                 4.038477897644043,
                 0.0
             ],
@@ -10592,7 +10447,7 @@
             "parentName": "Stage1_TerrainPart_DashRunA",
             "particleName": "",
             "position": [
-                32.0,
+                113.0,
                 2.1999998092651367,
                 0.0
             ],
@@ -10759,7 +10614,7 @@
             "parentName": "Stage1_TerrainPart_DashRunB",
             "particleName": "",
             "position": [
-                16.0,
+                72.0,
                 2.1999998092651367,
                 0.0
             ],
@@ -10926,7 +10781,7 @@
             "parentName": "Stage1_TerrainPart_DashRunB",
             "particleName": "",
             "position": [
-                21.5,
+                87.125,
                 4.038477897644043,
                 0.0
             ],
@@ -11093,7 +10948,7 @@
             "parentName": "Stage1_TerrainPart_DashRunB",
             "particleName": "",
             "position": [
-                27.0,
+                102.25,
                 4.800000190734863,
                 0.0
             ],
@@ -11260,7 +11115,7 @@
             "parentName": "Stage1_TerrainPart_DashRunB",
             "particleName": "",
             "position": [
-                32.5,
+                116.5,
                 4.038477897644043,
                 0.0
             ],
@@ -11427,7 +11282,7 @@
             "parentName": "Stage1_TerrainPart_DashRunB",
             "particleName": "",
             "position": [
-                38.0,
+                122.0,
                 2.1999998092651367,
                 0.0
             ],
@@ -11617,9 +11472,9 @@
             "collisionMaskIds": [],
             "collisionMaskUnknownBits": 0,
             "color": [
-                0.8199999928474426,
-                0.8500000238418579,
-                0.8799999952316284,
+                1.0,
+                0.7400000095367432,
+                0.07999999821186066,
                 1.0
             ],
             "components": {
@@ -11632,19 +11487,19 @@
                 "ParticleEmitter": {
                     "_editorPresent": true,
                     "cpuParticle": "",
-                    "gpuParticle": "shared/star_sparkle_silver",
+                    "gpuParticle": "shared/star_sparkle",
                     "version": 1
                 }
             },
-            "emissive": 1.25,
-            "enableEnvMap": true,
+            "emissive": 1.649999976158142,
+            "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": true,
             "enemyType": "",
             "envIntensity": 0.6499999761581421,
             "eventID": 7,
             "gimmickType": "",
-            "gpuParticleName": "shared/star_sparkle_silver",
+            "gpuParticleName": "shared/star_sparkle",
             "guid": "1337691d-e52f-5303-bd8c-a131ff8c4103",
             "isStatic": false,
             "itemType": "",
@@ -11667,8 +11522,8 @@
             "meshDrawIndex": -1,
             "meshEffect1": "",
             "meshEffect2": "",
-            "metallic": 0.4000000059604645,
-            "modelName": "Gimmicks/star/star_silver.gltf",
+            "metallic": 0.18000000715255737,
+            "modelName": "Gimmicks/star",
             "myEventID": -1,
             "name": "Stage1_StarCoin_03",
             "normalMapPath": "",
@@ -11697,7 +11552,7 @@
                 0.0,
                 0.0
             ],
-            "roughness": 0.30000001192092896,
+            "roughness": 0.3199999928474426,
             "saveCategory": "Object",
             "scale": [
                 0.05000000074505806,
@@ -11706,7 +11561,7 @@
             ],
             "tag": "",
             "targetID": 2,
-            "texturePath": "Resources/sprite/common/white.png",
+            "texturePath": "",
             "textureTiling": [
                 1.0,
                 1.0
@@ -15948,9 +15803,9 @@
             ],
             "collisionMaskUnknownBits": 4294966784,
             "color": [
-                0.47999998927116394,
-                0.5199999809265137,
-                0.5799999833106995,
+                1.0,
+                0.7799999713897705,
+                0.2199999988079071,
                 1.0
             ],
             "components": {
@@ -15961,7 +15816,7 @@
                     "version": 1
                 }
             },
-            "emissive": 1.3900001049041748,
+            "emissive": 1.9300000667572021,
             "enableEnvMap": false,
             "enableLighting": true,
             "enableNormalMap": false,
@@ -15988,21 +15843,6 @@
                 "scatteringG": 0.0,
                 "scatteringIntensity": 0.0
             },
-            "lod": {
-                "enabled": false,
-                "levels": [
-                    {
-                        "distance": 35.0,
-                        "level": 1,
-                        "modelName": "Stages/crown/crown_lod1.obj"
-                    },
-                    {
-                        "distance": 70.0,
-                        "level": 2,
-                        "modelName": "Stages/crown/crown_lod2.obj"
-                    }
-                ]
-            },
             "materialType": 0,
             "meshDrawIndex": -1,
             "meshEffect1": "Resources/json/effect/shared/effect_crown_idle_shell.json",
@@ -16017,7 +15857,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                940.0,
+                1465.0,
                 19.299999237060547,
                 20.0
             ],
@@ -25718,24 +25558,13 @@
                     12.0,
                     26.0
                 ],
-                "type": 2
+                "type": 0
             },
-            "collisionAttribute": 4,
-            "collisionAttributeIds": [
-                "ground"
-            ],
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
             "collisionAttributeUnknownBits": 0,
-            "collisionMask": 255,
-            "collisionMaskIds": [
-                "player",
-                "enemy",
-                "ground",
-                "player_bullet",
-                "trigger",
-                "map_block",
-                "player_attack",
-                "enemy_attack"
-            ],
+            "collisionMask": 0,
+            "collisionMaskIds": [],
             "collisionMaskUnknownBits": 0,
             "color": [
                 1.0,
@@ -25775,7 +25604,7 @@
             "meshEffect1": "",
             "meshEffect2": "",
             "metallic": 0.0,
-            "modelName": "Stages/ring_star_court/Main_soil.obj",
+            "modelName": "",
             "myEventID": -1,
             "name": "Stage1_RingCourt_MainSoil",
             "normalMapPath": "",
@@ -25900,9 +25729,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                0.0,
+                -35.5,
                 0.010000228881835938,
-                0.0
+                -7.5
             ],
             "quaternion": [
                 0.0,
@@ -25923,9 +25752,9 @@
             "roughness": 0.8999999761581421,
             "saveCategory": "Object",
             "scale": [
+                0.28999999165534973,
                 1.0,
-                1.0,
-                1.0
+                0.5192307829856873
             ],
             "tag": "",
             "targetID": -1,
@@ -26016,9 +25845,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                0.0,
+                -35.5,
                 0.039999961853027344,
-                0.0
+                -6.960000038146973
             ],
             "quaternion": [
                 0.0,
@@ -26039,7 +25868,7 @@
             "roughness": 0.8999999761581421,
             "saveCategory": "Object",
             "scale": [
-                1.0,
+                0.28999999165534973,
                 1.0,
                 1.0
             ],
@@ -28179,7 +28008,7 @@
             "particleName": "",
             "position": [
                 38.0,
-                0.2200002670288086,
+                0.6200002431869507,
                 22.0
             ],
             "quaternion": [
@@ -29014,9 +28843,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                12.192390441894531,
-                0.020000457763671875,
-                -22.82564926147461
+                -44.875,
+                0.019999999552965164,
+                -19.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -29130,9 +28959,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -24.52756690979004,
-                0.020000457763671875,
-                22.8413028717041
+                -10.25,
+                1.0199999809265137,
+                -16.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -29246,9 +29075,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -0.12281417846679688,
-                0.020000457763671875,
-                -22.978519439697266
+                23.5,
+                0.41999998688697815,
+                -1.600000023841858
             ],
             "quaternion": [
                 0.0,
@@ -29362,9 +29191,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                26.140228271484375,
-                0.020000457763671875,
-                -21.674789428710938
+                -41.75,
+                0.019999999552965164,
+                4.599999904632568
             ],
             "quaternion": [
                 0.0,
@@ -29478,9 +29307,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -41.469825744628906,
-                0.020000457763671875,
-                22.769634246826172
+                -7.5,
+                1.0199999809265137,
+                13.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -29594,9 +29423,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -3.5382003784179688,
-                0.020000457763671875,
-                -21.706233978271484
+                27.0,
+                0.41999998688697815,
+                24.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -29710,9 +29539,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -10.976860046386719,
-                0.020000457763671875,
-                -21.09764862060547
+                -38.625,
+                0.019999999552965164,
+                -19.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -29826,9 +29655,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -17.245513916015625,
-                0.020000457763671875,
-                23.890804290771484
+                -4.75,
+                1.0199999809265137,
+                -16.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -29942,9 +29771,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -43.17515182495117,
-                0.020000457763671875,
-                23.74755096435547
+                30.5,
+                0.41999998688697815,
+                -1.600000023841858
             ],
             "quaternion": [
                 0.0,
@@ -30058,9 +29887,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -23.072481155395508,
-                0.020000457763671875,
-                22.144893646240234
+                -35.5,
+                0.019999999552965164,
+                4.599999904632568
             ],
             "quaternion": [
                 0.0,
@@ -30174,9 +30003,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -34.61884689331055,
-                0.020000457763671875,
-                -22.335987091064453
+                -2.0,
+                1.0199999809265137,
+                13.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -30290,9 +30119,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -31.880502700805664,
-                0.020000457763671875,
-                -22.28192138671875
+                34.0,
+                0.41999998688697815,
+                24.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -30406,9 +30235,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -2.4852066040039063,
-                0.020000457763671875,
-                23.417484283447266
+                -32.375,
+                0.019999999552965164,
+                -19.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -30522,9 +30351,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                18.449684143066406,
-                0.020000457763671875,
-                -21.763103485107422
+                0.75,
+                1.0199999809265137,
+                -16.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -30638,9 +30467,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -11.834327697753906,
-                0.020000457763671875,
-                -22.387008666992188
+                37.5,
+                0.41999998688697815,
+                -1.600000023841858
             ],
             "quaternion": [
                 0.0,
@@ -30754,9 +30583,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                5.314456939697266,
-                0.020000457763671875,
-                23.532190322875977
+                -29.25,
+                0.019999999552965164,
+                4.599999904632568
             ],
             "quaternion": [
                 0.0,
@@ -30870,9 +30699,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -21.481000900268555,
-                0.020000457763671875,
-                -21.112567901611328
+                3.5,
+                1.0199999809265137,
+                13.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -30986,9 +30815,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -13.225685119628906,
-                0.020000457763671875,
-                -22.965805053710938
+                41.0,
+                0.41999998688697815,
+                24.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -31102,9 +30931,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -24.789485931396484,
-                0.020000457763671875,
-                -21.258020401000977
+                -26.125,
+                0.019999999552965164,
+                -19.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -31218,9 +31047,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -5.5681304931640625,
-                0.020000457763671875,
-                23.25023651123047
+                6.25,
+                1.0199999809265137,
+                -16.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -31334,9 +31163,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -28.679588317871094,
-                0.020000457763671875,
-                -21.10232925415039
+                44.5,
+                0.41999998688697815,
+                -1.600000023841858
             ],
             "quaternion": [
                 0.0,
@@ -31450,9 +31279,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                11.38309097290039,
-                0.020000457763671875,
-                23.482166290283203
+                -44.875,
+                0.019999999552965164,
+                4.599999904632568
             ],
             "quaternion": [
                 0.0,
@@ -31566,9 +31395,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -10.539848327636719,
-                0.020000457763671875,
-                23.577693939208984
+                -10.25,
+                1.0199999809265137,
+                13.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -31682,9 +31511,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                18.512298583984375,
-                0.020000457763671875,
-                -22.344547271728516
+                23.5,
+                0.41999998688697815,
+                24.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -31798,9 +31627,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -30.49346351623535,
-                0.020000457763671875,
-                22.970884323120117
+                -41.75,
+                0.019999999552965164,
+                -19.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -31914,9 +31743,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                44.615234375,
-                0.020000457763671875,
-                -21.839269638061523
+                -7.5,
+                1.0199999809265137,
+                -16.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -32030,9 +31859,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -14.562118530273438,
-                0.020000457763671875,
-                23.621248245239258
+                27.0,
+                0.41999998688697815,
+                -1.600000023841858
             ],
             "quaternion": [
                 0.0,
@@ -32146,9 +31975,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                42.91664123535156,
-                0.020000457763671875,
-                -22.335472106933594
+                -38.625,
+                0.019999999552965164,
+                4.599999904632568
             ],
             "quaternion": [
                 0.0,
@@ -32262,9 +32091,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -21.94413948059082,
-                0.020000457763671875,
-                -22.26717758178711
+                -4.75,
+                1.0199999809265137,
+                13.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -32378,9 +32207,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -31.083465576171875,
-                0.020000457763671875,
-                -22.277755737304688
+                30.5,
+                0.41999998688697815,
+                24.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -32494,9 +32323,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -7.660652160644531,
-                0.020000457763671875,
-                22.93128204345703
+                -35.5,
+                0.019999999552965164,
+                -19.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -32610,9 +32439,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -14.085430145263672,
-                0.020000457763671875,
-                22.888198852539063
+                -2.0,
+                1.0199999809265137,
+                -16.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -32726,9 +32555,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                30.8013916015625,
-                0.020000457763671875,
-                -21.867992401123047
+                34.0,
+                0.41999998688697815,
+                -1.600000023841858
             ],
             "quaternion": [
                 0.0,
@@ -32842,9 +32671,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                13.768104553222656,
-                0.020000457763671875,
-                23.176773071289063
+                -32.375,
+                0.019999999552965164,
+                4.599999904632568
             ],
             "quaternion": [
                 0.0,
@@ -32958,9 +32787,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                16.05347442626953,
-                0.020000457763671875,
-                22.051918029785156
+                0.75,
+                1.0199999809265137,
+                13.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -33074,9 +32903,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -21.700876235961914,
-                0.020000457763671875,
-                -21.114301681518555
+                37.5,
+                0.41999998688697815,
+                24.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -33190,9 +33019,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                21.39044189453125,
-                0.020000457763671875,
-                23.188194274902344
+                -29.25,
+                0.019999999552965164,
+                -19.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -33306,9 +33135,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                20.069717407226563,
-                0.020000457763671875,
-                22.69101905822754
+                3.5,
+                1.0199999809265137,
+                -16.600000381469727
             ],
             "quaternion": [
                 0.0,
@@ -33422,9 +33251,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                13.907791137695313,
-                0.020000457763671875,
-                -22.81268310546875
+                41.0,
+                0.41999998688697815,
+                -1.600000023841858
             ],
             "quaternion": [
                 0.0,
@@ -33538,9 +33367,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -9.127742767333984,
-                0.020000457763671875,
-                23.998271942138672
+                -26.125,
+                0.019999999552965164,
+                4.599999904632568
             ],
             "quaternion": [
                 0.0,
@@ -33705,9 +33534,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -38.0,
-                2.0,
-                0.0
+                -40.0,
+                1.899999976158142,
+                -6.0
             ],
             "quaternion": [
                 0.0,
@@ -33872,9 +33701,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                -8.0,
-                2.0,
-                0.0
+                -11.0,
+                3.0,
+                -5.0
             ],
             "quaternion": [
                 0.0,
@@ -34039,9 +33868,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                14.0,
-                2.0,
-                0.0
+                9.0,
+                3.0,
+                5.0
             ],
             "quaternion": [
                 0.0,
@@ -34206,9 +34035,9 @@
             "parentName": "Stage1_RingCourt_MainSoil",
             "particleName": "",
             "position": [
-                43.0,
-                2.0,
-                0.0
+                45.0,
+                2.200000047683716,
+                10.0
             ],
             "quaternion": [
                 0.0,
@@ -34639,7 +34468,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                635.0,
+                1160.0,
                 11.350000381469727,
                 -14.0
             ],
@@ -34662,9 +34491,9 @@
             "roughness": 0.7799999713897705,
             "saveCategory": "Object",
             "scale": [
-                1.1,
+                1.100000023841858,
                 1.0,
-                1.35
+                1.350000023841858
             ],
             "tag": "",
             "targetID": -1,
@@ -35384,7 +35213,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                871.50390625,
+                1396.50390625,
                 24.25041389465332,
                 52.576438903808594
             ],
@@ -35512,7 +35341,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                890.9714965820313,
+                1415.971435546875,
                 14.91477108001709,
                 49.352577209472656
             ],
@@ -35744,7 +35573,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                846.0,
+                1371.0,
                 24.0,
                 51.0
             ],
@@ -36000,7 +35829,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                245.0,
+                257.7176208496094,
                 0.0,
                 -10.0
             ],
@@ -36017,135 +35846,7 @@
             },
             "rotation": [
                 0.0,
-                0.0,
-                0.0
-            ],
-            "roughness": 0.9200000166893005,
-            "saveCategory": "Object",
-            "scale": [
-                1.0,
-                1.0,
-                1.0
-            ],
-            "tag": "",
-            "targetID": -1,
-            "texturePath": "",
-            "textureTiling": [
-                1.0,
-                1.0
-            ],
-            "type": "Model"
-        },
-        {
-            "animation": {
-                "animName": "",
-                "animatorController": "",
-                "isAnimLoop": true
-            },
-            "autoTextureTiling": false,
-            "blendMode": 1,
-            "castShadow": true,
-            "collider": {
-                "center": [
-                    0.0,
-                    -1.5,
-                    0.0
-                ],
-                "rotation": [
-                    0.0,
-                    -0.0,
-                    0.0
-                ],
-                "size": [
-                    12.0,
-                    11.5,
-                    13.0
-                ],
-                "type": 3
-            },
-            "collisionAttribute": 4,
-            "collisionAttributeIds": [
-                "ground"
-            ],
-            "collisionAttributeUnknownBits": 0,
-            "collisionMask": 4294967295,
-            "collisionMaskIds": [
-                "player",
-                "enemy",
-                "ground",
-                "player_bullet",
-                "trigger",
-                "map_block",
-                "player_attack",
-                "enemy_attack",
-                "hook_anchor"
-            ],
-            "collisionMaskUnknownBits": 4294966784,
-            "color": [
-                1.0,
-                1.0,
-                1.0,
-                1.0
-            ],
-            "emissive": 1.0,
-            "enableEnvMap": false,
-            "enableLighting": true,
-            "enableNormalMap": false,
-            "enemyType": "",
-            "envIntensity": 4.800000190734863,
-            "eventID": 0,
-            "gimmickType": "",
-            "gpuParticleName": "",
-            "guid": "20a07a3e-74c3-5373-9728-6b774b8abfed",
-            "isStatic": true,
-            "itemType": "",
-            "layer": "Default",
-            "localFog": {
-                "color": [
-                    0.20000000298023224,
-                    0.800000011920929,
-                    0.5,
-                    1.0
-                ],
-                "density": 0.5,
-                "edgeFade": 0.0,
-                "noiseScale": 0.0,
-                "noiseSpeed": 0.0,
-                "scatteringG": 0.0,
-                "scatteringIntensity": 0.0
-            },
-            "materialType": 36,
-            "meshDrawIndex": -1,
-            "meshEffect1": "",
-            "meshEffect2": "",
-            "metallic": 0.0,
-            "modelName": "Stages/stage1_solid/Stage1_MidbossTerrain_EntryBridge.obj",
-            "myEventID": -1,
-            "name": "Stage1_MidbossTerrain_EntryBridge",
-            "normalMapPath": "",
-            "ormMapPath": "",
-            "parentGuid": "c5add105-5c42-43b4-971d-a0bbd045a387",
-            "parentName": "Stage1_TerrainRoot",
-            "particleName": "",
-            "position": [
-                280.0,
-                0.0,
-                -12.0
-            ],
-            "quaternion": [
-                0.0,
-                0.0,
-                0.0,
-                1.0
-            ],
-            "recorder": {
-                "isRecordLoop": false,
-                "isRecordRelative": false,
-                "recordPathName": ""
-            },
-            "rotation": [
-                0.0,
-                0.0,
+                -0.0,
                 0.0
             ],
             "roughness": 0.9200000166893005,
@@ -36441,9 +36142,9 @@
                     0.0
                 ],
                 "size": [
-                    20.0,
+                    76.0,
                     11.5,
-                    11.0
+                    33.0
                 ],
                 "type": 3
             },
@@ -36512,7 +36213,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                380.0,
+                436.0,
                 0.0,
                 -20.0
             ],
@@ -36529,7 +36230,7 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                -0.0,
                 0.0
             ],
             "roughness": 0.9200000166893005,
@@ -36537,7 +36238,7 @@
             "scale": [
                 1.0,
                 1.0,
-                1.0
+                0.37427106499671936
             ],
             "tag": "",
             "targetID": -1,
@@ -38523,7 +38224,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                852.7999877929688,
+                1377.800048828125,
                 -13.720000267028809,
                 29.0
             ],
@@ -39108,9 +38809,9 @@
                     4.179662985120725e-18
                 ],
                 "size": [
-                    13.0,
+                    69.0,
                     11.5,
-                    11.0
+                    33.0
                 ],
                 "type": 3
             },
@@ -39179,7 +38880,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                425.0,
+                617.0,
                 10.0,
                 -20.0
             ],
@@ -39196,7 +38897,7 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                -0.0,
                 0.0
             ],
             "roughness": 0.9200000166893005,
@@ -39204,7 +38905,7 @@
             "scale": [
                 1.0,
                 1.0,
-                1.0
+                0.46834230422973633
             ],
             "tag": "",
             "targetID": -1,
@@ -39236,9 +38937,9 @@
                     0.0
                 ],
                 "size": [
-                    16.0,
+                    72.0,
                     11.5,
-                    11.0
+                    33.0
                 ],
                 "type": 3
             },
@@ -39307,7 +39008,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                469.0,
+                798.0,
                 10.0,
                 -20.0
             ],
@@ -39324,7 +39025,7 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                -0.0,
                 0.0
             ],
             "roughness": 0.9200000166893005,
@@ -39332,7 +39033,7 @@
             "scale": [
                 1.0,
                 1.0,
-                1.0
+                0.3836759626865387
             ],
             "tag": "",
             "targetID": -1,
@@ -39364,9 +39065,9 @@
                     0.0
                 ],
                 "size": [
-                    19.0,
+                    75.0,
                     11.5,
-                    11.0
+                    33.0
                 ],
                 "type": 3
             },
@@ -39435,7 +39136,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                520.0,
+                989.0,
                 10.0,
                 -20.0
             ],
@@ -39452,7 +39153,7 @@
             },
             "rotation": [
                 0.0,
-                0.0,
+                -0.0,
                 0.0
             ],
             "roughness": 0.9200000166893005,
@@ -39460,7 +39161,7 @@
             "scale": [
                 1.0,
                 1.0,
-                1.0
+                0.5228191018104553
             ],
             "tag": "",
             "targetID": -1,
@@ -39563,7 +39264,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                562.0,
+                1087.0,
                 10.0,
                 -20.0
             ],
@@ -39691,7 +39392,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                605.0,
+                1130.0,
                 12.0,
                 -14.0
             ],
@@ -39819,7 +39520,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                679.0,
+                1204.0,
                 2.0,
                 16.0
             ],
@@ -39947,7 +39648,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                876,
+                1401.0,
                 17.0,
                 13.0
             ],
@@ -40075,7 +39776,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                904.0,
+                1429.0,
                 17.0,
                 27.0
             ],
@@ -40203,7 +39904,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                940.0,
+                1465.0,
                 17.0,
                 20.0
             ],
@@ -40331,7 +40032,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                940.0,
+                1465.0,
                 18.299999237060547,
                 20.0
             ],
@@ -40923,7 +40624,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                679.0,
+                1204.0,
                 2.0,
                 -32.0
             ],
@@ -41167,7 +40868,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                718.0,
+                1243.0,
                 0.0,
                 16.0
             ],
@@ -41411,7 +41112,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                718.0,
+                1243.0,
                 0.0,
                 -32.0
             ],
@@ -41655,7 +41356,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                758.0,
+                1283.0,
                 1.0,
                 16.0
             ],
@@ -41899,7 +41600,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                758.0,
+                1283.0,
                 1.0,
                 -32.0
             ],
@@ -42143,7 +41844,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                798.0,
+                1323.0,
                 2.0,
                 22.25
             ],
@@ -42387,7 +42088,7 @@
             "parentName": "Stage1_TerrainRoot",
             "particleName": "",
             "position": [
-                798.0,
+                1323.0,
                 2.0,
                 -32.0
             ],
@@ -44240,6 +43941,4399 @@
                 1.0
             ],
             "type": "Gimmick"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.020429611206054688,
+                    0.7311670184135437,
+                    -0.0668039321899414
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    18.99445343017578,
+                    0.7311670184135437,
+                    10.600896835327148
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "6e9eb62b-ae83-56ab-8fc4-124e65bca82c",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_12.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_12_Expanded_0_0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a8fb2464-62d3-51c7-98c3-dd2b220bc5d2",
+            "parentName": "Stage1_MidbossTerrain_DashStart",
+            "particleName": "",
+            "position": [
+                -47.0,
+                10.024999618530273,
+                -21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.020429611206054688,
+                    0.7311670184135437,
+                    -0.0668039321899414
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    18.99445343017578,
+                    0.7311670184135437,
+                    10.600896835327148
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "baddfb38-b6ce-52d9-b59b-d61cce89e1b9",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_12.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_12_Expanded_0_42",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a8fb2464-62d3-51c7-98c3-dd2b220bc5d2",
+            "parentName": "Stage1_MidbossTerrain_DashStart",
+            "particleName": "",
+            "position": [
+                -47.0,
+                10.024999618530273,
+                21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.020429611206054688,
+                    0.7311670184135437,
+                    -0.0668039321899414
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    18.99445343017578,
+                    0.7311670184135437,
+                    10.600896835327148
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "f4a2a8a3-a60c-59ae-9231-8f5f9a87cdc7",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_12.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_12_Expanded_47_0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a8fb2464-62d3-51c7-98c3-dd2b220bc5d2",
+            "parentName": "Stage1_MidbossTerrain_DashStart",
+            "particleName": "",
+            "position": [
+                0.0,
+                10.024999618530273,
+                -21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.020429611206054688,
+                    0.7311670184135437,
+                    -0.0668039321899414
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    18.99445343017578,
+                    0.7311670184135437,
+                    10.600896835327148
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "b165bccf-0a0e-5074-bcf8-928700a60f12",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_12.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_12_Expanded_47_42",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a8fb2464-62d3-51c7-98c3-dd2b220bc5d2",
+            "parentName": "Stage1_MidbossTerrain_DashStart",
+            "particleName": "",
+            "position": [
+                0.0,
+                10.024999618530273,
+                21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.020429611206054688,
+                    0.7311670184135437,
+                    -0.0668039321899414
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    18.99445343017578,
+                    0.7311670184135437,
+                    10.600896835327148
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "72cc831b-0ec2-5c95-bca7-3b3012c08427",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_12.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_12_Expanded_94_0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a8fb2464-62d3-51c7-98c3-dd2b220bc5d2",
+            "parentName": "Stage1_MidbossTerrain_DashStart",
+            "particleName": "",
+            "position": [
+                47.0,
+                10.024999618530273,
+                -21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.020429611206054688,
+                    0.7311670184135437,
+                    -0.0668039321899414
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    18.99445343017578,
+                    0.7311670184135437,
+                    10.600896835327148
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "bdb5e865-8828-5e83-a3c3-b767a0e49733",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_12.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_12_Expanded_94_42",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a8fb2464-62d3-51c7-98c3-dd2b220bc5d2",
+            "parentName": "Stage1_MidbossTerrain_DashStart",
+            "particleName": "",
+            "position": [
+                47.0,
+                10.024999618530273,
+                21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.28177881240844727,
+                    0.7290300130844116,
+                    -0.01995992660522461
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    11.649839401245117,
+                    0.7290300130844116,
+                    10.379371643066406
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "834898d6-c951-5ef0-b6a2-d4559b968b23",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_13.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_13_Expanded_0_0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "ff14dce8-50c6-51c7-89b8-b3732909ace7",
+            "parentName": "Stage1_TerrainPart_DashRunA",
+            "particleName": "",
+            "position": [
+                -47.0,
+                0.024999618530273438,
+                -21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.28177881240844727,
+                    0.7290300130844116,
+                    -0.01995992660522461
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    11.649839401245117,
+                    0.7290300130844116,
+                    10.379371643066406
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "2bde54bf-9ad2-5792-8b1d-ec7e1e56daa8",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_13.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_13_Expanded_0_42",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "ff14dce8-50c6-51c7-89b8-b3732909ace7",
+            "parentName": "Stage1_TerrainPart_DashRunA",
+            "particleName": "",
+            "position": [
+                -47.0,
+                0.024999618530273438,
+                21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.28177881240844727,
+                    0.7290300130844116,
+                    -0.01995992660522461
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    11.649839401245117,
+                    0.7290300130844116,
+                    10.379371643066406
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "87c74538-be57-5dc9-b53b-54ca232a67c8",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_13.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_13_Expanded_47_0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "ff14dce8-50c6-51c7-89b8-b3732909ace7",
+            "parentName": "Stage1_TerrainPart_DashRunA",
+            "particleName": "",
+            "position": [
+                0.0,
+                0.024999618530273438,
+                -21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.28177881240844727,
+                    0.7290300130844116,
+                    -0.01995992660522461
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    11.649839401245117,
+                    0.7290300130844116,
+                    10.379371643066406
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "ba3d39e3-ea6d-5039-b6f6-efbdeb8267fd",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_13.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_13_Expanded_47_42",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "ff14dce8-50c6-51c7-89b8-b3732909ace7",
+            "parentName": "Stage1_TerrainPart_DashRunA",
+            "particleName": "",
+            "position": [
+                0.0,
+                0.024999618530273438,
+                21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.28177881240844727,
+                    0.7290300130844116,
+                    -0.01995992660522461
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    11.649839401245117,
+                    0.7290300130844116,
+                    10.379371643066406
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "fcc6b15d-f326-5b4a-8a12-b89fabd59d4e",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_13.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_13_Expanded_94_0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "ff14dce8-50c6-51c7-89b8-b3732909ace7",
+            "parentName": "Stage1_TerrainPart_DashRunA",
+            "particleName": "",
+            "position": [
+                47.0,
+                0.024999618530273438,
+                -21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.28177881240844727,
+                    0.7290300130844116,
+                    -0.01995992660522461
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    11.649839401245117,
+                    0.7290300130844116,
+                    10.379371643066406
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "fa7366d8-7267-5c12-86f5-f6b9793e4ec2",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_13.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_13_Expanded_94_42",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "ff14dce8-50c6-51c7-89b8-b3732909ace7",
+            "parentName": "Stage1_TerrainPart_DashRunA",
+            "particleName": "",
+            "position": [
+                47.0,
+                0.024999618530273438,
+                21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.022803306579589844,
+                    0.7292929887771606,
+                    -0.07036066055297852
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    15.481436729431152,
+                    0.7292929887771606,
+                    10.470195770263672
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "490c711c-1995-5ced-bb69-4cc5e5682899",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_14.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_14_Expanded_0_0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "6981c27b-dd57-5e05-ab22-071497a64886",
+            "parentName": "Stage1_TerrainPart_DashRunB",
+            "particleName": "",
+            "position": [
+                -47.0,
+                0.024999618530273438,
+                -21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.022803306579589844,
+                    0.7292929887771606,
+                    -0.07036066055297852
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    15.481436729431152,
+                    0.7292929887771606,
+                    10.470195770263672
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "3ee1f18a-3190-56ca-b453-e9dc31996d74",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_14.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_14_Expanded_0_42",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "6981c27b-dd57-5e05-ab22-071497a64886",
+            "parentName": "Stage1_TerrainPart_DashRunB",
+            "particleName": "",
+            "position": [
+                -47.0,
+                0.024999618530273438,
+                21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.022803306579589844,
+                    0.7292929887771606,
+                    -0.07036066055297852
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    15.481436729431152,
+                    0.7292929887771606,
+                    10.470195770263672
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "8e313fe8-4d58-55ac-8721-c4e17d775677",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_14.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_14_Expanded_47_0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "6981c27b-dd57-5e05-ab22-071497a64886",
+            "parentName": "Stage1_TerrainPart_DashRunB",
+            "particleName": "",
+            "position": [
+                0.0,
+                0.024999618530273438,
+                -21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.022803306579589844,
+                    0.7292929887771606,
+                    -0.07036066055297852
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    15.481436729431152,
+                    0.7292929887771606,
+                    10.470195770263672
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "91740392-518a-5b93-b198-afc4c7cc5bbb",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_14.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_14_Expanded_47_42",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "6981c27b-dd57-5e05-ab22-071497a64886",
+            "parentName": "Stage1_TerrainPart_DashRunB",
+            "particleName": "",
+            "position": [
+                0.0,
+                0.024999618530273438,
+                21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.022803306579589844,
+                    0.7292929887771606,
+                    -0.07036066055297852
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    15.481436729431152,
+                    0.7292929887771606,
+                    10.470195770263672
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "aa8198c0-9de6-554f-a0f6-152b44d33c48",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_14.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_14_Expanded_94_0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "6981c27b-dd57-5e05-ab22-071497a64886",
+            "parentName": "Stage1_TerrainPart_DashRunB",
+            "particleName": "",
+            "position": [
+                47.0,
+                0.024999618530273438,
+                -21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.022803306579589844,
+                    0.7292929887771606,
+                    -0.07036066055297852
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    15.481436729431152,
+                    0.7292929887771606,
+                    10.470195770263672
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "90d81851-2bec-50e7-b71e-61a91b5cfb5f",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_14.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_14_Expanded_94_42",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "6981c27b-dd57-5e05-ab22-071497a64886",
+            "parentName": "Stage1_TerrainPart_DashRunB",
+            "particleName": "",
+            "position": [
+                47.0,
+                0.024999618530273438,
+                21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.5502223968505859,
+                    0.7296425104141235,
+                    0.021533489227294922
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    17.977096557617188,
+                    0.7296425104141235,
+                    10.537788391113281
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "8b940556-77d1-5d81-8cf6-d0fe6809162b",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_15.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_15_Expanded_0_0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "1060813d-2f4c-5654-bdb3-85c4832c1e80",
+            "parentName": "Stage1_TerrainPart_DashRunC",
+            "particleName": "",
+            "position": [
+                -47.0,
+                0.024999618530273438,
+                -21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.5502223968505859,
+                    0.7296425104141235,
+                    0.021533489227294922
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    17.977096557617188,
+                    0.7296425104141235,
+                    10.537788391113281
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "6c968bd7-b6f8-522c-9035-c040762f22d0",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_15.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_15_Expanded_0_42",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "1060813d-2f4c-5654-bdb3-85c4832c1e80",
+            "parentName": "Stage1_TerrainPart_DashRunC",
+            "particleName": "",
+            "position": [
+                -47.0,
+                0.024999618530273438,
+                21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.5502223968505859,
+                    0.7296425104141235,
+                    0.021533489227294922
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    17.977096557617188,
+                    0.7296425104141235,
+                    10.537788391113281
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "b3304523-3e0f-51ce-9300-ae094dd91150",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_15.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_15_Expanded_47_0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "1060813d-2f4c-5654-bdb3-85c4832c1e80",
+            "parentName": "Stage1_TerrainPart_DashRunC",
+            "particleName": "",
+            "position": [
+                0.0,
+                0.024999618530273438,
+                -21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.5502223968505859,
+                    0.7296425104141235,
+                    0.021533489227294922
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    17.977096557617188,
+                    0.7296425104141235,
+                    10.537788391113281
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "032fbb32-fcc6-5aee-91f0-617defac5ed5",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_15.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_15_Expanded_47_42",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "1060813d-2f4c-5654-bdb3-85c4832c1e80",
+            "parentName": "Stage1_TerrainPart_DashRunC",
+            "particleName": "",
+            "position": [
+                0.0,
+                0.024999618530273438,
+                21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.5502223968505859,
+                    0.7296425104141235,
+                    0.021533489227294922
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    17.977096557617188,
+                    0.7296425104141235,
+                    10.537788391113281
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "afe221b9-7a0f-5b5b-ac38-2f1f1afadf69",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_15.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_15_Expanded_94_0",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "1060813d-2f4c-5654-bdb3-85c4832c1e80",
+            "parentName": "Stage1_TerrainPart_DashRunC",
+            "particleName": "",
+            "position": [
+                47.0,
+                0.024999618530273438,
+                -21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    -0.5502223968505859,
+                    0.7296425104141235,
+                    0.021533489227294922
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    17.977096557617188,
+                    0.7296425104141235,
+                    10.537788391113281
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 0.800000011920929,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "950aa62b-d585-5524-b576-61e5f51f6016",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 30,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/stage1_meadow/Grass_15.obj",
+            "myEventID": -1,
+            "name": "Stage1_Meadow_Grass_15_Expanded_94_42",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "1060813d-2f4c-5654-bdb3-85c4832c1e80",
+            "parentName": "Stage1_TerrainPart_DashRunC",
+            "particleName": "",
+            "position": [
+                47.0,
+                0.024999618530273438,
+                21.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.9200000166893005,
+            "saveCategory": "Object",
+            "scale": [
+                1.0,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    -12.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    50.0,
+                    12.0,
+                    26.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "7a5ec9e5-d0f7-5282-92e0-f2743f62ae19",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 33,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/ring_star_court/Main_soil.obj",
+            "myEventID": -1,
+            "name": "Stage1_RingCourt_Rework_Entry_Soil",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a0f3664c-48b7-5c22-b47f-3cb6726c3780",
+            "parentName": "Stage1_RingCourt_MainSoil",
+            "particleName": "",
+            "position": [
+                -35.5,
+                0.0,
+                -7.5
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.28999999165534973,
+                1.0,
+                0.5192307829856873
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    -12.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    50.0,
+                    12.0,
+                    26.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "2ad461e3-11da-52ce-abd2-5ab4f5681d53",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 33,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/ring_star_court/Main_soil.obj",
+            "myEventID": -1,
+            "name": "Stage1_RingCourt_Rework_Center_Soil",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a0f3664c-48b7-5c22-b47f-3cb6726c3780",
+            "parentName": "Stage1_RingCourt_MainSoil",
+            "particleName": "",
+            "position": [
+                -2.0,
+                1.0,
+                -1.5
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.25999999046325684,
+                1.0,
+                0.6346153616905212
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    -0.05000000074505806,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    50.0,
+                    0.05000000074505806,
+                    26.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "b42723a6-8c96-5661-9cfa-b28676f8c5a1",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 29,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/ring_star_court/Main_turf.obj",
+            "myEventID": -1,
+            "name": "Stage1_RingCourt_Rework_Center_Turf",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a0f3664c-48b7-5c22-b47f-3cb6726c3780",
+            "parentName": "Stage1_RingCourt_MainSoil",
+            "particleName": "",
+            "position": [
+                -2.0,
+                1.010000228881836,
+                -1.5
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.25999999046325684,
+                1.0,
+                0.6346153616905212
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    48.0,
+                    0.017500000074505806,
+                    4.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "2b81ca8d-9d18-525f-8262-75a99af3b16d",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 32,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/ring_star_court/Main_path.obj",
+            "myEventID": -1,
+            "name": "Stage1_RingCourt_Rework_Center_Path",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a0f3664c-48b7-5c22-b47f-3cb6726c3780",
+            "parentName": "Stage1_RingCourt_MainSoil",
+            "particleName": "",
+            "position": [
+                -2.0,
+                1.0399999618530273,
+                -0.8399999737739563
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.25999999046325684,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    -12.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    50.0,
+                    12.0,
+                    26.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "74be3418-f584-53ad-bf4f-40d6ed86f88d",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 33,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/ring_star_court/Main_soil.obj",
+            "myEventID": -1,
+            "name": "Stage1_RingCourt_Rework_Exit_Soil",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a0f3664c-48b7-5c22-b47f-3cb6726c3780",
+            "parentName": "Stage1_RingCourt_MainSoil",
+            "particleName": "",
+            "position": [
+                37.398040771484375,
+                0.39999961853027344,
+                11.5
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                -0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.3199999928474426,
+                1.0,
+                0.557692289352417
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    -0.05000000074505806,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    50.0,
+                    0.05000000074505806,
+                    26.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "2e5fddc7-d40c-55ff-8872-065aed10843c",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 29,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/ring_star_court/Main_turf.obj",
+            "myEventID": -1,
+            "name": "Stage1_RingCourt_Rework_Exit_Turf",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a0f3664c-48b7-5c22-b47f-3cb6726c3780",
+            "parentName": "Stage1_RingCourt_MainSoil",
+            "particleName": "",
+            "position": [
+                34.0,
+                0.4100002348423004,
+                11.5
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.3199999928474426,
+                1.0,
+                0.557692289352417
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    48.0,
+                    0.017500000074505806,
+                    4.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "a0fd338c-44e8-5434-a020-1bb533b55946",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 32,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/ring_star_court/Main_path.obj",
+            "myEventID": -1,
+            "name": "Stage1_RingCourt_Rework_Exit_Path",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a0f3664c-48b7-5c22-b47f-3cb6726c3780",
+            "parentName": "Stage1_RingCourt_MainSoil",
+            "particleName": "",
+            "position": [
+                34.0,
+                0.4399999678134918,
+                12.079999923706055
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.3199999928474426,
+                1.0,
+                1.0
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    -12.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    50.0,
+                    12.0,
+                    26.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "2a287cc7-c2bd-5ef8-a9b1-eeab5b0de000",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 33,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/ring_star_court/Main_soil.obj",
+            "myEventID": -1,
+            "name": "Stage1_RingCourt_Rework_OuterA_Soil",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a0f3664c-48b7-5c22-b47f-3cb6726c3780",
+            "parentName": "Stage1_RingCourt_MainSoil",
+            "particleName": "",
+            "position": [
+                -4.5,
+                -1.0,
+                29.5
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.12999999523162842,
+                0.3799999952316284,
+                0.17307692766189575
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    -0.05000000074505806,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    50.0,
+                    0.05000000074505806,
+                    26.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "c4110566-f999-5370-8a8a-829f416f1e08",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 29,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/ring_star_court/Main_turf.obj",
+            "myEventID": -1,
+            "name": "Stage1_RingCourt_Rework_OuterA_Turf",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a0f3664c-48b7-5c22-b47f-3cb6726c3780",
+            "parentName": "Stage1_RingCourt_MainSoil",
+            "particleName": "",
+            "position": [
+                -4.5,
+                -0.9899997711181641,
+                29.5
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.12999999523162842,
+                1.0,
+                0.17307692766189575
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    -12.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    50.0,
+                    12.0,
+                    26.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "c3230ad9-7c10-5f2c-837b-3192ae8efde3",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 33,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/ring_star_court/Main_soil.obj",
+            "myEventID": -1,
+            "name": "Stage1_RingCourt_Rework_OuterB_Soil",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a0f3664c-48b7-5c22-b47f-3cb6726c3780",
+            "parentName": "Stage1_RingCourt_MainSoil",
+            "particleName": "",
+            "position": [
+                14.5,
+                -2.0,
+                36.5
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.12999999523162842,
+                0.3799999952316284,
+                0.17307692766189575
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    -0.05000000074505806,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    50.0,
+                    0.05000000074505806,
+                    26.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "695c7a8f-491d-5d79-92c8-b11063cf1c7a",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 29,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/ring_star_court/Main_turf.obj",
+            "myEventID": -1,
+            "name": "Stage1_RingCourt_Rework_OuterB_Turf",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a0f3664c-48b7-5c22-b47f-3cb6726c3780",
+            "parentName": "Stage1_RingCourt_MainSoil",
+            "particleName": "",
+            "position": [
+                14.5,
+                -1.989999771118164,
+                36.5
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.12999999523162842,
+                1.0,
+                0.17307692766189575
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    -12.0,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    50.0,
+                    12.0,
+                    26.0
+                ],
+                "type": 2
+            },
+            "collisionAttribute": 4,
+            "collisionAttributeIds": [
+                "ground"
+            ],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 255,
+            "collisionMaskIds": [
+                "player",
+                "enemy",
+                "ground",
+                "player_bullet",
+                "trigger",
+                "map_block",
+                "player_attack",
+                "enemy_attack"
+            ],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "12c9cb61-4118-54f4-aea1-dceae330b98f",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 33,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/ring_star_court/Main_soil.obj",
+            "myEventID": -1,
+            "name": "Stage1_RingCourt_Rework_OuterC_Soil",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a0f3664c-48b7-5c22-b47f-3cb6726c3780",
+            "parentName": "Stage1_RingCourt_MainSoil",
+            "particleName": "",
+            "position": [
+                33.0,
+                -0.8999999761581421,
+                34.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.14000000059604645,
+                0.3799999952316284,
+                0.19230769574642181
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "animation": {
+                "animName": "",
+                "animatorController": "",
+                "isAnimLoop": true
+            },
+            "autoTextureTiling": false,
+            "blendMode": 1,
+            "castShadow": true,
+            "collider": {
+                "center": [
+                    0.0,
+                    -0.05000000074505806,
+                    0.0
+                ],
+                "rotation": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "size": [
+                    50.0,
+                    0.05000000074505806,
+                    26.0
+                ],
+                "type": 0
+            },
+            "collisionAttribute": 0,
+            "collisionAttributeIds": [],
+            "collisionAttributeUnknownBits": 0,
+            "collisionMask": 0,
+            "collisionMaskIds": [],
+            "collisionMaskUnknownBits": 0,
+            "color": [
+                1.0,
+                1.0,
+                1.0,
+                1.0
+            ],
+            "emissive": 1.0,
+            "enableEnvMap": false,
+            "enableLighting": true,
+            "enableNormalMap": false,
+            "enemyType": "",
+            "envIntensity": 1.0,
+            "eventID": 0,
+            "gimmickType": "",
+            "gpuParticleName": "",
+            "guid": "836522f6-0c46-513c-8b21-6039817fcb61",
+            "isStatic": true,
+            "itemType": "",
+            "layer": "Default",
+            "localFog": {
+                "color": [
+                    0.20000000298023224,
+                    0.800000011920929,
+                    0.5,
+                    1.0
+                ],
+                "density": 0.5,
+                "edgeFade": 0.0,
+                "noiseScale": 0.0,
+                "noiseSpeed": 0.0,
+                "scatteringG": 0.0,
+                "scatteringIntensity": 0.0
+            },
+            "materialType": 29,
+            "meshDrawIndex": -1,
+            "meshEffect1": "",
+            "meshEffect2": "",
+            "metallic": 0.0,
+            "modelName": "Stages/ring_star_court/Main_turf.obj",
+            "myEventID": -1,
+            "name": "Stage1_RingCourt_Rework_OuterC_Turf",
+            "normalMapPath": "",
+            "ormMapPath": "",
+            "parentGuid": "a0f3664c-48b7-5c22-b47f-3cb6726c3780",
+            "parentName": "Stage1_RingCourt_MainSoil",
+            "particleName": "",
+            "position": [
+                33.0,
+                -0.8899997472763062,
+                34.0
+            ],
+            "quaternion": [
+                0.0,
+                0.0,
+                0.0,
+                1.0
+            ],
+            "recorder": {
+                "isRecordLoop": false,
+                "isRecordRelative": false,
+                "recordPathName": ""
+            },
+            "rotation": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "roughness": 0.8999999761581421,
+            "saveCategory": "Object",
+            "scale": [
+                0.14000000059604645,
+                1.0,
+                0.19230769574642181
+            ],
+            "tag": "",
+            "targetID": -1,
+            "texturePath": "",
+            "textureTiling": [
+                1.0,
+                1.0
+            ],
+            "type": "Model"
+        },
+        {
+            "name": "Stage1_V4_GuideSign_DashPanel_01",
+            "guid": "6da08a52-adb4-46a2-86df-9e6c72d62271",
+            "type": "Gimmick",
+            "saveCategory": "Object",
+            "gimmickType": "GuideSign",
+            "modelName": "Gimmicks/guide_sign/guide_sign.obj",
+            "position": [
+                62.8,
+                10.0,
+                -8.3
+            ],
+            "rotation": [
+                0,
+                -1.5707963,
+                0
+            ],
+            "scale": [
+                3.6,
+                1.35,
+                1.35
+            ],
+            "parentName": "Stage1_MidbossTerrain_DashStart",
+            "collisionAttribute": 0,
+            "collisionMask": 0,
+            "components": {
+                "Game_GuideSign": {
+                    "layoutPath": "Resources/json/sprite/guide_sign/dash_panel.json",
+                    "activationRadius": 5.8,
+                    "displayHeight": 2.55,
+                    "displayWidth": 0.22,
+                    "displayOffsetX": 0.135
+                }
+            }
         }
     ]
 }

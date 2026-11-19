@@ -94,10 +94,11 @@ void Object3D::Initialize(engine::Object3DCommon* common) {
     transform_.parent = nullptr;
 
     // 1. コライダー (Transformと同期)
-    collider_ = std::make_unique<Collider>(&transform_);
+    // コライダーとレンダラーが同じTransformを借用するので、位置や拡縮の更新元を一つに保ちます。
+    collider_ = std::make_unique<engine::Collider>(&transform_);
 
     // 2. メッシュレンダラー (Transformと同期)
-    meshRenderer_ = std::make_unique<MeshRenderer>(&transform_);
+    meshRenderer_ = std::make_unique<engine::MeshRenderer>(&transform_);
     meshRenderer_->Initialize(common_);
     meshRenderer_->SetVisibilityOwner(this);
 
@@ -118,6 +119,7 @@ void Object3D::Initialize(engine::Object3DCommon* common) {
 // 更新・描画
 // ========================================================================
 
+// 草木の風と水面の流れは描画回数に依存させず、実際に進んだ秒数を個別の材質時計へ渡す。
 void Object3D::Update(float deltaTime) {
     if (meshRenderer_ && (GetMaterialType() == 30 || GetMaterialType() == 31)
         && std::isfinite(deltaTime) && deltaTime > 0.0f) {
@@ -146,6 +148,7 @@ void Object3D::Update(float deltaTime) {
 
         const float remaining = decalSettings_.lifetime - decalElapsedTime_;
 
+        // 出現と消失が重なる寿命では小さい方を採用します。残り秒が負になっても、最終的な透明度は0未満にしません。
         if (decalSettings_.fadeOut > 0.0f) {
             alphaFactor = std::min(alphaFactor, remaining / decalSettings_.fadeOut);
         }
@@ -157,6 +160,7 @@ void Object3D::Update(float deltaTime) {
         if (decalElapsedTime_ >= decalSettings_.lifetime) {
             SetIsVisible(false);
 
+            // 一時配置のデカールだけシーンの削除対象にする。配置済みの設定を持つデカールは非表示で残す。
             if (decalSettings_.transient) {
                 isDead_ = true;
             }
@@ -174,6 +178,7 @@ void Object3D::Update(float deltaTime) {
 
         // 収集中だけ回転アニメーションへ切り替えます。
         transform_.isQuaternionMaster = false;
+        // 収集中は秒あたり10ワールド単位ずつ上げ、毎秒15ラジアンで回します。
         transform_.translate.y += 10.0f * deltaTime; // 上昇
         transform_.rotate.y += 15.0f * deltaTime;    // 回転
 
@@ -191,7 +196,7 @@ void Object3D::Update(float deltaTime) {
 
         // 明示された銀色などのプリセットを尊重し、後段のUpdateParticleで発生器を一元管理する。
         if (GetGpuParticleName().empty()) {
-            SetGpuParticleName("star_sparkle");
+            SetGpuParticleName("shared/star_sparkle");
         }
     }
 
@@ -204,13 +209,14 @@ void Object3D::Update(float deltaTime) {
 
     if (meshRenderer_ && meshRenderer_->GetModel()) {
         bool appliedAnimation = false;
-        Model* model = meshRenderer_->GetModel();
+        engine::Model* model = meshRenderer_->GetModel();
         const bool controllerApplied = UpdateAnimatorController(deltaTime, model);
 
+        // コントローラーを先に評価し、姿勢を決められなかったときだけ直接指定したクリップへ進みます。
         if (controllerApplied) {
             appliedAnimation = true;
         } else if (!animName_.empty()) {
-            const Model::Animation* anim = model->GetAnimation(animName_);
+            const engine::Model::Animation* anim = model->GetAnimation(animName_);
 
             if (anim) {
                 animationTime_ += deltaTime;
@@ -227,6 +233,7 @@ void Object3D::Update(float deltaTime) {
             }
         }
 
+        // コントローラーが姿勢を適用した場合はその経路でモデルも更新されるため、ここで二重更新しません。
         if (!controllerApplied) {
             model->Update(appliedAnimation);
         }
@@ -256,6 +263,7 @@ void Object3D::Update(float deltaTime) {
     cpuUpdateTimeMs_ = static_cast<float>(std::chrono::duration_cast<std::chrono::microseconds>(endAll - startAll).count()) / 1000.0f;
 }
 
+// CPU粒子はこの更新で放出する。GPU粒子は設定名から発生器を準備し、Object3D::Updateが次の周期更新を担当する。
 void Object3D::UpdateParticle() {
     ParticleEmitterComponent* particle = GetParticleEmitterComponent();
 
@@ -309,7 +317,7 @@ void Object3D::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
     if (IsCameraObject()) {
         SceneManager* sceneManager = SceneManager::GetInstance();
 
-        if ((sceneManager && sceneManager->IsPlaying()) || DirectXCommon::GetInstance()->IsCameraPreviewRendering()) {
+        if ((sceneManager && sceneManager->IsPlaying()) || engine::DirectXCommon::GetInstance()->IsCameraPreviewRendering()) {
             return;
         }
     }
@@ -341,7 +349,7 @@ void Object3D::Draw(ID3D12Resource* pointLightResource, ID3D12Resource* spotLigh
 // トランスフォーム操作 (Transformへの委譲)
 // ========================================================================
 
-void Object3D::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex) {
+void Object3D::DrawForCamera(engine::Camera* camera, ID3D12Resource* pointLightResource, ID3D12Resource* spotLightResource, int previewBufferIndex) {
     // プレビュー用カメラでは補助モデルの表示条件を揃え、通常描画と同じ可視性を守る。
     if (!GetIsRenderVisible())
         return;
@@ -351,7 +359,7 @@ void Object3D::DrawForCamera(Camera* camera, ID3D12Resource* pointLightResource,
     if ((className_ == "GPUParticle" || className_ == "InvisibleBox") && !EditorToolSettings::Get().IsVisible("helperModels"))
         return;
 #endif
-    if (IsCameraObject() && DirectXCommon::GetInstance()->IsCameraPreviewRendering()) {
+    if (IsCameraObject() && engine::DirectXCommon::GetInstance()->IsCameraPreviewRendering()) {
         return;
     }
 #ifdef DD
@@ -411,6 +419,7 @@ void Object3D::SetParent(Object3D* parent, bool keepWorldTransform) {
 
     UpdateWorldMatrix();
 
+    // 新旧のワールド行列を保持してから階層を付け替え、新しい親の逆行列で同じワールド姿勢をローカルに戻します。
     if (parent) {
         parent->UpdateWorldMatrix();
     }
@@ -453,7 +462,7 @@ void Object3D::SetParent(Object3D* parent, bool keepWorldTransform) {
 // グラフィックス設定 (MeshRendererへの委譲)
 // ========================================================================
 
-void Object3D::SetModel(Model* model) {
+void Object3D::SetModel(engine::Model* model) {
     if (meshRenderer_) {
         meshRenderer_->SetModel(model);
 
@@ -461,7 +470,7 @@ void Object3D::SetModel(Model* model) {
         //  モデルのサイズに合わせてコライダーを自動設定 (Auto-Fit)
         // =======================================================
         if (model && collider_) {
-            ColliderConfig config = collider_->GetConfig();
+            engine::ColliderConfig config = collider_->GetConfig();
             engine::Vector3 fullSize = model->GetSize();
             config.size = { fullSize.x / 2.0f, fullSize.y / 2.0f, fullSize.z / 2.0f };
 
@@ -480,14 +489,14 @@ void Object3D::SetModel(const std::string& modelName) {
     }
 
     if (meshRenderer_ && !modelName.empty()) {
-        Model* model = ModelManager::GetInstance()->LoadModel(modelName);
+        engine::Model* model = ModelManager::GetInstance()->LoadModel(modelName);
         meshRenderer_->SetModel(modelName);
 
         // =======================================================
         //  モデルのサイズに合わせてコライダーを自動設定 (Auto-Fit)
         // =======================================================
         if (model && collider_) {
-            ColliderConfig config = collider_->GetConfig();
+            engine::ColliderConfig config = collider_->GetConfig();
             engine::Vector3 fullSize = model->GetSize();
             config.size = { fullSize.x / 2.0f, fullSize.y / 2.0f, fullSize.z / 2.0f };
 
@@ -541,38 +550,10 @@ void Object3D::DrawLaser(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     }
 }
 
-void Object3D::DrawSlimeGel(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    // 半透明のスライム材質を背景参照付きの専用パスで描く。
-    if (GetIsRenderVisible() && meshRenderer_) {
-        meshRenderer_->DrawSlimeGel(depthSrvHandle, grabSrvHandle);
-    }
-}
-
 void Object3D::DrawShockwave(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     // 衝撃波の背景歪みを扱う描画パスへ渡す。
     if (GetIsRenderVisible() && meshRenderer_) {
         meshRenderer_->DrawShockwave(depthSrvHandle, grabSrvHandle);
-    }
-}
-
-void Object3D::DrawLiquidContact(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    // 液面との接触表現を深度・背景参照付きパスに送る。
-    if (GetIsRenderVisible() && meshRenderer_) {
-        meshRenderer_->DrawLiquidContact(depthSrvHandle, grabSrvHandle);
-    }
-}
-
-void Object3D::DrawDamageCrack(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    // 被弾亀裂を通常材質とは別の画面参照パスへ送る。
-    if (GetIsRenderVisible() && meshRenderer_) {
-        meshRenderer_->DrawDamageCrack(depthSrvHandle, grabSrvHandle);
-    }
-}
-
-void Object3D::DrawUpdraft(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    // 上昇気流の透過表現を専用パスで描く。
-    if (GetIsRenderVisible() && meshRenderer_) {
-        meshRenderer_->DrawUpdraft(depthSrvHandle, grabSrvHandle);
     }
 }
 
@@ -590,20 +571,6 @@ void Object3D::DrawCrownUnlock(uint32_t depthSrvHandle, uint32_t grabSrvHandle) 
     }
 }
 
-void Object3D::DrawPoisonSpore(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    // 毒胞子の透過描画を専用パスへ送る。
-    if (GetIsRenderVisible() && meshRenderer_) {
-        meshRenderer_->DrawPoisonSpore(depthSrvHandle, grabSrvHandle);
-    }
-}
-
-void Object3D::DrawCloud(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
-    // 雲の背景参照処理をレンダラーの専用パスへ委譲する。
-    if (GetIsRenderVisible() && meshRenderer_) {
-        meshRenderer_->DrawCloud(depthSrvHandle, grabSrvHandle);
-    }
-}
-
 void Object3D::DrawGatePortal(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     // ゲートのポータル材質を深度・背景参照付きで描く。
     if (GetIsRenderVisible() && meshRenderer_) {
@@ -611,7 +578,7 @@ void Object3D::DrawGatePortal(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     }
 }
 
-void Object3D::DrawSpecialMaterialForCamera(Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle, int previewBufferIndex) {
+void Object3D::DrawSpecialMaterialForCamera(engine::Camera* camera, uint32_t depthSrvHandle, uint32_t grabSrvHandle, int previewBufferIndex) {
     // プレビューでは材質番号と専用カメラを渡し、本番と同じ特殊材質パスを使う。
     if (!GetIsRenderVisible() || !meshRenderer_) {
         return;
@@ -632,7 +599,7 @@ void Object3D::DrawWindOrb(uint32_t depthSrvHandle, uint32_t grabSrvHandle) {
     }
 }
 
-Model* Object3D::GetModel() const {
+engine::Model* Object3D::GetModel() const {
     // メッシュレンダラーが無い場合はモデルも存在しない。
     return meshRenderer_ ? meshRenderer_->GetModel() : nullptr;
 }
@@ -731,11 +698,13 @@ void Object3D::SetMaterialType(int32_t type) {
     // 特殊材質の種類を描画側の設定へ渡す。
     if (meshRenderer_) {
         meshRenderer_->SetMaterialType(type);
+        // 従来の材質番号を有効にする場合は、同じObjectに追加シェーダー材質が残らないようIDを解除します。
         if (type != 0)
             meshRenderer_->SetShaderMaterialId({});
     }
 }
 
+// 通常パスへ追加するシェーダーIDなので、旧番号の特殊材質を使っている間は受け付けない。
 void Object3D::SetShaderMaterialId(const std::string& id) {
     if (meshRenderer_ && GetMaterialType() == 0)
         meshRenderer_->SetShaderMaterialId(id);

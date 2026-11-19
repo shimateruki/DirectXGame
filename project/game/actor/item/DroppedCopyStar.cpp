@@ -41,6 +41,7 @@ void DroppedCopyStar::InitializeDrop(engine::Object3DCommon* common, const std::
 }
 
 void DroppedCopyStar::Update(float deltaTime) {
+    // 死亡・取得済みでは移動をやめ、編集時も寿命や軌道を進めません。
     if (IsDead() || IsCollected())
         return;
     auto* manager = SceneManager::GetInstance();
@@ -49,11 +50,13 @@ void DroppedCopyStar::Update(float deltaTime) {
     deltaTime = std::isfinite(deltaTime) ? (std::max)(0.0f, deltaTime) : 0.0f;
     elapsed_ += deltaTime;
 
+    // 期限を過ぎた星は取得済みと同じ除去処理へ渡します。
     if (elapsed_ >= lifetime_) {
         MarkCollected();
         return;
     }
 
+    // 投下中は二点間を弧状に移動し、到着してからは目的地点の上で小さく上下します。
     const float t = std::clamp(elapsed_ / kFlightDuration, 0.0f, 1.0f);
     engine::Vector3 position = start_ * (1.0f - t) + destination_ * t;
     position.y += std::sin(t * std::numbers::pi_v<float>) * 0.85f;
@@ -69,6 +72,7 @@ void DroppedCopyStar::Update(float deltaTime) {
 }
 
 void DroppedCopyStar::Collect(Player* player) {
+    // 投下直後の拾い直しを防ぐ待ち時間を設け、実際に能力を適用できたときだけ星を消費します。
     if (!player || IsCollected() || IsDead() || elapsed_ < kPickupDelay || elapsed_ >= lifetime_)
         return;
     auto* manager = SceneManager::GetInstance();

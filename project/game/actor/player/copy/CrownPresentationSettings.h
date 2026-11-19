@@ -23,11 +23,12 @@ struct CrownPresentationSettings {
         trailScale = std::clamp(std::isfinite(trailScale) ? trailScale : 1.35f, 0.6f, 1.8f);
         ringScale = std::clamp(std::isfinite(ringScale) ? ringScale : 1.0f, 0.5f, 1.5f);
     }
-    // 設定JSONを読み込む。成功可否を返し、ゲーム中のActor生成や再生は開始しない。
+    // 設定JSONを読み込む。ファイルを開けない場合や解析に失敗した場合は現在の値を保つ。
     void Load() {
         try {
             std::ifstream in(kConfigPath); if (!in) return;
             nlohmann::json j; in >> j;
+            // 欠けているキーを既定値で補い、一時変数の読み込みと補正を終えてから適用する。
             CrownPresentationSettings next;
             next.lanceScale = j.value("lanceScale", next.lanceScale);
             next.lanceGateScale = j.value("lanceGateScale", next.lanceGateScale);
@@ -42,6 +43,7 @@ struct CrownPresentationSettings {
     }
     // 現在の設定を専用JSONへ保存し、書き込みが成功したかを返す。
     bool Save() const {
+        // 保存用のコピーだけに補正を掛け、編集中の値を変えない。
         auto safe = *this; safe.Sanitize(); nlohmann::json j;
         j["lanceScale"] = safe.lanceScale;
         j["lanceGateScale"] = safe.lanceGateScale;
@@ -57,6 +59,7 @@ struct CrownPresentationSettings {
         std::ofstream out(kConfigPath); if (!out) return false; out << j.dump(2); return out.good();
     }
     static CrownPresentationSettings& Get() {
+        // 初回参照で読み込み、エディターと能力が同じ調整値を参照する。
         static CrownPresentationSettings value = [] { CrownPresentationSettings s; s.Load(); return s; }(); return value;
     }
 #ifdef USE_IMGUI
